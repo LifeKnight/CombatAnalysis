@@ -1,0 +1,16 @@
+[
+{
+  "modid": "combatanalysis",
+  "name": "Combat Analysis",
+  "description": "Analyzes your combat.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["LifeKnight"],
+  "credits": "Willerhide, for the idea.",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

@@ -14,8 +14,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static com.lifeknight.combatanalysis.mod.Mod.modColor;
-import static com.lifeknight.combatanalysis.mod.Mod.openGui;
+import static com.lifeknight.combatanalysis.mod.Core.modColor;
+import static com.lifeknight.combatanalysis.mod.Core.openGui;
 import static net.minecraft.util.EnumChatFormatting.*;
 
 public class LifeKnightObjectGui extends GuiScreen {

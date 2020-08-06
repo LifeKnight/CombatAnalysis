@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import static com.lifeknight.combatanalysis.mod.Mod.*;
+import static com.lifeknight.combatanalysis.mod.Core.*;
 import static net.minecraft.util.EnumChatFormatting.*;
 
 public enum Chat {

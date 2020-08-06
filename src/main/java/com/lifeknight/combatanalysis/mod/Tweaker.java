@@ -8,7 +8,7 @@ import java.util.Map;
 public class Tweaker implements IFMLLoadingPlugin {
     @Override
     public String[] getASMTransformerClass() {
-        return new String[] {"com.lifeknight.modbase.transformers.ClassTransformer"};
+        return new String[] {"com.lifeknight.combatanalysis.transformers.ClassTransformer"};
     }
 
     @Override

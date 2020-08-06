@@ -5,13 +5,17 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.*;
 
+import static org.objectweb.asm.Opcodes.*;
+
 import java.util.Arrays;
 
-@SuppressWarnings("EmptyMethod")
 public class ClassTransformer implements IClassTransformer {
 
     private static final String[] classesBeingTransformed = {
-            ""
+            "net.minecraft.entity.EntityLivingBase",
+            "net.minecraft.util.DamageSource",
+            "net.minecraft.client.entity.EntityPlayerSP",
+            "net.minecraft.client.entity.EntityOtherPlayerMP"
     };
 
     @Override
@@ -28,7 +32,13 @@ public class ClassTransformer implements IClassTransformer {
             classReader.accept(classNode, 0);
 
             if (index == 0) {
-                transformRenderItem(classNode, isObfuscated);
+                transformEntityLivingBase(classNode, isObfuscated);
+            } else if (index == 1) {
+                transformDamageSource(classNode, isObfuscated);
+            } else if (index == 2) {
+                transformEntityPlayerSP(classNode, isObfuscated);
+            } else {
+                transformEntityOtherPlayerMP(classNode, isObfuscated);
             }
 
             ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
@@ -42,7 +52,122 @@ public class ClassTransformer implements IClassTransformer {
         return classBeingTransformed;
     }
 
-    private static void transformRenderItem(ClassNode renderItem, boolean isObfuscated) {
+    private static void transformEntityLivingBase(ClassNode entityLivingBase, boolean isObfuscated) {
+        final String handleStatusUpdateName = isObfuscated ? "" : "handleStatusUpdate";
+        final String handleStatusUpdateDescription = "(B)V";
 
+        for (MethodNode method : entityLivingBase.methods) {
+            if (method.name.equals(handleStatusUpdateName) && method.desc.equals(handleStatusUpdateDescription)) {
+                AbstractInsnNode targetNode = null;
+
+                for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                    if (instruction.getOpcode() == ALOAD) {
+                        targetNode = instruction.getPrevious();
+                        break;
+                    }
+                }
+
+                if (targetNode == null) {
+                    System.out.println("Combat Analysis > An error occurred while trying to insert method instruction into EntityLivingBase.");
+                } else {
+                    InsnList insnList = new InsnList();
+                    insnList.add(new VarInsnNode(ALOAD, 0));
+                    insnList.add(new MethodInsnNode(INVOKESTATIC, "com/lifeknight/combatanalysis/mod/Core", "onLivingHurt", "(Lnet/minecraft/entity/EntityLivingBase;)V", false));
+                    method.instructions.insert(targetNode, insnList);
+                    System.out.println("Combat Analysis > Successfully inserted instructions into EntityLivingBase.");
+                }
+                break;
+            }
+        }
+    }
+
+    private static void transformDamageSource(ClassNode damageSource, boolean isObfuscated) {
+        final String causeArrowDamageName = isObfuscated ? "" : "causeArrowDamage";
+        final String causeArrowDamageDescription = isObfuscated ? "" : "(Lnet/minecraft/entity/projectile/EntityArrow;Lnet/minecraft/entity/Entity;)Lnet/minecraft/util/DamageSource;";
+
+        for (MethodNode method : damageSource.methods) {
+            if (method.name.equals(causeArrowDamageName) && method.desc.equals(causeArrowDamageDescription)) {
+                AbstractInsnNode targetNode = null;
+
+                for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                    if (instruction.getOpcode() == NEW) {
+                        targetNode = instruction.getPrevious();
+                        break;
+                    }
+                }
+
+                if (targetNode == null) {
+                    System.out.println("Combat Analysis > An error occurred while trying to insert causeArrowDamage method instruction into DamageSource.");
+                } else {
+                    InsnList insnList = new InsnList();
+                    insnList.add(new VarInsnNode(ALOAD, 0));
+                    insnList.add(new VarInsnNode(ALOAD, 1));
+                    insnList.add(new MethodInsnNode(INVOKESTATIC, "com/lifeknight/combatanalysis/mod/Core", "onArrowDamage", "(Lnet/minecraft/entity/projectile/EntityArrow;Lnet/minecraft/entity/Entity;)V", false));
+                    method.instructions.insert(targetNode, insnList);
+                    System.out.println("Combat Analysis > Successfully inserted causeArrowDamage method instructions into DamageSource.");
+                }
+                break;
+            }
+        }
+    }
+
+    private static void transformEntityPlayerSP(ClassNode entityPlayerSP, boolean isObfuscated) {
+        final String attackEntityFromName = isObfuscated ? "" : "attackEntityFrom";
+        final String attackEntityFromDescription = isObfuscated ? "" : "(Lnet/minecraft/util/DamageSource;F)Z";
+
+        for (MethodNode method : entityPlayerSP.methods) {
+            if (method.name.equals(attackEntityFromName) && method.desc.equals(attackEntityFromDescription)) {
+                AbstractInsnNode targetNode = null;
+
+                for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                    if (instruction.getOpcode() == ICONST_0) {
+                        targetNode = instruction.getPrevious();
+                        break;
+                    }
+                }
+
+                if (targetNode == null) {
+                    System.out.println("Combat Analysis > An error occurred while trying to insert method instructions into EntityPlayerSP.");
+                } else {
+                    InsnList insnList = new InsnList();
+                    insnList.add(new VarInsnNode(ALOAD, 0));
+                    insnList.add(new VarInsnNode(ALOAD, 1));
+                    insnList.add(new MethodInsnNode(INVOKESTATIC, "com/lifeknight/combatanalysis/mod/Core", "onAttackEntityPlayerSPFrom", "(Lnet/minecraft/util/DamageSource;)V", false));
+                    method.instructions.insert(targetNode, insnList);
+                    System.out.println("Combat Analysis > Successfully inserted instructions into EntityPlayerSP.");
+                }
+                break;
+            }
+        }
+    }
+
+    private static void transformEntityOtherPlayerMP(ClassNode entityOtherPlayerMP, boolean isObfuscated) {
+        final String attackEntityFromName = isObfuscated ? "" : "attackEntityFrom";
+        final String attackEntityFromDescription = isObfuscated ? "" : "(Lnet/minecraft/util/DamageSource;F)Z";
+
+        for (MethodNode method : entityOtherPlayerMP.methods) {
+            if (method.name.equals(attackEntityFromName) && method.desc.equals(attackEntityFromDescription)) {
+                AbstractInsnNode targetNode = null;
+
+                for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                    if (instruction.getOpcode() == ICONST_1) {
+                        targetNode = instruction.getPrevious();
+                        break;
+                    }
+                }
+
+                if (targetNode == null) {
+                    System.out.println("Combat Analysis > An error occurred while trying to insert method instructions into EntityOtherPlayerMP.");
+                } else {
+                    InsnList insnList = new InsnList();
+                    insnList.add(new VarInsnNode(ALOAD, 0));
+                    insnList.add(new VarInsnNode(ALOAD, 1));
+                    insnList.add(new MethodInsnNode(INVOKESTATIC, "com/lifeknight/combatanalysis/mod/Core", "onAttackEntityOtherPlayerMPFrom", "(Lnet/minecraft/client/entity/EntityOtherPlayerMP;Lnet/minecraft/util/DamageSource;)V", false));
+                    method.instructions.insert(targetNode, insnList);
+                    System.out.println("Combat Analysis > Successfully inserted instructions into EntityOtherPlayerMP.");
+                }
+                break;
+            }
+        }
     }
 }

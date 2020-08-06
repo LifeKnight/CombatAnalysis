@@ -1,6 +1,6 @@
 package com.lifeknight.combatanalysis.variables;
 
-import static com.lifeknight.combatanalysis.mod.Mod.configuration;
+import static com.lifeknight.combatanalysis.mod.Core.configuration;
 
 public abstract class LifeKnightNumber extends LifeKnightVariable {
     protected final Number defaultValue;

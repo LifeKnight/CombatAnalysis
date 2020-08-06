@@ -2,7 +2,7 @@ package com.lifeknight.combatanalysis.variables;
 
 import net.minecraft.util.EnumChatFormatting;
 
-import static com.lifeknight.combatanalysis.mod.Mod.configuration;
+import static com.lifeknight.combatanalysis.mod.Core.configuration;
 
 public class LifeKnightString extends LifeKnightVariable {
     private final String defaultValue;

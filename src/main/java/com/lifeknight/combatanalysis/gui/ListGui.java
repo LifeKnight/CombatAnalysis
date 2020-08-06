@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.lifeknight.combatanalysis.mod.Mod.openGui;
+import static com.lifeknight.combatanalysis.mod.Core.openGui;
 import static net.minecraft.util.EnumChatFormatting.GRAY;
 import static net.minecraft.util.EnumChatFormatting.RED;
 

@@ -1,6 +1,6 @@
 package com.lifeknight.combatanalysis.utilities;
 
-import static com.lifeknight.combatanalysis.mod.Mod.THREAD_POOL;
+import static com.lifeknight.combatanalysis.mod.Core.THREAD_POOL;
 
 public class Timer {
     private long endTime = 0L;

@@ -57,17 +57,20 @@ public class CombatSession {
     }
 
     public static void onArrowShot() {
-        if (sessionIsRunning) getLatestAnalysis().arrowShot();
+        if (Core.automaticSessions.getValue() || sessionIsRunning) getLatestAnalysis().arrowShot();
     }
 
     public static void onArrowHit(EntityPlayer target) {
-        attackTimer = 5;
-        attackType = 1;
-        if (sessionIsRunning) getLatestAnalysis().arrowHit(target);
+        if (Core.automaticSessions.getValue() || sessionIsRunning) {
+            getLatestAnalysis().arrowHit(target);
+        } else {
+            attackTimer = 5;
+            attackType = 1;
+        }
     }
 
     public static void onHitByArrow(EntityPlayer shooter) {
-        if (sessionIsRunning) getLatestAnalysis().hitByArrow(shooter);
+        if (Core.automaticSessions.getValue() || sessionIsRunning) getLatestAnalysis().hitByArrow(shooter);
     }
 
     public static void onProjectileThrown(int type) {
@@ -75,38 +78,29 @@ public class CombatSession {
     }
 
     public static void onProjectileHit(EntityPlayer target) {
-        attackTimer = 5;
-        attackType = 2;
-        if (sessionIsRunning) getLatestAnalysis().projectileHit(target);
+        if (sessionIsRunning) {
+            getLatestAnalysis().projectileHit(target);
+        } else {
+            attackTimer = 5;
+            attackType = 2;
+        }
     }
 
     public static void onHitByProjectile(EntityPlayer thrower) {
-        if (sessionIsRunning) getLatestAnalysis().hitByProjectile(thrower, 1);
+        if (Core.automaticSessions.getValue() || sessionIsRunning) getLatestAnalysis().hitByProjectile(thrower, 1);
     }
 
     public static void onAttack(EntityPlayer target) {
-        attackTimer = 5;
-        attackType = 0;
-        if (sessionIsRunning) getLatestAnalysis().attack(target);
+        if (Core.automaticSessions.getValue() || sessionIsRunning) {
+            getLatestAnalysis().attack(target);
+        } else {
+            attackTimer = 5;
+            attackType = 0;
+        }
     }
 
     public static void onPlayerHurt(EntityPlayer player) {
-        if ((attackTimer > 0 && Core.automaticSessions.getValue()) || sessionIsRunning) {
-            if (!sessionIsRunning) {
-                switch (attackType) {
-                    case 0:
-                        getLatestAnalysis().attack(player);
-                        break;
-                    case 1:
-                        getLatestAnalysis().arrowHit(player);
-                        break;
-                    case 2:
-                        getLatestAnalysis().projectileHit(player);
-                        break;
-                }
-            }
-            getLatestAnalysis().playerHurt(player);
-        }
+        if (sessionIsRunning) getLatestAnalysis().playerHurt(player);
     }
 
     public static void onHurt(EntityPlayer attacker) {
@@ -119,6 +113,10 @@ public class CombatSession {
 
     public static void onRightClick() {
         if (sessionIsRunning) getLatestAnalysis().rightClick();
+    }
+
+    public static void onKeyTyped(int keyCode, boolean state) {
+        if (sessionIsRunning) getLatestAnalysis().keyTyped(keyCode, state);
     }
 
     public static int getLeftClicks() {
@@ -193,6 +191,8 @@ public class CombatSession {
 
     private int attacksSent = 0;
     private int attacksLanded = 0;
+    private boolean criticalHit = false;
+    private int criticalAttacksLanded = 0;
     private int opponentAttacksTaken = 0;
 
     private int projectilesThrown = 0;
@@ -207,6 +207,14 @@ public class CombatSession {
     private int projectilesTaken = 0;
     private boolean hitByFishingHook = false;
     private boolean opponentHitByFishingHook = false;
+
+    // More fields such as armor and inventory items
+
+    // Strafing data
+
+    // Proper w-tapping/blockhitting/projectile usage
+
+    // Hotkey time
 
     public CombatSession() {
 
@@ -235,13 +243,12 @@ public class CombatSession {
             attackType = Integer.MIN_VALUE;
         }
 
-        if (opponent == null) {
+        if (opponent == null || Minecraft.getMinecraft().thePlayer == null) {
             end();
             return;
         }
 
-        EntityPlayerSP thePlayer;
-        if ((thePlayer = Minecraft.getMinecraft().thePlayer) == null) return;
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
         List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
                 getEntitiesWithinAABBExcludingEntity(
                         thePlayer,
@@ -287,12 +294,14 @@ public class CombatSession {
     }
 
     public void arrowHit(EntityPlayer target) {
+        if (target.getUniqueID() != opponent.getUniqueID()) return;
         updateTicksSinceAction();
         lastAttackType = 1;
         lastAttackTimer = 5;
     }
 
     public void hitByArrow(EntityPlayer shooter) {
+        if (shooter.getUniqueID() != opponent.getUniqueID()) return;
         updateTicksSinceAction();
         hitByArrow = false;
         arrowsTaken++;
@@ -304,12 +313,14 @@ public class CombatSession {
     }
 
     public void projectileHit(EntityPlayer target) {
+        if (target.getUniqueID() != opponent.getUniqueID()) return;
         updateTicksSinceAction();
         lastAttackType = 2;
         lastAttackTimer = 5;
     }
 
     public void hitByProjectile(EntityPlayer thrower, int source) {
+        if (thrower.getUniqueID() != opponent.getUniqueID()) return;
         updateTicksSinceAction();
         hitByFishingHook = false;
         if (source == 1 && thrower.fishEntity != null) return;
@@ -317,6 +328,7 @@ public class CombatSession {
     }
 
     public void attack(EntityPlayer target) {
+        if (target.getUniqueID() != opponent.getUniqueID()) return;
         updateTicksSinceAction();
         lastAttackType = 0;
         lastAttackTimer = 5;
@@ -324,13 +336,14 @@ public class CombatSession {
     }
 
     public void playerHurt(EntityPlayer player) {
+        if (player.getUniqueID() != opponent.getUniqueID()) return;
         updateTicksSinceAction();
         if (opponentHitByFishingHook) {
             projectilesHit++;
             return;
         }
 
-        if (attackTimer > 0) {
+        if (lastAttackTimer > 0) {
             switch (lastAttackType) {
                 case 0:
                     opponentAttacksTaken++;
@@ -365,6 +378,10 @@ public class CombatSession {
     public void rightClick() {
         updateTicksSinceAction();
         rightClicks++;
+    }
+
+    public void keyTyped(int keyCode, boolean state) {
+
     }
 
     public void end() {

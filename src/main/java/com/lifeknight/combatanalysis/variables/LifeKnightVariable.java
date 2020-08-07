@@ -28,19 +28,15 @@ public abstract class LifeKnightVariable {
     }
 
     public String getNameForConfiguration() {
-        String modifiedGroup = Text.removeAllPunctuation(name);
-        StringBuilder stringBuilder = new StringBuilder();
-
-        for (int i = modifiedGroup.length() - 1; i > 0; i--) {
-            char toInsert = (modifiedGroup.charAt(i - 1) == Character.toUpperCase(modifiedGroup.charAt(i - 1)) &&
-                    i != modifiedGroup.length() - 1 &&
-                    modifiedGroup.charAt(i + 1) == Character.toUpperCase(modifiedGroup.charAt(i + 1))) ?
-                    Character.toLowerCase(modifiedGroup.charAt(i)) :
-                    modifiedGroup.charAt(i);
-            stringBuilder.insert(0, toInsert);
+        if (name.contains(" ")) {
+            String[] words = name.split(" ");
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < words.length; i++) {
+                result.append(Text.formatCapitalization(words[i], i != 0));
+            }
+            return result.toString();
         }
-
-        return stringBuilder.insert(0, Character.toLowerCase(modifiedGroup.charAt(0))).toString();
+        return Text.formatCapitalization(name, false);
     }
 
     public String getGroup() {
@@ -48,19 +44,15 @@ public abstract class LifeKnightVariable {
     }
 
     public String getGroupForConfiguration() {
-        String modifiedName = Text.removeAllPunctuation(group);
-        StringBuilder stringBuilder = new StringBuilder();
-
-        for (int i = modifiedName.length() - 1; i > 0; i--) {
-            char toInsert = (modifiedName.charAt(i - 1) == Character.toUpperCase(modifiedName.charAt(i - 1)) &&
-                    i != modifiedName.length() - 1 &&
-                    modifiedName.charAt(i + 1) == Character.toUpperCase(modifiedName.charAt(i + 1))) ?
-                    Character.toLowerCase(modifiedName.charAt(i)) :
-                    modifiedName.charAt(i);
-            stringBuilder.insert(0, toInsert);
+        if (group.contains(" ")) {
+            String[] words = group.split(" ");
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < words.length; i++) {
+                result.append(Text.formatCapitalization(words[i], i != 0));
+            }
+            return result.toString();
         }
-
-        return stringBuilder.insert(0, Character.toLowerCase(modifiedName.charAt(0))).toString();
+        return Text.formatCapitalization(group, false);
     }
 
     public abstract Object getValue();

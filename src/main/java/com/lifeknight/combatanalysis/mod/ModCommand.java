@@ -20,8 +20,8 @@ import static com.lifeknight.combatanalysis.mod.Core.*;
 import static net.minecraft.util.EnumChatFormatting.*;
 
 public class ModCommand extends CommandBase {
-    private final List<String> aliases = Collections.singletonList("mb");
-    private final String[] mainCommands = {};
+    private final List<String> aliases = Collections.singletonList("ca");
+    private final String[] mainCommands = {"end"};
 
     public String getCommandName() {
         return modId;
@@ -57,13 +57,19 @@ public class ModCommand extends CommandBase {
     }
 
     public void processCommand(ICommandSender iCommandSender, String[] arguments) throws CommandException {
-        openGui(new LifeKnightGui("[" + modVersion + "] " + modName, LifeKnightVariable.getVariables(), Collections.singletonList(
-                new LifeKnightButton("Edit HUD") {
-                    @Override
-                    public void work() {
-                        openGui(new ManipulableGui());
-                    }
-                })));
+        if (arguments.length == 0) {
+            openGui(new LifeKnightGui("[" + modVersion + "] " + modName, LifeKnightVariable.getVariables(), Collections.singletonList(
+                    new LifeKnightButton("Edit HUD") {
+                        @Override
+                        public void work() {
+                            openGui(new ManipulableGui());
+                        }
+                    })));
+            return;
+        }
+        if (arguments[0].equalsIgnoreCase(mainCommands[0])) {
+            CombatSession.onWorldLoad();
+        }
     }
 
     public void addMainCommandMessage() {

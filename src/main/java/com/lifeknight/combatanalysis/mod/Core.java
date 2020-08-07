@@ -1,6 +1,7 @@
 package com.lifeknight.combatanalysis.mod;
 
 import com.lifeknight.combatanalysis.gui.Manipulable;
+import com.lifeknight.combatanalysis.gui.hud.EnhancedHudText;
 import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
@@ -23,6 +24,7 @@ import net.minecraftforge.event.entity.player.ArrowLooseEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerUseItemEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -51,6 +53,8 @@ public class Core {
     public static final LifeKnightBoolean runMod = new LifeKnightBoolean("Core", "Main", true);
     public static final LifeKnightBoolean gridSnapping = new LifeKnightBoolean("Grid Snapping", "HUD", true);
     public static final LifeKnightBoolean hudTextShadow = new LifeKnightBoolean("HUD Text Shadow", "HUD", true);
+    public static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
+    public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
     public static Configuration configuration;
 
     @EventHandler
@@ -59,8 +63,120 @@ public class Core {
         ClientCommandHandler.instance.registerCommand(new ModCommand());
 
         Miscellaneous.createEnhancedHudTextDefaultPropertyVariables();
+        
+        createEnhancedHudTexts();
 
         configuration = new Configuration();
+    }
+
+    private void createEnhancedHudTexts() {
+        new EnhancedHudText("Left Clicks", 0, 0, "Left Clicks") {
+            @Override
+            public String getTextToDisplay() {
+                return String.valueOf(CombatSession.getLeftClicks());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Right Clicks", 0, 100, "Right Clicks") {
+            @Override
+            public String getTextToDisplay() {
+                return String.valueOf(CombatSession.getRightClicks());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Opponent Hits Taken", 0, 200, "Opponent Hits Taken") {
+            @Override
+            public String getTextToDisplay() {
+                return String.valueOf(CombatSession.getOpponentHitsTaken());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Melee Accuracy", 0, 300, "Melee Accuracy") {
+            @Override
+            public String getTextToDisplay() {
+                return CombatSession.getAttackAccuracy();
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Bow Accuracy", 0, 400, "Bow Accuracy") {
+            @Override
+            public String getTextToDisplay() {
+                return CombatSession.getArrowAccuracy();
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Projectile Accuracy", 0, 500, "Projectile Accuracy") {
+            @Override
+            public String getTextToDisplay() {
+                return CombatSession.getProjectileAccuracy();
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Hits Taken", 0, 600, "Hits Taken") {
+            @Override
+            public String getTextToDisplay() {
+                return String.valueOf(CombatSession.getHitsTaken());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Arrows Taken", 0, 700, "Arrows Taken") {
+            @Override
+            public String getTextToDisplay() {
+                return String.valueOf(CombatSession.getArrowsTaken());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Projectiles Taken", 0, 800, "Projectiles Taken") {
+            @Override
+            public String getTextToDisplay() {
+                return String.valueOf(CombatSession.getProjectilesTaken());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
     }
 
     @SubscribeEvent
@@ -79,103 +195,72 @@ public class Core {
 
     }
 
-    public static void onArrowShot() {
-        Chat.addChatMessage("Arrow shot.");
-    }
-
-    public static void onArrowHit(EntityPlayer target) {
-        Chat.addChatMessage("Arrow hit: " + target.getName());
-    }
-
-    public static void onHitByArrow(EntityPlayer shooter) {
-        Chat.addChatMessage("Hit by arrow: " + shooter.getName());
-    }
-
-    public static void onProjectileThrown(int type) {
-        switch (type) {
-            case 0:
-                Chat.addChatMessage("Fishing rod cast.");
-                break;
-            case 1:
-                Chat.addChatMessage("Egg thrown.");
-                break;
-            default:
-                Chat.addChatMessage("Snowball thrown.");
-                break;
-        }
-    }
-
-    public static void onProjectileHit(EntityPlayer target) {
-        Chat.addChatMessage("Projectile hit: " + target.getName());
-    }
-
-    public static void onHitByProjectile(EntityPlayer thrower) {
-        Chat.addChatMessage("Hit by projectile: " + thrower.getName());
-    }
-
-    public static void onAttack(EntityPlayer target) {
-        Chat.addChatMessage("Entity attacked: " + target.getName());
-    }
-
-    public static void onPlayerHurt(EntityPlayer player) {
-        Chat.addChatMessage("Entity hurt: " + player.getName());
+    @SubscribeEvent
+    public void onWorldLoad(WorldEvent.Load event) {
+        CombatSession.onWorldLoad();
     }
 
     public static void onHurt(EntityPlayer attacker) {
-        Chat.addChatMessage("Hurt by: " + (attacker == null ? "NULL" : attacker.getName()));
+        CombatSession.onHurt(attacker);
     }
 
-    public static void onLeftClick() {
-        //Chat.addChatMessage("Left click.");
-    }
-
+    // Injected
     public static void onAttackEntityOtherPlayerMPFrom(EntityOtherPlayerMP entityOtherPlayerMP, DamageSource damageSource) {
         if (damageSource.getEntity() == null || Minecraft.getMinecraft().thePlayer == null) return;
         if (damageSource.getEntity().getUniqueID() == Minecraft.getMinecraft().thePlayer.getUniqueID()) {
             switch (damageSource.getDamageType()) {
+                case "player":
+                    CombatSession.onAttack(entityOtherPlayerMP);
+                    break;
                 case "arrow":
-                    onArrowHit(entityOtherPlayerMP);
+                    CombatSession.onArrowHit(entityOtherPlayerMP);
                     break;
                 case "thrown":
-                    onProjectileHit(entityOtherPlayerMP);
+                    CombatSession.onProjectileHit(entityOtherPlayerMP);
                     break;
             }
         }
     }
-
+    // Injected
     public static void onAttackEntityPlayerSPFrom(DamageSource damageSource) {
         if (!(damageSource.getEntity() instanceof EntityPlayer) || !runMod.getValue()) return;
-        if ("thrown".equals(damageSource.getDamageType())) onHitByProjectile((EntityPlayer) damageSource.getEntity());
+        switch (damageSource.getDamageType()) {
+            case "player":
+                CombatSession.onHurt((EntityPlayer) damageSource.getEntity());
+                break;
+            case "arrow":
+                CombatSession.onHitByArrow((EntityPlayer) damageSource.getEntity());
+                break;
+            case "thrown":
+                CombatSession.onHitByProjectile((EntityPlayer) damageSource.getEntity());
+                break;
+        }
     }
 
+    // Injected
     public static void onLivingHurt(EntityLivingBase entityLivingBase) {
         if (!(entityLivingBase instanceof EntityPlayer)) return;
         if (entityLivingBase.getUniqueID() == Minecraft.getMinecraft().thePlayer.getUniqueID()) {
-            onHurt(null);
+            CombatSession.onHurt(null);
         } else {
-            onPlayerHurt((EntityPlayer) entityLivingBase);
+            CombatSession.onPlayerHurt((EntityPlayer) entityLivingBase);
         }
     }
 
     public static void onArrowDamage(EntityArrow entityArrow, Entity entity) {
-        if (runMod.getValue() && entity.getUniqueID() != Minecraft.getMinecraft().thePlayer.getUniqueID() && entityArrow.shootingEntity instanceof EntityPlayer) onHitByArrow((EntityPlayer) entityArrow.shootingEntity);
+        //if (runMod.getValue() && entity.getUniqueID() != Minecraft.getMinecraft().thePlayer.getUniqueID() && entityArrow.shootingEntity instanceof EntityPlayer) CombatSession.onHitByArrow((EntityPlayer) entityArrow.shootingEntity);
     }
 
     // Called when the user left-clicks another entity
     @SubscribeEvent
     public void onAttack(AttackEntityEvent event) {
-        if (runMod.getValue() && event.target instanceof EntityPlayer) onAttack((EntityPlayer) event.target);
-    }
 
-    @SubscribeEvent
-    public void onLivingAttack(LivingAttackEvent event) {
-        Chat.addChatMessage("LivingAttack Event");
     }
 
     @SubscribeEvent
     public void onArrowShot(ArrowLooseEvent event) {
         if (runMod.getValue() && event.charge > 2) {
-            onArrowShot();
+            CombatSession.onArrowShot();
         }
     }
 
@@ -195,11 +280,11 @@ public class Core {
         if (runMod.getValue() && event.action == PlayerInteractEvent.Action.RIGHT_CLICK_AIR) {
             Item item = Minecraft.getMinecraft().thePlayer.getHeldItem().getItem();
             if (item instanceof ItemFishingRod && Minecraft.getMinecraft().thePlayer.fishEntity == null) {
-                onProjectileThrown(0);
+                CombatSession.onProjectileThrown(0);
             } else if (item instanceof ItemEgg) {
-                onProjectileThrown(1);
+                CombatSession.onProjectileThrown(1);
             } else if (item instanceof ItemSnowball) {
-                onProjectileThrown(2);
+                CombatSession.onProjectileThrown(2);
             }
         }
     }
@@ -210,8 +295,12 @@ public class Core {
 
     @SubscribeEvent
     public void onMousePressed(InputEvent.MouseInputEvent event) {
-        if (runMod.getValue() && Mouse.isButtonDown(0) && Mouse.getEventButtonState()) {
-            onLeftClick();
+        if (runMod.getValue() && Mouse.getEventButtonState()) {
+            if (Mouse.getEventButton() == 0) {
+                CombatSession.onLeftClick();
+            } else if (Mouse.getEventButton() == 1) {
+                CombatSession.onRightClick();
+            }
         }
     }
 
@@ -226,5 +315,12 @@ public class Core {
 
     public static void openGui(GuiScreen guiScreen) {
         guiToOpen = guiScreen;
+    }
+
+    @SubscribeEvent
+    public void onTick(TickEvent.ClientTickEvent event) {
+        if (runMod.getValue() && event.phase == TickEvent.Phase.END) {
+            CombatSession.onTick();
+        }
     }
 }

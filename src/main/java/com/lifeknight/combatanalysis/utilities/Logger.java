@@ -16,7 +16,7 @@ public class Logger {
     private boolean doLog = true;
     private final boolean doLogTime;
     private String currentLog = "";
-    private final ArrayList<String> logs = new ArrayList<>();
+    private final List<String> logs = new ArrayList<>();
 
     public Logger(File folder) {
         logFolder = folder;
@@ -31,26 +31,16 @@ public class Logger {
         }
 
         try {
-            if (logFile.createNewFile()) {
-                if (logCreateFolder) {
-                    log("New folder and file created.");
-                } else {
-                    log("New file created.");
-                }
-
-            } else {
-                getPreviousLog();
-            }
+            if (!logFile.createNewFile()) getPreviousLog();
         } catch (Exception e) {
             e.printStackTrace();
         }
         this.doLogTime = true;
-        log("New logger created.");
 
         try {
-            logFiles = new ArrayList<>(Arrays.asList(logFolder.listFiles()));
+            logFiles = Arrays.asList(logFolder.listFiles());
         } catch (Exception e) {
-            logFiles = new ArrayList<>(Collections.singletonList(logFile));
+            logFiles = Collections.singletonList(logFile);
             e.printStackTrace();
         }
 
@@ -104,7 +94,6 @@ public class Logger {
                 logFiles.add(logFile);
                 logs.add(currentLog);
                 currentLog = "";
-                log("New file created.");
             }
 
             PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(logFile), StandardCharsets.UTF_8));

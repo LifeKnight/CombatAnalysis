@@ -5,6 +5,7 @@ import com.lifeknight.combatanalysis.gui.hud.EnhancedHudText;
 import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
+import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.GuiScreen;
@@ -58,6 +59,7 @@ public class Core {
     public static final LifeKnightBoolean hudTextShadow = new LifeKnightBoolean("HUD Text Shadow", "HUD", true);
     public static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
+    public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main Hotbar Slot", "Settings", 1, 1, 9);
     public static Configuration configuration;
 
     @EventHandler

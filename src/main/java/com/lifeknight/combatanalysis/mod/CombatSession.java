@@ -1,7 +1,6 @@
 package com.lifeknight.combatanalysis.mod;
 
 import com.lifeknight.combatanalysis.utilities.Chat;
-import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -9,9 +8,13 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.entity.projectile.EntityFishHook;
-import net.minecraft.item.ItemFishingRod;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.potion.PotionEffect;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 public class CombatSession {
@@ -179,8 +182,11 @@ public class CombatSession {
         return sessionIsRunning ? getLatestAnalysis().arrowsTaken : 0;
     }
 
+    private int id = combatSessions.size();
     private long startTime;
     private long endTime;
+    private final String serverIp = Minecraft.getMinecraft().getCurrentServerData().serverIP;
+
     private int ticksSinceAction = 0;
     private int lastAttackType;
     private int lastAttackTimer = 0;
@@ -208,13 +214,23 @@ public class CombatSession {
     private boolean hitByFishingHook = false;
     private boolean opponentHitByFishingHook = false;
 
-    // More fields such as armor and inventory items
+    private ItemStack[] startingInventory;
+    private ItemStack[] startingArmor;
+
+    private ItemStack[] endingInventory;
+    private ItemStack[] endingArmor;
+
+    // More fields such as armor and inventory items and potion effects
+    private Collection<PotionEffect> previousPotionEffects;
+    private final List<PotionEffectTracker> potionEffects = new ArrayList<>();
 
     // Strafing data
 
     // Proper w-tapping/blockhitting/projectile usage
 
     // Hotkey time
+    private int lastHeldItemIndex;
+    private final List<HotKeyTracker> hotKeys = new ArrayList<>();
 
     public CombatSession() {
 
@@ -223,6 +239,8 @@ public class CombatSession {
     public void activate() {
         startTime = System.currentTimeMillis();
         sessionIsRunning = true;
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+
         EntityPlayer closestPlayer = null;
         for (EntityPlayer player : Minecraft.getMinecraft().theWorld.playerEntities) {
             if (Minecraft.getMinecraft().thePlayer.getUniqueID() != player.getUniqueID() && (closestPlayer == null ||
@@ -232,6 +250,12 @@ public class CombatSession {
             }
         }
         opponent = closestPlayer;
+
+        startingInventory = thePlayer.inventory.mainInventory.clone();
+        startingArmor = thePlayer.inventory.armorInventory.clone();
+        lastHeldItemIndex = thePlayer.inventory.currentItem;
+
+        previousPotionEffects = thePlayer.getActivePotionEffects();
     }
 
     public void tick() {
@@ -263,13 +287,13 @@ public class CombatSession {
             hitByFishingHook = entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != thePlayer.getUniqueID();
         }
 
-        if (!Minecraft.getMinecraft().theWorld.playerEntities.contains(opponent)) {
+        if (!Minecraft.getMinecraft().theWorld.playerEntities.contains(opponent) || opponent.isDead) {
             end();
             return;
         } else if (thePlayer.getDistance(thePlayer.prevPosX, thePlayer.prevPosY, thePlayer.prevPosZ) > 50) {
             end();
             return;
-        } else if (opponent.isDead) {
+        } else if (thePlayer.capabilities.allowFlying || thePlayer.isInvisible()) {
             end();
             return;
         }
@@ -282,6 +306,51 @@ public class CombatSession {
         for (Entity entity : closestOpponentEntities) {
             opponentHitByFishingHook = entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != opponent.getUniqueID();
         }
+
+        if (lastHeldItemIndex != thePlayer.inventory.currentItem) {
+            heldItemChange();
+        }
+        lastHeldItemIndex = thePlayer.inventory.currentItem;
+
+        if (!previousPotionEffects.equals(thePlayer.getActivePotionEffects())) {
+            potionEffectChange();
+        }
+    }
+
+    private void heldItemChange() {
+        if (hotKeys.size() == 0) {
+            if (Minecraft.getMinecraft().thePlayer.inventory.currentItem != Core.mainHotBarSlot.getValue() - 1)  {
+                hotKeys.add(new HotKeyTracker(Minecraft.getMinecraft().thePlayer.getHeldItem()));
+            }
+        } else if (hotKeys.get(hotKeys.size() - 1).hasEnded() && Minecraft.getMinecraft().thePlayer.inventory.currentItem != Core.mainHotBarSlot.getValue() - 1) {
+            hotKeys.add(new HotKeyTracker(Minecraft.getMinecraft().thePlayer.getHeldItem()));
+        } else if (!hotKeys.get(hotKeys.size() - 1).hasEnded()) {
+            hotKeys.get(hotKeys.size() - 1).end();
+        }
+    }
+
+    private void potionEffectChange() {
+        Collection<PotionEffect> newPotionEffects = Minecraft.getMinecraft().thePlayer.getActivePotionEffects();
+        for (PotionEffectTracker potionEffectTracker : potionEffects) {
+            if (!potionEffectTracker.hasEnded() && !newPotionEffects.contains(potionEffectTracker.getPotionEffect())) {
+                potionEffectTracker.end();
+            }
+        }
+
+        for (PotionEffect potionEffect : newPotionEffects) {
+            if (!hasPotionEffectTracker(potionEffect)) {
+                potionEffects.add(new PotionEffectTracker(potionEffect));
+            }
+        }
+    }
+
+    private boolean hasPotionEffectTracker(PotionEffect potionEffect) {
+        for (PotionEffectTracker potionEffectTracker : potionEffects) {
+            if (!potionEffectTracker.hasEnded() && potionEffectTracker.getPotionEffect().equals(potionEffect)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void updateTicksSinceAction() {
@@ -320,7 +389,7 @@ public class CombatSession {
     }
 
     public void hitByProjectile(EntityPlayer thrower, int source) {
-        if (thrower.getUniqueID() != opponent.getUniqueID()) return;
+        if (thrower == null || thrower.getUniqueID() != opponent.getUniqueID()) return;
         updateTicksSinceAction();
         hitByFishingHook = false;
         if (source == 1 && thrower.fishEntity != null) return;
@@ -333,6 +402,7 @@ public class CombatSession {
         lastAttackType = 0;
         lastAttackTimer = 5;
         attacksLanded++;
+        criticalHit = Minecraft.getMinecraft().thePlayer.motionY < 0;
     }
 
     public void playerHurt(EntityPlayer player) {
@@ -347,6 +417,7 @@ public class CombatSession {
             switch (lastAttackType) {
                 case 0:
                     opponentAttacksTaken++;
+                    if (criticalHit) criticalAttacksLanded++;
                     break;
                 case 1:
                     arrowsHit++;
@@ -387,5 +458,61 @@ public class CombatSession {
     public void end() {
         endTime = System.currentTimeMillis();
         sessionIsRunning = false;
+
+        if (hotKeys.size() != 0 && !hotKeys.get(hotKeys.size() - 1).hasEnded()) {
+            hotKeys.get(hotKeys.size() - 1).end();
+        }
+
+        EntityPlayerSP thePlayer;
+        if ((thePlayer = Minecraft.getMinecraft().thePlayer) == null) return;
+        endingInventory = thePlayer.inventory.mainInventory.clone();
+        endingArmor = thePlayer.inventory.armorInventory.clone();
+    }
+
+
+    private static class HotKeyTracker {
+        long startTime;
+        long endTime = 0;
+        ItemStack itemStack;
+
+        public HotKeyTracker(ItemStack itemStack) {
+            this.itemStack = itemStack;
+            startTime = System.currentTimeMillis();
+        }
+
+        public void end() {
+            endTime = System.currentTimeMillis();
+        }
+
+        public boolean hasEnded() {
+            return endTime != 0;
+        }
+
+        public Item getItem() {
+            return itemStack == null ? null : itemStack.getItem();
+        }
+    }
+
+    private static class PotionEffectTracker {
+        long startTime;
+        long endTime = 0;
+        PotionEffect potionEffect;
+
+        public PotionEffectTracker(PotionEffect potionEffect) {
+            this.potionEffect = potionEffect;
+            startTime = System.currentTimeMillis();
+        }
+
+        public void end() {
+            endTime = System.currentTimeMillis();
+        }
+
+        public boolean hasEnded() {
+            return endTime != 0;
+        }
+
+        public PotionEffect getPotionEffect() {
+            return potionEffect;
+        }
     }
 }

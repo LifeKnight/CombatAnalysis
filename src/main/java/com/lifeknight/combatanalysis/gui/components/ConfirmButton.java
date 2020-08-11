@@ -13,26 +13,26 @@ public abstract class ConfirmButton extends LifeKnightButton {
     }
 
     public void work() {
-        if (hasConfirmed) {
+        if (this.hasConfirmed) {
             onConfirm();
             reset();
         } else {
-            super.displayString = confirmText;
-            hasConfirmed = true;
+            this.displayString = this.confirmText;
+            this.hasConfirmed = true;
         }
     }
 
     public void reset() {
-        hasConfirmed = false;
-        super.displayString = buttonText;
+        this.hasConfirmed = false;
+        this.displayString = this.buttonText;
     }
 
     public boolean mousePressed(Minecraft mc, int mouseX, int mouseY) {
-        boolean returnValue = super.mousePressed(mc, mouseX, mouseY);
-        if (!returnValue) {
+        if (!super.mousePressed(mc, mouseX, mouseY)) {
             reset();
+            return false;
         }
-        return returnValue;
+        return true;
     }
 
     public abstract void onConfirm();

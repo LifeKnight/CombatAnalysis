@@ -6,6 +6,8 @@ import com.google.gson.JsonPrimitive;
 import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.variables.*;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraftforge.fml.common.FMLLog;
+import org.apache.logging.log4j.Level;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -16,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-import static com.lifeknight.combatanalysis.mod.Core.modId;
+import static com.lifeknight.combatanalysis.mod.Core.MOD_ID;
 
 public class Configuration {
 	private JsonObject configurationAsJsonObject = new JsonObject();
@@ -99,29 +101,28 @@ public class Configuration {
 
 	private boolean configExists() {
 		try {
-			return !new File("config/" + modId + ".json").createNewFile();
+			return !new File("config/" + MOD_ID + ".json").createNewFile();
 		} catch (Exception e) {
-			e.printStackTrace();
+			FMLLog.log(Level.ERROR, "An error occurred while checking the configuration file's existence.");
 			return false;
 		}
 	}
 
 	private void writeToConfigurationFile() {
 		try {
-			PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream("config/" + modId + ".json"), StandardCharsets.UTF_8));
+			PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream("config/" + MOD_ID + ".json"), StandardCharsets.UTF_8));
 
-			writer.write(configurationAsJsonObject.toString());
+			writer.write(this.configurationAsJsonObject.toString());
 
 			writer.close();
 		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("Could not write in config");
+			FMLLog.log(Level.ERROR, "Could not write to configuration file.");
 		}
 	}
 
 	private void getConfigurationContent() {
 		try {
-			Scanner reader = new Scanner(new File("config/" + modId + ".json"));
+			Scanner reader = new Scanner(new File("config/" + MOD_ID + ".json"));
 			StringBuilder configContent = new StringBuilder();
 
 			while (reader.hasNextLine()) {
@@ -130,10 +131,9 @@ public class Configuration {
 
 			reader.close();
 
-			configurationAsJsonObject = new JsonParser().parse(configContent.toString()).getAsJsonObject();
+			this.configurationAsJsonObject = new JsonParser().parse(configContent.toString()).getAsJsonObject();
 		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("Could not read");
+			FMLLog.log(Level.ERROR, "Could not read configuration file.");
 		}
 	}
 

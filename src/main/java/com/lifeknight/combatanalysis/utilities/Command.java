@@ -4,8 +4,8 @@ import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
 
 import java.util.List;
 
-import static com.lifeknight.combatanalysis.mod.Core.modColor;
-import static net.minecraft.util.EnumChatFormatting.*;
+import static com.lifeknight.combatanalysis.mod.Core.MOD_COLOR;
+import static net.minecraft.util.EnumChatFormatting.AQUA;
 
 public class Command {
 
@@ -28,11 +28,11 @@ public class Command {
     }
 
     public static void addListToChat(List<String> elements) {
-        Chat.addChatMessageWithoutName(modColor + "------------------");
+        Chat.addChatMessageWithoutName(MOD_COLOR + "------------------");
         for (String element: elements) {
             Chat.addChatMessageWithoutName(AQUA + " > " + element);
         }
-        Chat.addChatMessageWithoutName(modColor + "------------------");
+        Chat.addChatMessageWithoutName(MOD_COLOR + "------------------");
     }
 
     public static void processListCommand(String[] arguments, List<String> elements, String precedingCommands, String elementType, String name) {

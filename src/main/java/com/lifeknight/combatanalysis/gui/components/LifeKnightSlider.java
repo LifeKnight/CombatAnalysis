@@ -16,27 +16,27 @@ public class LifeKnightSlider extends GuiSlider {
                 200,
                 20, lifeKnightNumber.getCustomDisplayString(), "", lifeKnightNumber.getMinimumAsDouble(), lifeKnightNumber.getMaximumAsDouble(), lifeKnightNumber.getAsDouble(), showDecimals, false);
         this.lifeKnightNumber = lifeKnightNumber;
-        originalYPosition = this.yPosition;
+        this.originalYPosition = this.yPosition;
     }
 
     @Override
     public void mouseReleased(int par1, int par2) {
         super.mouseReleased(par1, par2);
-        lifeKnightNumber.setValue(this.getValue());
+        this.lifeKnightNumber.setValue(this.getValue());
     }
 
     @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-        super.minValue = lifeKnightNumber.getMinimumAsDouble();
-        super.maxValue = lifeKnightNumber.getMaximumAsDouble();
+        this.minValue = this.lifeKnightNumber.getMinimumAsDouble();
+        this.maxValue = this.lifeKnightNumber.getMaximumAsDouble();
         if (!this.dragging) {
-            super.sliderValue = (lifeKnightNumber.getAsDouble() - minValue) / (maxValue - minValue);
+            this.sliderValue = (this.lifeKnightNumber.getAsDouble() - this.minValue) / (this.maxValue - this.minValue);
         }
-        this.displayString = lifeKnightNumber.getCustomDisplayString(this.getValue());
+        this.displayString = this.lifeKnightNumber.getCustomDisplayString(this.getValue());
         super.drawButton(mc, mouseX, mouseY);
     }
 
     public void updateOriginalYPosition() {
-        originalYPosition = this.yPosition;
+        this.originalYPosition = this.yPosition;
     }
 }

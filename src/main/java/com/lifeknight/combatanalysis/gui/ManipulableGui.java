@@ -30,7 +30,7 @@ public class ManipulableGui extends GuiScreen {
             }
         }
 
-        super.buttonList.add(new LifeKnightButton(super.buttonList.size(), super.width / 2 - 50, super.height - 30, 100, 20, "Reset") {
+        super.buttonList.add(new LifeKnightButton(super.buttonList.size(), this.width / 2 - 50, this.height - 30, 100, 20, "Reset") {
             @Override
             public void work() {
                 for (GuiButton guiButton : ManipulableGui.super.buttonList) {
@@ -50,8 +50,6 @@ public class ManipulableGui extends GuiScreen {
 
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
-        if (button instanceof LifeKnightButton) {
-            ((LifeKnightButton) button).work();
-        }
+        if (button instanceof LifeKnightButton) ((LifeKnightButton) button).work();
     }
 }

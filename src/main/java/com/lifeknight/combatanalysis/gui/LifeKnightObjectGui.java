@@ -1,6 +1,7 @@
 package com.lifeknight.combatanalysis.gui;
 
 import com.lifeknight.combatanalysis.gui.components.*;
+import com.lifeknight.combatanalysis.mod.Core;
 import com.lifeknight.combatanalysis.utilities.Video;
 import com.lifeknight.combatanalysis.variables.*;
 import net.minecraft.client.Minecraft;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static com.lifeknight.combatanalysis.mod.Core.modColor;
+import static com.lifeknight.combatanalysis.mod.Core.MOD_COLOR;
 import static com.lifeknight.combatanalysis.mod.Core.openGui;
 import static net.minecraft.util.EnumChatFormatting.*;
 
@@ -25,7 +26,6 @@ public class LifeKnightObjectGui extends GuiScreen {
     private final List<GuiButton> displayedButtons = new ArrayList<>();
     private ScrollBar scrollBar;
     private LifeKnightTextField searchField;
-    private String searchInput = "";
     private String panelMessage = "";
     private GuiScreen lastGui;
     private final List<String> groupNames = new ArrayList<>(Collections.singletonList("All"));
@@ -48,28 +48,28 @@ public class LifeKnightObjectGui extends GuiScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         super.drawDefaultBackground();
         super.drawCenteredString(fontRendererObj, lifeKnightObject.getCustomDisplayString(), Video.getScaledWidth(150), Video.getScaledHeight(60), 0xffffffff);
-        super.drawCenteredString(fontRendererObj, panelMessage, Video.get2ndPanelCenter(), super.height / 2, 0xffffffff);
-        super.drawVerticalLine(Video.getScaledWidth(300), 0, super.height, 0xffffffff);
+        super.drawCenteredString(fontRendererObj, panelMessage, Video.get2ndPanelCenter(), this.height / 2, 0xffffffff);
+        super.drawVerticalLine(Video.getScaledWidth(300), 0, this.height, 0xffffffff);
         searchField.drawTextBoxAndName();
 
-        for (int i = 0; i < groupNames.size() - 1; i++) {
+        for (int i = 0; i < this.groupNames.size() - 1; i++) {
             drawHorizontalLine(Video.getScaledWidth(100), Video.getScaledWidth(200), Video.getScaledHeight(150) + 25 * i + 22, 0xffffffff);
         }
 
-        if (displayedButtons.size() != 0) {
-            scrollBar.height = (int) (super.height * (super.height / (double) panelHeight));
+        if (this.displayedButtons.size() != 0) {
+            this.scrollBar.height = (int) (this.height * (this.height / (double) panelHeight));
             int j = Mouse.getDWheel() / 7;
-            scrollBar.visible = !(scrollBar.height >= super.height);
-            if (((j > 0) && scrollBar.yPosition > 0) || ((j < 0) && scrollBar.yPosition + scrollBar.height < super.height)) {
-                while (j > 0 && displayedButtons.get(0).yPosition + j > 10) {
+            this.scrollBar.visible = !(this.scrollBar.height >= this.height);
+            if (((j > 0) && this.scrollBar.yPosition > 0) || ((j < 0) && this.scrollBar.yPosition + this.scrollBar.height < this.height)) {
+                while (j > 0 && this.displayedButtons.get(0).yPosition + j > 10) {
                     j--;
                 }
 
-                while (j < 0 && displayedButtons.get(displayedButtons.size() - 1).yPosition + 30 + j < super.height - 10) {
+                while (j < 0 && this.displayedButtons.get(this.displayedButtons.size() - 1).yPosition + 30 + j < this.height - 10) {
                     j++;
                 }
 
-                for (GuiButton guiButton : displayedButtons) {
+                for (GuiButton guiButton : this.displayedButtons) {
                     guiButton.yPosition += j;
                     if (guiButton instanceof LifeKnightButton) {
                         ((LifeKnightButton) guiButton).updateOriginalYPosition();
@@ -83,28 +83,26 @@ public class LifeKnightObjectGui extends GuiScreen {
                         ((LifeKnightButton) guiButton).updateOriginalYPosition();
                     }
                 }
-                for (LifeKnightTextField lifeKnightTextField : textFields) {
+                for (LifeKnightTextField lifeKnightTextField : this.textFields) {
                     lifeKnightTextField.yPosition += j;
                     lifeKnightTextField.updateOriginalYPosition();
                 }
             }
-            scrollBar.yPosition = (int) ((super.height * (-getFirstComponentYPosition() - 10) / (double) (panelHeight - super.height)) * ((super.height - scrollBar.height) / (double) super.height)) + 10;
+            this.scrollBar.yPosition = (int) (((-(this.displayedButtons.get(0).yPosition - 10)) / (this.panelHeight - (double) this.height) * (this.height - this.scrollBar.height)));
         } else {
-            scrollBar.visible = false;
+            this.scrollBar.visible = false;
         }
 
         for (LifeKnightTextField lifeKnightTextField : textFields) {
-            if (((selectedGroup.equals("All") || selectedGroup.equals(lifeKnightTextField.lifeKnightVariable.getGroup())) && (searchInput.isEmpty() || lifeKnightTextField.lifeKnightVariable.getName().toLowerCase().contains(searchInput.toLowerCase())))) {
+            if (((this.selectedGroup.equals("All") || this.selectedGroup.equals(lifeKnightTextField.lifeKnightVariable.getGroup())) && (this.searchField.getText().isEmpty() || lifeKnightTextField.lifeKnightVariable.getName().toLowerCase().contains(this.searchField.getText().toLowerCase())))) {
                 lifeKnightTextField.drawTextBoxAndName();
             }
         }
-
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
     public void initGui() {
-        searchField = new LifeKnightTextField(0, Video.getScaledWidth(75), this.height - 40, Video.getScaledWidth(150), 20, "Search") {
-
+        this.searchField = new LifeKnightTextField(0, Video.getScaledWidth(75), this.height - 40, Video.getScaledWidth(150), 20, "Search") {
             @Override
             public boolean textboxKeyTyped(char p_146201_1_, int p_146201_2_) {
                 if (super.textboxKeyTyped(p_146201_1_, p_146201_2_)) {
@@ -114,15 +112,12 @@ public class LifeKnightObjectGui extends GuiScreen {
                     return false;
                 }
             }
-
             @Override
             public void handleInput() {
-                searchInput = this.getText();
-                listComponents();
+                LifeKnightObjectGui.this.listComponents();
             }
         };
-
-        listComponents();
+        this.listComponents();
     }
 
     public boolean doesGuiPauseGame() {
@@ -137,8 +132,8 @@ public class LifeKnightObjectGui extends GuiScreen {
 
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
         if (keyCode != 1) {
-            searchField.textboxKeyTyped(typedChar, keyCode);
-            for (LifeKnightTextField lifeKnightTextField : textFields) {
+            this.searchField.textboxKeyTyped(typedChar, keyCode);
+            for (LifeKnightTextField lifeKnightTextField : this.textFields) {
                 lifeKnightTextField.textboxKeyTyped(typedChar, keyCode);
             }
         } else {
@@ -147,23 +142,23 @@ public class LifeKnightObjectGui extends GuiScreen {
     }
 
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
-        searchField.mouseClicked(mouseX, mouseY, mouseButton);
-        for (LifeKnightTextField lifeKnightTextField : textFields) {
+        this.searchField.mouseClicked(mouseX, mouseY, mouseButton);
+        for (LifeKnightTextField lifeKnightTextField : this.textFields) {
             lifeKnightTextField.mouseClicked(mouseX, mouseY, mouseButton);
         }
         super.mouseClicked(mouseX, mouseY, mouseButton);
     }
 
     private void listComponents() {
-        textFields.clear();
+        this.textFields.clear();
         super.buttonList.clear();
-        displayedButtons.clear();
-        panelHeight = 5;
+        this.displayedButtons.clear();
+        this.panelHeight = 5;
         boolean noButtons = true;
         int componentId = 0;
 
-        for (LifeKnightVariable lifeKnightVariable : lifeKnightObject.getConnectedVariables()) {
-            if (((selectedGroup.equals("All") || selectedGroup.equals(lifeKnightVariable.getGroup())) && (searchInput.isEmpty() || lifeKnightVariable.getName().toLowerCase().contains(searchInput.toLowerCase()) || lifeKnightVariable.getCustomDisplayString().toLowerCase().contains(searchInput.toLowerCase())))) {
+        for (LifeKnightVariable lifeKnightVariable : this.lifeKnightObject.getConnectedVariables()) {
+            if (((this.selectedGroup.equals("All") || this.selectedGroup.equals(lifeKnightVariable.getGroup())) && (this.searchField.getText().isEmpty() || lifeKnightVariable.getName().toLowerCase().contains(this.searchField.getText().toLowerCase()) || lifeKnightVariable.getCustomDisplayString().toLowerCase().contains(this.searchField.getText().toLowerCase())))) {
                 noButtons = false;
                 if (lifeKnightVariable instanceof LifeKnightBoolean) {
                     if (((LifeKnightBoolean) lifeKnightVariable).hasList()) {
@@ -182,20 +177,24 @@ public class LifeKnightObjectGui extends GuiScreen {
                                 }
                             }
                         });
-                        displayedButtons.add(new LifeKnightBooleanButton(componentId, (LifeKnightBoolean) lifeKnightVariable, open));
+                        this.displayedButtons.add(new LifeKnightBooleanButton(componentId, (LifeKnightBoolean) lifeKnightVariable, open));
                     } else {
-                        displayedButtons.add(new LifeKnightBooleanButton(componentId, (LifeKnightBoolean) lifeKnightVariable, null));
+                        this.displayedButtons.add(new LifeKnightBooleanButton(componentId, (LifeKnightBoolean) lifeKnightVariable, null));
                     }
-                    panelHeight += 30;
+                    this.panelHeight += 30;
                     componentId++;
                 } else if (lifeKnightVariable instanceof LifeKnightNumber) {
                     if (!(lifeKnightVariable instanceof LifeKnightNumber.LifeKnightLong)) {
-                        displayedButtons.add(new LifeKnightSlider(componentId, false, (LifeKnightNumber) lifeKnightVariable));
-                        panelHeight += 30;
+                        this.displayedButtons.add(new LifeKnightSlider(componentId, false, (LifeKnightNumber) lifeKnightVariable));
+                        this.panelHeight += 30;
                         componentId++;
                     } else {
-                        int i = textFields.size();
-                        textFields.add(new LifeKnightTextField(componentId + 1, lifeKnightVariable) {
+                        int i = this.textFields.size();
+                        this.textFields.add(new LifeKnightTextField(componentId + 1, Video.get2ndPanelCenter() - 100,
+                                (componentId + 1) * 30 + 10,
+                                200,
+                                20,
+                                lifeKnightVariable.getCustomDisplayString()) {
                             @Override
                             public void handleInput() {
                                 if (!this.getText().isEmpty()) {
@@ -203,40 +202,40 @@ public class LifeKnightObjectGui extends GuiScreen {
                                         this.lastInput = this.getText();
                                         this.setText("");
                                         long l = Long.parseLong(this.lastInput);
-                                        if (l >= (Long) ((LifeKnightNumber.LifeKnightLong) lifeKnightVariable).getMinimumValue() && l <= (Long) ((LifeKnightNumber.LifeKnightLong) lifeKnightVariable).getMaximumValue()) {
-                                            ((LifeKnightNumber.LifeKnightLong) lifeKnightVariable).setValue(l);
+                                        if (l >= (Long) ((LifeKnightNumber.LifeKnightLong) this.lifeKnightVariable).getMinimumValue() && l <= (Long) ((LifeKnightNumber.LifeKnightLong) lifeKnightVariable).getMaximumValue()) {
+                                            ((LifeKnightNumber.LifeKnightLong) this.lifeKnightVariable).setValue(l);
                                         } else {
                                             throw new Exception();
                                         }
-                                        this.name = lifeKnightVariable.getCustomDisplayString();
+                                        this.name = this.lifeKnightVariable.getCustomDisplayString();
                                     } catch (Exception e) {
                                         this.name = RED + "Invalid input!";
                                     }
                                 }
                             }
                         });
-                        displayedButtons.add(new LifeKnightButton(componentId + 1, Video.get2ndPanelCenter() + 110,
+                        super.buttonList.add(new LifeKnightButton(componentId + 1, Video.get2ndPanelCenter() + 110,
                                 10 + (componentId + 1) * 30,
                                 20,
                                 20, ">") {
                             @Override
                             public void work() {
-                                textFields.get(i).handleInput();
+                                LifeKnightObjectGui.this.textFields.get(i).handleInput();
                             }
                         });
-                        panelHeight += 60;
+                        this.panelHeight += 60;
                         componentId += 2;
                     }
                 } else if (lifeKnightVariable instanceof LifeKnightString) {
-                    int i = textFields.size();
-                    textFields.add(new LifeKnightTextField(componentId + 1, lifeKnightVariable) {
+                    int i = this.textFields.size();
+                    this.textFields.add(new LifeKnightTextField(componentId + 1, lifeKnightVariable) {
                         @Override
                         public void handleInput() {
                             if (!this.getText().isEmpty()) {
                                 this.lastInput = this.getText();
                                 this.setText("");
                                 ((LifeKnightString) this.lifeKnightVariable).setValue(this.lastInput);
-                                this.name = lifeKnightVariable.getCustomDisplayString();
+                                this.name = this.lifeKnightVariable.getCustomDisplayString();
                             }
                         }
                     });
@@ -246,10 +245,10 @@ public class LifeKnightObjectGui extends GuiScreen {
                             20, ">") {
                         @Override
                         public void work() {
-                            textFields.get(i).handleInput();
+                            LifeKnightObjectGui.this.textFields.get(i).handleInput();
                         }
                     });
-                    panelHeight += 60;
+                    this.panelHeight += 60;
                     componentId += 2;
                 } else if (lifeKnightVariable instanceof LifeKnightCycle) {
                     LifeKnightButton previous;
@@ -274,7 +273,7 @@ public class LifeKnightObjectGui extends GuiScreen {
                             ((LifeKnightCycle) lifeKnightVariable).next();
                         }
                     });
-                    displayedButtons.add(new LifeKnightButton(componentId, lifeKnightVariable.getName() + ": " + YELLOW + ((LifeKnightCycle) lifeKnightVariable).getCurrentValueString()) {
+                    this.displayedButtons.add(new LifeKnightButton(componentId, lifeKnightVariable.getName() + ": " + YELLOW + ((LifeKnightCycle) lifeKnightVariable).getCurrentValueString()) {
                         @Override
                         public void work() {
                             ((LifeKnightCycle) lifeKnightVariable).next();
@@ -290,34 +289,34 @@ public class LifeKnightObjectGui extends GuiScreen {
                             super.drawButton(mc, mouseX, mouseY);
                         }
                     });
-                    panelHeight += 30;
+                    this.panelHeight += 30;
                     componentId++;
                 } else if (lifeKnightVariable instanceof LifeKnightList && ((LifeKnightList<?>) lifeKnightVariable).isIndependent()) {
-                    displayedButtons.add(new LifeKnightButton(componentId, lifeKnightVariable.getCustomDisplayString()) {
+                    this.displayedButtons.add(new LifeKnightButton(componentId, lifeKnightVariable.getCustomDisplayString()) {
                         @Override
                         public void work() {
-                            openGui(new ListGui((LifeKnightList<?>) lifeKnightVariable, LifeKnightObjectGui.this));
+                            Core.openGui(new ListGui((LifeKnightList<?>) lifeKnightVariable, LifeKnightObjectGui.this));
                         }
                     });
-                    panelHeight += 30;
+                    this.panelHeight += 30;
                     componentId++;
                 } else if (lifeKnightVariable instanceof LifeKnightObject) {
-                    displayedButtons.add(new LifeKnightButton(componentId, lifeKnightVariable.getCustomDisplayString()) {
+                    this.displayedButtons.add(new LifeKnightButton(componentId, lifeKnightVariable.getCustomDisplayString()) {
                         @Override
                         public void work() {
-                            openGui(new LifeKnightObjectGui((LifeKnightObject) lifeKnightVariable, LifeKnightObjectGui.this));
+                            Core.openGui(new LifeKnightObjectGui((LifeKnightObject) lifeKnightVariable, LifeKnightObjectGui.this));
                         }
                     });
-                    panelHeight += 30;
+                    this.panelHeight += 30;
                     componentId++;
                 } else if (lifeKnightVariable instanceof LifeKnightObjectList && ((LifeKnightObjectList) lifeKnightVariable).isIndependent()) {
-                    displayedButtons.add(new LifeKnightButton(componentId, lifeKnightVariable.getCustomDisplayString()) {
+                    this.displayedButtons.add(new LifeKnightButton(componentId, lifeKnightVariable.getCustomDisplayString()) {
                         @Override
                         public void work() {
-                            openGui(new LifeKnightObjectListGui((LifeKnightObjectList) lifeKnightVariable, LifeKnightObjectGui.this));
+                            Core.openGui(new LifeKnightObjectListGui((LifeKnightObjectList) lifeKnightVariable, LifeKnightObjectGui.this));
                         }
                     });
-                    panelHeight += 30;
+                    this.panelHeight += 30;
                     componentId++;
                 }
             }
@@ -325,59 +324,56 @@ public class LifeKnightObjectGui extends GuiScreen {
 
         super.buttonList.addAll(displayedButtons);
 
-        for (int i = 0; i < groupNames.size(); i++) {
+        for (int i = 0; i < this.groupNames.size(); i++) {
             int finalI = i;
-            super.buttonList.add(new LifeKnightButton(super.buttonList.size() - 1, Video.getScaledWidth(100), Video.getScaledHeight(150) + 25 * i, Video.getScaledWidth(100), 20, groupNames.get(i)) {
-                final String name = groupNames.get(finalI);
+            super.buttonList.add(new LifeKnightButton(super.buttonList.size() - 1, Video.getScaledWidth(100), Video.getScaledHeight(150) + 25 * i, Video.getScaledWidth(100), 20, this.groupNames.get(i)) {
+                final String name =  LifeKnightObjectGui.this.groupNames.get(finalI);
 
                 @Override
                 public void work() {
-                    selectedGroup = name;
-                    listComponents();
+                    LifeKnightObjectGui.this.selectedGroup = this.name;
+                    LifeKnightObjectGui.this.listComponents();
                 }
 
                 @Override
                 public void drawButton(Minecraft mc, int mouseX, int mouseY) {
                     if (this.visible) {
                         FontRenderer fontrenderer = mc.fontRendererObj;
-                        this.displayString = selectedGroup.equals(name) ? modColor + "" + BOLD + selectedGroup : name;
+                        this.displayString = (LifeKnightObjectGui.this.selectedGroup.equals(this.name) ? MOD_COLOR + "" + BOLD : "") + this.name;
                         this.drawCenteredString(fontrenderer, this.displayString, this.xPosition + this.width / 2, this.yPosition + (this.height - 8) / 2, 0xffffffff);
                     }
                 }
             });
         }
+        this.panelMessage = noButtons ? GRAY + "No settings found" : "";
 
-        panelMessage = noButtons ? GRAY + "No settings found" : "";
-
-
-
-        if (lastGui != null) {
+        if (this.lastGui != null) {
             super.buttonList.add(new LifeKnightButton("Back", 5, 5, 5, 50) {
                 @Override
                 public void work() {
-                    openGui(lastGui);
+                    Core.openGui(LifeKnightObjectGui.this.lastGui);
                 }
             });
         }
 
-        super.buttonList.add(scrollBar = new ScrollBar() {
+        super.buttonList.add(this.scrollBar = new ScrollBar() {
             @Override
             public void onDrag(int scroll) {
                 scroll = -scroll;
-                int scaledScroll = (int) (scroll * panelHeight / (double) LifeKnightObjectGui.super.height);
 
+                int scaledScroll = (int) (scroll * LifeKnightObjectGui.this.panelHeight / (double) LifeKnightObjectGui.this.height);
                 Object lastComponent = null;
                 int highestComponentId;
 
-                if (displayedButtons.size() == 0) {
-                    highestComponentId = Math.max(0, textFields.size() - 1);
-                } else if (textFields.size() == 0) {
-                    highestComponentId = Math.max(0, displayedButtons.size() - 1);
+                if (LifeKnightObjectGui.this.displayedButtons.size() == 0) {
+                    highestComponentId = Math.max(0, LifeKnightObjectGui.this.textFields.size() - 1);
+                } else if (LifeKnightObjectGui.this.textFields.size() == 0) {
+                    highestComponentId = Math.max(0, LifeKnightObjectGui.this.displayedButtons.size() - 1);
                 } else {
-                    highestComponentId = displayedButtons.size() + textFields.size() - 2;
+                    highestComponentId = LifeKnightObjectGui.this.displayedButtons.size() + LifeKnightObjectGui.this.textFields.size() - 2;
                 }
 
-                for (GuiButton guiButton : displayedButtons) {
+                for (GuiButton guiButton : LifeKnightObjectGui.this.displayedButtons) {
                     if (guiButton.id == highestComponentId) {
                         lastComponent = guiButton;
                         break;
@@ -385,7 +381,7 @@ public class LifeKnightObjectGui extends GuiScreen {
                 }
 
                 if (lastComponent != null) {
-                    for (LifeKnightTextField lifeKnightTextField : textFields) {
+                    for (LifeKnightTextField lifeKnightTextField : LifeKnightObjectGui.this.textFields) {
                         if (lifeKnightTextField.getId() == highestComponentId) {
                             lastComponent = lifeKnightTextField;
                             break;
@@ -393,25 +389,25 @@ public class LifeKnightObjectGui extends GuiScreen {
                     }
                 }
 
-                while (scaledScroll > 0 && getFirstComponentOriginalYPosition() + scaledScroll > 10) {
+                while (scaledScroll > 0 && LifeKnightObjectGui.this.getFirstComponentOriginalYPosition() + scaledScroll > 10) {
                     scaledScroll--;
                 }
 
                 if (lastComponent instanceof LifeKnightButton) {
-                    while (scaledScroll < 0 && ((LifeKnightButton) lastComponent).originalYPosition + 30 + scaledScroll < LifeKnightObjectGui.super.height - 10) {
+                    while (scaledScroll < 0 && ((LifeKnightButton) lastComponent).originalYPosition + 30 + scaledScroll < LifeKnightObjectGui.this.height - 10) {
                         scaledScroll++;
                     }
                 } else if (lastComponent instanceof LifeKnightSlider) {
-                    while (scaledScroll < 0 && ((LifeKnightSlider) lastComponent).originalYPosition + 30 + scaledScroll < LifeKnightObjectGui.super.height - 10) {
+                    while (scaledScroll < 0 && ((LifeKnightSlider) lastComponent).originalYPosition + 30 + scaledScroll < LifeKnightObjectGui.this.height - 10) {
                         scaledScroll++;
                     }
                 } else if (lastComponent instanceof LifeKnightTextField) {
-                    while (scaledScroll < 0 && ((LifeKnightTextField) lastComponent).originalYPosition + 30 + scaledScroll < LifeKnightObjectGui.super.height - 10) {
+                    while (scaledScroll < 0 && ((LifeKnightTextField) lastComponent).originalYPosition + 30 + scaledScroll < LifeKnightObjectGui.this.height - 10) {
                         scaledScroll++;
                     }
                 }
 
-                for (GuiButton guiButton : displayedButtons) {
+                for (GuiButton guiButton : LifeKnightObjectGui.this.displayedButtons) {
                     if (guiButton instanceof LifeKnightButton) {
                         guiButton.yPosition = ((LifeKnightButton) guiButton).originalYPosition + scaledScroll;
                     } else if (guiButton instanceof LifeKnightSlider) {
@@ -420,7 +416,7 @@ public class LifeKnightObjectGui extends GuiScreen {
                 }
 
                 for (GuiButton guiButton : LifeKnightObjectGui.super.buttonList) {
-                    if (guiButton instanceof LifeKnightButton && guiButton.displayString.equals(">")) {
+                    if (guiButton instanceof LifeKnightButton && guiButton.displayString.equals(">") || guiButton.displayString.equals("<")) {
                         guiButton.yPosition = ((LifeKnightButton) guiButton).originalYPosition + scaledScroll;
                     }
                 }
@@ -431,7 +427,7 @@ public class LifeKnightObjectGui extends GuiScreen {
 
             @Override
             public void onMousePress() {
-                for (GuiButton guiButton : displayedButtons) {
+                for (GuiButton guiButton : LifeKnightObjectGui.this.displayedButtons) {
                     if (guiButton instanceof LifeKnightButton) {
                         ((LifeKnightButton) guiButton).updateOriginalYPosition();
                     } else if (guiButton instanceof LifeKnightSlider) {
@@ -443,7 +439,7 @@ public class LifeKnightObjectGui extends GuiScreen {
                         ((LifeKnightButton) guiButton).updateOriginalYPosition();
                     }
                 }
-                for (LifeKnightTextField lifeKnightTextField : textFields) {
+                for (LifeKnightTextField lifeKnightTextField : LifeKnightObjectGui.this.textFields) {
                     lifeKnightTextField.updateOriginalYPosition();
                 }
             }
@@ -451,7 +447,7 @@ public class LifeKnightObjectGui extends GuiScreen {
     }
 
     private int getFirstComponentOriginalYPosition() {
-        Object firstComponent = getFirstComponent();
+        Object firstComponent = this.getFirstComponent();
 
         if (firstComponent instanceof LifeKnightButton) {
             return ((LifeKnightButton) firstComponent).originalYPosition;
@@ -464,7 +460,7 @@ public class LifeKnightObjectGui extends GuiScreen {
     }
 
     private int getFirstComponentYPosition() {
-        Object firstComponent = getFirstComponent();
+        Object firstComponent = this.getFirstComponent();
 
         if (firstComponent instanceof GuiButton) {
             return ((GuiButton) firstComponent).yPosition;
@@ -475,12 +471,12 @@ public class LifeKnightObjectGui extends GuiScreen {
     }
 
     private Object getFirstComponent() {
-        for (GuiButton guiButton : displayedButtons) {
+        for (GuiButton guiButton : this.displayedButtons) {
             if (guiButton.id == 0) {
                 return guiButton;
             }
         }
-        for (LifeKnightTextField lifeKnightTextField : textFields) {
+        for (LifeKnightTextField lifeKnightTextField : this.textFields) {
             if (lifeKnightTextField.getId() == 0) {
                 return lifeKnightTextField;
             }

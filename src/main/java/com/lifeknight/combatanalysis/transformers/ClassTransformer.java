@@ -5,15 +5,14 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.*;
 
-import static org.objectweb.asm.Opcodes.*;
-
 import java.util.Arrays;
+
+import static org.objectweb.asm.Opcodes.*;
 
 public class ClassTransformer implements IClassTransformer {
 
     private static final String[] classesBeingTransformed = {
             "net.minecraft.entity.EntityLivingBase",
-            "net.minecraft.util.DamageSource",
             "net.minecraft.client.entity.EntityPlayerSP",
             "net.minecraft.client.entity.EntityOtherPlayerMP"
     };
@@ -34,8 +33,6 @@ public class ClassTransformer implements IClassTransformer {
             if (index == 0) {
                 transformEntityLivingBase(classNode, isObfuscated);
             } else if (index == 1) {
-                transformDamageSource(classNode, isObfuscated);
-            } else if (index == 2) {
                 transformEntityPlayerSP(classNode, isObfuscated);
             } else {
                 transformEntityOtherPlayerMP(classNode, isObfuscated);
@@ -53,7 +50,7 @@ public class ClassTransformer implements IClassTransformer {
     }
 
     private static void transformEntityLivingBase(ClassNode entityLivingBase, boolean isObfuscated) {
-        final String handleStatusUpdateName = isObfuscated ? "" : "handleStatusUpdate";
+        final String handleStatusUpdateName = isObfuscated ? "a" : "handleStatusUpdate";
         final String handleStatusUpdateDescription = "(B)V";
 
         for (MethodNode method : entityLivingBase.methods) {
@@ -81,39 +78,9 @@ public class ClassTransformer implements IClassTransformer {
         }
     }
 
-    private static void transformDamageSource(ClassNode damageSource, boolean isObfuscated) {
-        final String causeArrowDamageName = isObfuscated ? "" : "causeArrowDamage";
-        final String causeArrowDamageDescription = isObfuscated ? "" : "(Lnet/minecraft/entity/projectile/EntityArrow;Lnet/minecraft/entity/Entity;)Lnet/minecraft/util/DamageSource;";
-
-        for (MethodNode method : damageSource.methods) {
-            if (method.name.equals(causeArrowDamageName) && method.desc.equals(causeArrowDamageDescription)) {
-                AbstractInsnNode targetNode = null;
-
-                for (AbstractInsnNode instruction : method.instructions.toArray()) {
-                    if (instruction.getOpcode() == NEW) {
-                        targetNode = instruction.getPrevious();
-                        break;
-                    }
-                }
-
-                if (targetNode == null) {
-                    System.out.println("Combat Analysis > An error occurred while trying to insert causeArrowDamage method instruction into DamageSource.");
-                } else {
-                    InsnList insnList = new InsnList();
-                    insnList.add(new VarInsnNode(ALOAD, 0));
-                    insnList.add(new VarInsnNode(ALOAD, 1));
-                    insnList.add(new MethodInsnNode(INVOKESTATIC, "com/lifeknight/combatanalysis/mod/Core", "onArrowDamage", "(Lnet/minecraft/entity/projectile/EntityArrow;Lnet/minecraft/entity/Entity;)V", false));
-                    method.instructions.insert(targetNode, insnList);
-                    System.out.println("Combat Analysis > Successfully inserted causeArrowDamage method instructions into DamageSource.");
-                }
-                break;
-            }
-        }
-    }
-
     private static void transformEntityPlayerSP(ClassNode entityPlayerSP, boolean isObfuscated) {
-        final String attackEntityFromName = isObfuscated ? "" : "attackEntityFrom";
-        final String attackEntityFromDescription = isObfuscated ? "" : "(Lnet/minecraft/util/DamageSource;F)Z";
+        final String attackEntityFromName = isObfuscated ? "a" : "attackEntityFrom";
+        final String attackEntityFromDescription = isObfuscated ? "(Lox;F)Z" : "(Lnet/minecraft/util/DamageSource;F)Z";
 
         for (MethodNode method : entityPlayerSP.methods) {
             if (method.name.equals(attackEntityFromName) && method.desc.equals(attackEntityFromDescription)) {
@@ -142,8 +109,8 @@ public class ClassTransformer implements IClassTransformer {
     }
 
     private static void transformEntityOtherPlayerMP(ClassNode entityOtherPlayerMP, boolean isObfuscated) {
-        final String attackEntityFromName = isObfuscated ? "" : "attackEntityFrom";
-        final String attackEntityFromDescription = isObfuscated ? "" : "(Lnet/minecraft/util/DamageSource;F)Z";
+        final String attackEntityFromName = isObfuscated ? "a" : "attackEntityFrom";
+        final String attackEntityFromDescription = isObfuscated ? "(Lox;F)Z" : "(Lnet/minecraft/util/DamageSource;F)Z";
 
         for (MethodNode method : entityOtherPlayerMP.methods) {
             if (method.name.equals(attackEntityFromName) && method.desc.equals(attackEntityFromDescription)) {

@@ -29,6 +29,10 @@ public class Miscellaneous {
 		return new SimpleDateFormat("hh:mm:ss a").format(System.currentTimeMillis());
 	}
 
+	public static String getTimeAndDate(long epochTime) {
+		return new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a").format(epochTime);
+	}
+
 	public static EnumChatFormatting getEnumChatFormatting(String formattedName) {
 		switch (formattedName) {
 			case "Red":

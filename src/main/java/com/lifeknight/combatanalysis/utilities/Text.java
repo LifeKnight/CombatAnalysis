@@ -1,5 +1,7 @@
 package com.lifeknight.combatanalysis.utilities;
 
+import net.minecraft.util.EnumChatFormatting;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,7 +43,7 @@ public class Text {
 	}
 
 	public static String removeFormattingCodes(String input) {
-		return input.replaceAll("[" + '\u00A7' + "][\\w]", "");
+		return EnumChatFormatting.getTextWithoutFormattingCodes(input);
 	}
 
 	public static String multiplyString(String string, int times) {
@@ -128,5 +130,59 @@ public class Text {
 
     public static boolean containsLetters(String input) {
         return Pattern.compile("[a-zA-Z]").matcher(input).find();
+    }
+
+    public static String formatTimeFromMilliseconds(long milliseconds) {
+        long days;
+        long hours;
+        long minutes;
+        long seconds;
+        long millisecondsLeft = milliseconds;
+        days = millisecondsLeft / 86400000;
+        millisecondsLeft %= 86400000;
+        hours = millisecondsLeft / 3600000;
+        millisecondsLeft %= 3600000;
+        minutes = millisecondsLeft / 60000;
+        millisecondsLeft %= 60000;
+        seconds = millisecondsLeft / 1000;
+        millisecondsLeft %= 1000;
+
+        StringBuilder result = new StringBuilder();
+
+        if (days > 0) {
+            result.append(days).append(":");
+            result.append(appendTime(hours)).append(":");
+        } else {
+            result.append(hours).append(":");
+        }
+
+        result.append(appendTime(minutes)).append(":");
+
+        result.append(appendTime(seconds)).append(".");
+
+        result.append(formatMilliseconds(millisecondsLeft));
+
+        return result.toString();
+    }
+
+    private static String appendTime(long timeValue) {
+        StringBuilder result = new StringBuilder();
+        if (timeValue > 9) {
+            result.append(timeValue);
+        } else {
+            result.append("0").append(timeValue);
+        }
+        return result.toString();
+    }
+
+    private static String formatMilliseconds(long milliseconds) {
+        String asString = String.valueOf(milliseconds);
+
+        if (asString.length() == 1) {
+            return "00" + milliseconds;
+        } else if (asString.length() == 2) {
+            return "0" + milliseconds;
+        }
+        return asString;
     }
 }

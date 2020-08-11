@@ -83,7 +83,7 @@ processResources
 
 jar {
     manifest {
-        attributes "FMLCorePlugin": "com.lifeknight.modbase.mod.Tweaker",
+        attributes "FMLCorePlugin": "com.lifeknight.combatanalysis.mod.Tweaker",
                 "ModSide": "CLIENT",
                 "FMLCorePluginContainsFMLMod": "Yes",
                 "ForceLoadAsMod": true

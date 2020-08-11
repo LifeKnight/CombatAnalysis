@@ -1,5 +1,6 @@
 package com.lifeknight.combatanalysis.mod;
 
+import com.lifeknight.combatanalysis.gui.CombatSessionGui;
 import com.lifeknight.combatanalysis.gui.LifeKnightGui;
 import com.lifeknight.combatanalysis.gui.ManipulableGui;
 import com.lifeknight.combatanalysis.gui.components.LifeKnightButton;
@@ -17,18 +18,18 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.lifeknight.combatanalysis.mod.Core.*;
-import static net.minecraft.util.EnumChatFormatting.*;
+import static net.minecraft.util.EnumChatFormatting.DARK_GREEN;
 
 public class ModCommand extends CommandBase {
     private final List<String> aliases = Collections.singletonList("ca");
     private final String[] mainCommands = {"end"};
 
     public String getCommandName() {
-        return modId;
+        return MOD_ID;
     }
 
     public String getCommandUsage(ICommandSender iCommandSender) {
-        return modId;
+        return MOD_ID;
     }
 
     public List<String> addTabCompletionOptions(ICommandSender iCommandSender, String[] arguments, BlockPos blockPosition) {
@@ -58,11 +59,17 @@ public class ModCommand extends CommandBase {
 
     public void processCommand(ICommandSender iCommandSender, String[] arguments) throws CommandException {
         if (arguments.length == 0) {
-            openGui(new LifeKnightGui("[" + modVersion + "] " + modName, LifeKnightVariable.getVariables(), Collections.singletonList(
+            openGui(new LifeKnightGui("[" + MOD_VERSION + "] " + MOD_NAME, LifeKnightVariable.getVariables(), Arrays.asList(
+                    new LifeKnightButton("View Sessions") {
+                        @Override
+                        public void work() {
+                            Core.openGui(new CombatSessionGui(CombatSession.getLatestAnalysisForGui()));
+                        }
+                    },
                     new LifeKnightButton("Edit HUD") {
                         @Override
                         public void work() {
-                            openGui(new ManipulableGui());
+                            Core.openGui(new ManipulableGui());
                         }
                     })));
             return;
@@ -73,7 +80,7 @@ public class ModCommand extends CommandBase {
     }
 
     public void addMainCommandMessage() {
-        StringBuilder result = new StringBuilder(DARK_GREEN + "/" + modId);
+        StringBuilder result = new StringBuilder(DARK_GREEN + "/" + MOD_ID);
 
         for (String command : mainCommands) {
             result.append(" ").append(command).append(",");

@@ -3,6 +3,7 @@ package com.lifeknight.combatanalysis.mod;
 import com.lifeknight.combatanalysis.gui.Manipulable;
 import com.lifeknight.combatanalysis.gui.hud.EnhancedHudText;
 import com.lifeknight.combatanalysis.utilities.Chat;
+import com.lifeknight.combatanalysis.utilities.Logger;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
 import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
@@ -22,11 +23,8 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.ArrowLooseEvent;
-import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.entity.player.PlayerUseItemEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
@@ -37,6 +35,7 @@ import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
+import java.io.File;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
@@ -44,13 +43,13 @@ import java.util.concurrent.Executors;
 
 import static net.minecraft.util.EnumChatFormatting.GOLD;
 
-@net.minecraftforge.fml.common.Mod(modid = Core.modId, name = Core.modName, version = Core.modVersion, clientSideOnly = true)
+@net.minecraftforge.fml.common.Mod(modid = Core.MOD_ID, name = Core.MOD_NAME, version = Core.MOD_VERSION, clientSideOnly = true)
 public class Core {
     public static final String
-            modName = "Combat Analysis",
-            modVersion = "1.0",
-            modId = "combatanalysis";
-    public static final EnumChatFormatting modColor = GOLD;
+            MOD_NAME = "Combat Analysis",
+            MOD_VERSION = "0.1",
+            MOD_ID = "combatanalysis";
+    public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
     public static boolean onHypixel = false;
     public static GuiScreen guiToOpen = null;
@@ -59,7 +58,9 @@ public class Core {
     public static final LifeKnightBoolean hudTextShadow = new LifeKnightBoolean("HUD Text Shadow", "HUD", true);
     public static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
+    public static final LifeKnightBoolean logSessions = new LifeKnightBoolean("Log Sessions", "Settings", true);
     public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main Hotbar Slot", "Settings", 1, 1, 9);
+    public static final Logger combatSessionLogger = new Logger(new File("logs/combatsessions"));
     public static Configuration configuration;
 
     @EventHandler
@@ -72,13 +73,15 @@ public class Core {
         createEnhancedHudTexts();
 
         configuration = new Configuration();
+
+        CombatSession.readLoggedCombatSessions();
     }
 
     private void createEnhancedHudTexts() {
         new EnhancedHudText("Left Clicks", 0, 0, "Left Clicks") {
             @Override
             public String getTextToDisplay() {
-                return String.valueOf(CombatSession.getLeftClicks());
+                return String.valueOf(CombatSession.leftClicks());
             }
 
             @Override
@@ -90,7 +93,7 @@ public class Core {
         new EnhancedHudText("Right Clicks", 0, 100, "Right Clicks") {
             @Override
             public String getTextToDisplay() {
-                return String.valueOf(CombatSession.getRightClicks());
+                return String.valueOf(CombatSession.rightClicks());
             }
 
             @Override
@@ -99,10 +102,10 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Opponent Hits Taken", 0, 200, "Opponent Hits Taken") {
+        new EnhancedHudText("Melee Accuracy", 0, 200, "Melee Accuracy") {
             @Override
             public String getTextToDisplay() {
-                return String.valueOf(CombatSession.getOpponentHitsTaken());
+                return CombatSession.attackAccuracy();
             }
 
             @Override
@@ -111,10 +114,10 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Melee Accuracy", 0, 300, "Melee Accuracy") {
+        new EnhancedHudText("Bow Accuracy", 0, 300, "Bow Accuracy") {
             @Override
             public String getTextToDisplay() {
-                return CombatSession.getAttackAccuracy();
+                return CombatSession.arrowAccuracy();
             }
 
             @Override
@@ -123,10 +126,10 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Bow Accuracy", 0, 400, "Bow Accuracy") {
+        new EnhancedHudText("Projectile Accuracy", 0, 400, "Projectile Accuracy") {
             @Override
             public String getTextToDisplay() {
-                return CombatSession.getArrowAccuracy();
+                return CombatSession.projectileAccuracy();
             }
 
             @Override
@@ -135,10 +138,10 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Projectile Accuracy", 0, 500, "Projectile Accuracy") {
+        new EnhancedHudText("Hits Taken", 0, 500, "Hits Taken") {
             @Override
             public String getTextToDisplay() {
-                return CombatSession.getProjectileAccuracy();
+                return String.valueOf(CombatSession.hitsTaken());
             }
 
             @Override
@@ -147,10 +150,10 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Hits Taken", 0, 600, "Hits Taken") {
+        new EnhancedHudText("Arrows Taken", 0, 600, "Arrows Taken") {
             @Override
             public String getTextToDisplay() {
-                return String.valueOf(CombatSession.getHitsTaken());
+                return String.valueOf(CombatSession.arrowsTaken());
             }
 
             @Override
@@ -159,22 +162,10 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Arrows Taken", 0, 700, "Arrows Taken") {
+        new EnhancedHudText("Projectiles Taken", 0, 700, "Projectiles Taken") {
             @Override
             public String getTextToDisplay() {
-                return String.valueOf(CombatSession.getArrowsTaken());
-            }
-
-            @Override
-            public boolean isVisible() {
-                return showStatus.getValue() && CombatSession.sessionIsRunning();
-            }
-        };
-
-        new EnhancedHudText("Projectiles Taken", 0, 800, "Projectiles Taken") {
-            @Override
-            public String getTextToDisplay() {
-                return String.valueOf(CombatSession.getProjectilesTaken());
+                return String.valueOf(CombatSession.projectilesTaken());
             }
 
             @Override
@@ -252,31 +243,11 @@ public class Core {
         }
     }
 
-    public static void onArrowDamage(EntityArrow entityArrow, Entity entity) {
-        //if (runMod.getValue() && entity.getUniqueID() != Minecraft.getMinecraft().thePlayer.getUniqueID() && entityArrow.shootingEntity instanceof EntityPlayer) CombatSession.onHitByArrow((EntityPlayer) entityArrow.shootingEntity);
-    }
-
-    // Called when the user left-clicks another entity
-    @SubscribeEvent
-    public void onAttack(AttackEntityEvent event) {
-
-    }
-
     @SubscribeEvent
     public void onArrowShot(ArrowLooseEvent event) {
         if (runMod.getValue() && event.charge > 2) {
             CombatSession.onArrowShot();
         }
-    }
-
-    @SubscribeEvent
-    public void onStartUsingItem(PlayerUseItemEvent.Start event) {
-
-    }
-
-    @SubscribeEvent
-    public void onStopUsingItem(PlayerUseItemEvent.Stop event) {
-
     }
 
     @SubscribeEvent
@@ -292,10 +263,6 @@ public class Core {
                 CombatSession.onProjectileThrown(2);
             }
         }
-    }
-
-    @SubscribeEvent
-    public void onLivingDeath(LivingDeathEvent event) {
     }
 
     @SubscribeEvent

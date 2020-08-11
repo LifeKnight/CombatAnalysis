@@ -19,35 +19,35 @@ public class Logger {
     private final List<String> logs = new ArrayList<>();
 
     public Logger(File folder) {
-        logFolder = folder;
-        logFile = new File(logFolder + "/" + Miscellaneous.getCurrentDateString().replace("/", ".") + ".txt");
+        this.logFolder = folder;
+        this.logFile = new File(this.logFolder + "/" + Miscellaneous.getCurrentDateString().replace("/", ".") + ".txt");
 
-        boolean logCreateFolder = logFolder.mkdirs();
+        this.logFolder.mkdirs();
 
-        for (File file : logFolder.listFiles()) {
+        for (File file : this.logFolder.listFiles()) {
             THREAD_POOL.submit(() -> {
-                logs.add(logToString(file));
+                this.logs.add(logToString(file));
             });
         }
 
         try {
-            if (!logFile.createNewFile()) getPreviousLog();
+            if (!this.logFile.createNewFile()) getPreviousLog();
         } catch (Exception e) {
             e.printStackTrace();
         }
         this.doLogTime = true;
 
         try {
-            logFiles = Arrays.asList(logFolder.listFiles());
+            this.logFiles = Arrays.asList(this.logFolder.listFiles());
         } catch (Exception e) {
-            logFiles = Collections.singletonList(logFile);
+            this.logFiles = Collections.singletonList(this.logFile);
             e.printStackTrace();
         }
 
     }
 
     public void getPreviousLog() {
-        currentLog = logToString(logFile);
+        this.currentLog = logToString(this.logFile);
     }
 
     public String logToString(File log) {
@@ -71,34 +71,34 @@ public class Logger {
     }
 
     public void log(String input) {
-        if (doLog) {
-            if (doLogTime) {
-                currentLog += "[" + Miscellaneous.getCurrentTimeString() + "] " + input + System.getProperty("line.separator");
+        if (this.doLog) {
+            if (this.doLogTime) {
+                this.currentLog += "[" + Miscellaneous.getCurrentTimeString() + "] " + input + System.getProperty("line.separator");
             }
             writeLogToFile();
         }
     }
 
     public void plainLog(String input) {
-        if (doLog) {
-            currentLog += input + System.getProperty("line.separator");
+        if (this.doLog) {
+            this.currentLog += input + System.getProperty("line.separator");
             writeLogToFile();
         }
     }
 
     public void writeLogToFile() {
         try {
-            logFile = new File(logFolder + "/" + Miscellaneous.getCurrentDateString().replace("/", ".") + ".txt");
+            this.logFile = new File(this.logFolder + "/" + Miscellaneous.getCurrentDateString().replace("/", ".") + ".txt");
 
             if (this.logFile.createNewFile()) {
-                logFiles.add(logFile);
-                logs.add(currentLog);
-                currentLog = "";
+                this.logFiles.add(this.logFile);
+                this.logs.add(this.currentLog);
+                this.currentLog = "";
             }
 
-            PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(logFile), StandardCharsets.UTF_8));
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(this.logFile), StandardCharsets.UTF_8));
 
-            writer.write(currentLog);
+            writer.write(this.currentLog);
 
             writer.close();
         } catch (Exception e) {
@@ -107,32 +107,32 @@ public class Logger {
     }
 
     public String getLog() {
-        return currentLog;
+        return this.currentLog;
     }
 
     public List<String> getLogs() {
-        return logs;
+        return this.logs;
     }
 
     public File getLogFile() {
-        return logFile;
+        return this.logFile;
     }
 
     public List<File> getLogFiles() {
-        return logFiles;
+        return this.logFiles;
     }
 
     public void toggleLog() {
-        if (doLog) {
-            log("Pausing logs.");
-            doLog = false;
+        if (this.doLog) {
+            this.log("Pausing logs.");
+            this.doLog = false;
         } else {
-            doLog = true;
-            log("Resuming logs.");
+            this.doLog = true;
+            this.log("Resuming logs.");
         }
     }
 
     public boolean isRunning() {
-        return doLog;
+        return this.doLog;
     }
 }

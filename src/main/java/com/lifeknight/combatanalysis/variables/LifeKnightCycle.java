@@ -5,7 +5,7 @@ import net.minecraft.util.EnumChatFormatting;
 import java.io.IOException;
 import java.util.List;
 
-import static com.lifeknight.combatanalysis.mod.Core.*;
+import static com.lifeknight.combatanalysis.mod.Core.configuration;
 
 public class LifeKnightCycle extends LifeKnightVariable {
     private final List<String> defaultValues;

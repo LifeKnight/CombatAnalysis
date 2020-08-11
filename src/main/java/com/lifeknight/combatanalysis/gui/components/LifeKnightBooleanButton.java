@@ -21,12 +21,12 @@ public class LifeKnightBooleanButton extends LifeKnightButton {
 
     @Override
     public void work() {
-        lifeKnightBoolean.toggle();
+        this.lifeKnightBoolean.toggle();
     }
 
     @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-        super.displayString = lifeKnightBoolean.getCustomDisplayString();
+        super.displayString = this.lifeKnightBoolean.getCustomDisplayString();
         super.drawButton(mc, mouseX, mouseY);
     }
 }

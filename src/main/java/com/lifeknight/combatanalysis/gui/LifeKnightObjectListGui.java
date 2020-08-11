@@ -1,6 +1,7 @@
 package com.lifeknight.combatanalysis.gui;
 
 import com.lifeknight.combatanalysis.gui.components.*;
+import com.lifeknight.combatanalysis.mod.Core;
 import com.lifeknight.combatanalysis.utilities.Video;
 import com.lifeknight.combatanalysis.variables.LifeKnightObject;
 import com.lifeknight.combatanalysis.variables.LifeKnightObjectList;
@@ -12,7 +13,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.lifeknight.combatanalysis.mod.Core.openGui;
 import static net.minecraft.util.EnumChatFormatting.GRAY;
 import static net.minecraft.util.EnumChatFormatting.RED;
 
@@ -40,42 +40,37 @@ public class LifeKnightObjectListGui extends GuiScreen {
 
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
-        drawCenteredString(fontRendererObj, listMessage, Video.get2ndPanelCenter(), super.height / 2, 0xffffffff);
-        drawCenteredString(fontRendererObj, lifeKnightObjectList.getCustomDisplayString(), Video.getScaledWidth(150), Video.getScaledHeight(60), 0xffffffff);
-        drawVerticalLine(Video.getScaledWidth(300), 0, super.height, 0xffffffff);
-        searchField.drawTextBoxAndName();
+        this.drawCenteredString(this.fontRendererObj, this.listMessage, Video.get2ndPanelCenter(), this.height / 2, 0xffffffff);
+        this.drawCenteredString(this.fontRendererObj, this.lifeKnightObjectList.getCustomDisplayString(), Video.getScaledWidth(150), Video.getScaledHeight(60), 0xffffffff);
+        this.drawVerticalLine(Video.getScaledWidth(300), 0, this.height, 0xffffffff);
+        this.searchField.drawTextBoxAndName();
 
-        if (listItemButtons.size() != 0) {
-            int panelHeight = listItemButtons.size() * 30;
+        if (this.listItemButtons.size() != 0) {
+            int panelHeight = this.listItemButtons.size() * 30;
 
-            scrollBar.height = (int) (super.height * (super.height / (double) panelHeight));
+            this.scrollBar.height = (int) (this.height * (this.height / (double) panelHeight));
             int j = Mouse.getDWheel() / 7;
-            scrollBar.visible = !(scrollBar.height >= super.height);
-            while (j > 0 && listItemButtons.get(0).yPosition + j > 10) {
+            this.scrollBar.visible = !(this.scrollBar.height >= this.height);
+            while (j > 0 && this.listItemButtons.get(0).yPosition + j > 10) {
                 j--;
             }
 
-            while (j < 0 && listItemButtons.get(listItemButtons.size() - 1).yPosition + 30 + j < super.height - 10) {
+            while (j < 0 && this.listItemButtons.get(this.listItemButtons.size() - 1).yPosition + 30 + j < this.height - 10) {
                 j++;
             }
-            for (ListItemButton listItemButton : listItemButtons) {
+            for (ListItemButton listItemButton : this.listItemButtons) {
                 listItemButton.yPosition += j;
             }
-            for (LifeKnightButton lifeKnightButton : openButtons) {
-                lifeKnightButton.yPosition += j;
-            }
-
-            scrollBar.yPosition = (int) ((super.height * (-listItemButtons.get(0).yPosition - 10) / (double) (panelHeight - super.height)) * ((super.height - scrollBar.height) / (double) super.height)) + 8;
+            this.scrollBar.yPosition = (int) ((this.height * (-this.listItemButtons.get(0).yPosition - 10) / (double) (panelHeight - this.height)) * ((this.height - scrollBar.height) / (double) this.height)) + 8;
         } else {
-            scrollBar.visible = false;
+            this.scrollBar.visible = false;
         }
 
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
     public void initGui() {
-        searchField = new LifeKnightTextField(0, Video.getScaledWidth(75), this.height - 40, Video.getScaledWidth(150), 20, "Search") {
-
+        this.searchField = new LifeKnightTextField(0, Video.getScaledWidth(75), this.height - 40, Video.getScaledWidth(150), 20, "Search") {
             @Override
             public boolean textboxKeyTyped(char p_146201_1_, int p_146201_2_) {
                 if (super.textboxKeyTyped(p_146201_1_, p_146201_2_)) {
@@ -88,73 +83,72 @@ public class LifeKnightObjectListGui extends GuiScreen {
 
             @Override
             public void handleInput() {
-                searchInput = this.getText();
-                listItems();
+                LifeKnightObjectListGui.this.searchInput = this.getText();
+                LifeKnightObjectListGui.this.listItems();
             }
         };
 
-        super.buttonList.add(addButton = new LifeKnightButton("Add", 2, Video.getScaledWidth(75), Video.getScaledHeight(165), Video.getScaledWidth(150)) {
+        super.buttonList.add(this.addButton = new LifeKnightButton("Add", 2, Video.getScaledWidth(75), Video.getScaledHeight(165), Video.getScaledWidth(150)) {
             @Override
             public void work() {
                 try {
-                    lifeKnightObjectList.addElement(lifeKnightObjectList.getDefault());
-                } catch (Exception exception) {
-                    exception.printStackTrace();
+                    LifeKnightObjectListGui.this.lifeKnightObjectList.addElement(lifeKnightObjectList.getDefault());
+                } catch (IOException ignored) {
                 }
-                listItems();
+                LifeKnightObjectListGui.this.selectedItem = null;
             }
         });
 
-        super.buttonList.add(removeButton = new LifeKnightButton("Remove", 3, Video.getScaledWidth(75), Video.getScaledHeight(230), Video.getScaledWidth(150)) {
+        super.buttonList.add(this.removeButton = new LifeKnightButton("Remove", 3, Video.getScaledWidth(75), Video.getScaledHeight(230), Video.getScaledWidth(150)) {
             @Override
             public void work() {
-                removeSelectedButton();
+                LifeKnightObjectListGui.this.removeSelectedButton();
             }
         });
-        removeButton.visible = false;
+        this.removeButton.visible = false;
 
-        super.buttonList.add(clearButton = new ConfirmButton(4, Video.getScaledWidth(75), Video.getScaledHeight(295), Video.getScaledWidth(150), "Clear", RED + "Confirm") {
+        super.buttonList.add(this.clearButton = new ConfirmButton(4, Video.getScaledWidth(75), Video.getScaledHeight(295), Video.getScaledWidth(150), "Clear", RED + "Confirm") {
             @Override
             public void onConfirm() {
-                lifeKnightObjectList.clear();
-                listItems();
+                LifeKnightObjectListGui.this.lifeKnightObjectList.clear();
+                LifeKnightObjectListGui.this.listItems();
             }
         });
-        clearButton.visible = false;
+        this.clearButton.visible = false;
 
-        super.buttonList.add(scrollBar = new ScrollBar() {
+        super.buttonList.add(this.scrollBar = new ScrollBar() {
             @Override
             public void onDrag(int scroll) {
                 scroll = -scroll;
-                int scaledScroll = (int) (scroll * (listItemButtons.size() * 30) / (double) LifeKnightObjectListGui.super.height);
-                while (scaledScroll > 0 && listItemButtons.get(0).originalYPosition + scaledScroll > 10) {
+                int scaledScroll = (int) (scroll * (LifeKnightObjectListGui.this.listItemButtons.size() * 30) / (double) LifeKnightObjectListGui.this.height);
+                while (scaledScroll > 0 && LifeKnightObjectListGui.this.listItemButtons.get(0).originalYPosition + scaledScroll > 10) {
                     scaledScroll--;
                 }
-                while (scaledScroll < 0 && listItemButtons.get(listItemButtons.size() - 1).originalYPosition + 30 + scaledScroll < LifeKnightObjectListGui.super.height - 10) {
+                while (scaledScroll < 0 && LifeKnightObjectListGui.this.listItemButtons.get(listItemButtons.size() - 1).originalYPosition + 30 + scaledScroll < LifeKnightObjectListGui.this.height - 10) {
                     scaledScroll++;
                 }
-                for (ListItemButton listItemButton : listItemButtons) {
+                for (ListItemButton listItemButton : LifeKnightObjectListGui.this.listItemButtons) {
                     listItemButton.yPosition = listItemButton.originalYPosition + scaledScroll;
                 }
             }
 
             @Override
             public void onMousePress() {
-                for (ListItemButton listItemButton : listItemButtons) {
+                for (ListItemButton listItemButton : LifeKnightObjectListGui.this.listItemButtons) {
                     listItemButton.updateOriginalYPosition();
                 }
             }
         });
 
-        if (lastGui != null) {
+        if (this.lastGui != null) {
             super.buttonList.add(new LifeKnightButton("Back", 5, 5, 5, 50) {
                 @Override
                 public void work() {
-                    openGui(lastGui);
+                    Core.openGui(LifeKnightObjectListGui.this.lastGui);
                 }
             });
         }
-        listItems();
+        this.listItems();
     }
 
     public boolean doesGuiPauseGame() {
@@ -170,73 +164,73 @@ public class LifeKnightObjectListGui extends GuiScreen {
     }
 
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        if (keyCode == 0xD3 && selectedItem != null) {
-            removeSelectedButton();
+        if (keyCode == 0xD3 && this.selectedItem != null) {
+            this.removeSelectedButton();
         } else {
-            searchField.textboxKeyTyped(typedChar, keyCode);
+            this.searchField.textboxKeyTyped(typedChar, keyCode);
             super.keyTyped(typedChar, keyCode);
         }
     }
 
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
-        searchField.mouseClicked(mouseX, mouseY, mouseButton);
+        this.searchField.mouseClicked(mouseX, mouseY, mouseButton);
         super.mouseClicked(mouseX, mouseY, mouseButton);
         boolean aButtonHasBeenSelected = false;
-        for (ListItemButton listItemButton : listItemButtons) {
+        for (ListItemButton listItemButton : this.listItemButtons) {
             if (listItemButton.isSelectedButton) {
                 aButtonHasBeenSelected = true;
                 break;
             }
         }
-        removeButton.visible = aButtonHasBeenSelected;
+        this.removeButton.visible = aButtonHasBeenSelected;
     }
 
     protected void removeSelectedButton() {
-        lifeKnightObjectList.removeByDisplayString(selectedItem.displayString);
-        selectedItem.visible = false;
-        removeButton.visible = false;
-        selectedItem = null;
-        listItems();
+        this.lifeKnightObjectList.removeByDisplayString(this.selectedItem.displayString);
+        this.selectedItem.visible = false;
+        this.removeButton.visible = false;
+        this.selectedItem = null;
+        this.listItems();
     }
 
     private void listItems() {
-        listItemButtons.clear();
-        openButtons.clear();
+        this.listItemButtons.clear();
+        this.openButtons.clear();
         this.buttonList.removeIf(guiButton -> guiButton instanceof ListItemButton || guiButton.displayString.equals(">"));
 
-        for (LifeKnightObject element : lifeKnightObjectList.getValue()) {
-            if (searchInput.isEmpty() || element.isSearchResult(searchInput)) {
-                ListItemButton listItemButton = new ListItemButton(listItemButtons.size() + 6, element.getCustomDisplayString()) {
+        for (LifeKnightObject element : this.lifeKnightObjectList.getValue()) {
+            if (this.searchInput.isEmpty() || element.isSearchResult(this.searchInput)) {
+                ListItemButton listItemButton = new ListItemButton(this.listItemButtons.size() + 6, element.getCustomDisplayString()) {
                     @Override
                     public void work() {
                         if (this.isSelectedButton) {
                             this.isSelectedButton = false;
-                            selectedItem = null;
+                            LifeKnightObjectListGui.this.selectedItem = null;
                         } else {
                             this.isSelectedButton = true;
-                            selectedItem = this;
+                            LifeKnightObjectListGui.this.selectedItem = this;
                         }
                     }
                 };
-                listItemButtons.add(listItemButton);
-                LifeKnightButton lifeKnightButton = new LifeKnightButton(listItemButtons.size() + 1000, listItemButton.xPosition + listItemButton.width + 10,
-                        10 + (listItemButtons.size() - 1) * 30,
+                LifeKnightObjectListGui.this.listItemButtons.add(listItemButton);
+                LifeKnightButton lifeKnightButton = new LifeKnightButton(LifeKnightObjectListGui.this.listItemButtons.size() + 1000, listItemButton.xPosition + listItemButton.width + 10,
+                        10 + (LifeKnightObjectListGui.this.listItemButtons.size() - 1) * 30,
                         20,
                         20, ">") {
                     @Override
                     public void work() {
-                        openGui(new LifeKnightObjectGui(element, LifeKnightObjectListGui.this));
+                        Core.openGui(new LifeKnightObjectGui(element, LifeKnightObjectListGui.this));
                     }
                 };
-                openButtons.add(lifeKnightButton);
+                LifeKnightObjectListGui.this.openButtons.add(lifeKnightButton);
             }
         }
-        listMessage = listItemButtons.size() == 0 ? GRAY + "No items found" : "";
+        this.listMessage = this.listItemButtons.size() == 0 ? GRAY + "No items found" : "";
 
-        clearButton.visible = listItemButtons.size() > 1;
+        this.clearButton.visible = this.listItemButtons.size() > 1;
 
-        this.buttonList.addAll(listItemButtons);
+        this.buttonList.addAll(this.listItemButtons);
 
-        this.buttonList.addAll(openButtons);
+        this.buttonList.addAll(this.openButtons);
     }
 }

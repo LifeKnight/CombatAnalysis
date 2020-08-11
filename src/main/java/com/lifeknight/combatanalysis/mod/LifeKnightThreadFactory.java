@@ -1,7 +1,7 @@
 package com.lifeknight.combatanalysis.mod;
 
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class LifeKnightThreadFactory implements ThreadFactory
 {

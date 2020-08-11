@@ -35,7 +35,7 @@ public class User {
 		return input;
 	}
 
-	public static List<String> getPlayerList() {
+	public static List<String> getWorldPlayerList() {
 		List<String> playerNames = new ArrayList<>();
 		if (Minecraft.getMinecraft().theWorld != null) {
 			for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {

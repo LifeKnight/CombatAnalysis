@@ -1,6 +1,6 @@
 package com.lifeknight.combatanalysis.utilities;
 
-import java.awt.Desktop;
+import java.awt.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;

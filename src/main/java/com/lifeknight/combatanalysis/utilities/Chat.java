@@ -9,7 +9,8 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import static com.lifeknight.combatanalysis.mod.Core.*;
+import static com.lifeknight.combatanalysis.mod.Core.MOD_NAME;
+import static com.lifeknight.combatanalysis.mod.Core.MOD_COLOR;
 import static net.minecraft.util.EnumChatFormatting.*;
 
 public enum Chat {
@@ -29,7 +30,7 @@ public enum Chat {
 
 	public static void addChatMessage(String msg) {
 		if (Minecraft.getMinecraft().thePlayer != null) {
-			Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(modColor + "" + EnumChatFormatting.BOLD + modName + " > " + EnumChatFormatting.RESET + msg));
+			Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(MOD_COLOR + "" + EnumChatFormatting.BOLD + MOD_NAME + " > " + EnumChatFormatting.RESET + msg));
 		} else {
 			new Timer().schedule(new TimerTask() {
 				@Override

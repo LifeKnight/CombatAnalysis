@@ -2,10 +2,13 @@ package com.lifeknight.combatanalysis.gui.components;
 
 import com.lifeknight.combatanalysis.gui.Manipulable;
 import com.lifeknight.combatanalysis.utilities.Logic;
+import com.lifeknight.combatanalysis.utilities.Render;
 import com.lifeknight.combatanalysis.utilities.Video;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.gui.GuiButton;
+
+import java.awt.*;
 
 import static com.lifeknight.combatanalysis.gui.ManipulableGui.manipulableButtons;
 import static com.lifeknight.combatanalysis.mod.Core.gridSnapping;
@@ -33,18 +36,18 @@ public class ManipulableButton extends GuiButton {
                 "");
         this.manipulable = manipulable;
         this.scale = manipulable.getScale();
-        scaleButtons = new ScaleButton[]{
+        this.scaleButtons = new ScaleButton[]{
                 new ScaleButton(0, this.xPosition, this.yPosition) {
                     @Override
                     public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
                         if (Math.abs(newXPosition - originalXPosition) > Math.abs(newYPosition - originalYPosition)) {
-                            ManipulableButton.this.scale = Math.abs(originalXPosition / (float) newXPosition) * originalScale;
+                            ManipulableButton.this.scale = Math.abs(originalXPosition / (float) newXPosition) * ManipulableButton.this.originalScale;
                         } else {
-                            ManipulableButton.this.scale = Math.abs(originalYPosition / (float) newYPosition) * originalScale;
+                            ManipulableButton.this.scale = Math.abs(originalYPosition / (float) newYPosition) * ManipulableButton.this.originalScale;
                         }
 
-                        ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * scale) + 10;
-                        ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * scale) + 10;
+                        ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * ManipulableButton.this.scale) + 10;
+                        ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * ManipulableButton.this.scale) + 10;
                         ManipulableButton.this.xPosition = ManipulableButton.this.originalXPosition + ManipulableButton.this.originalWidth - ManipulableButton.this.width;
                         ManipulableButton.this.yPosition = ManipulableButton.this.originalYPosition + ManipulableButton.this.originalHeight - ManipulableButton.this.height;
                     }
@@ -53,12 +56,12 @@ public class ManipulableButton extends GuiButton {
                     @Override
                     public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
                         if (Math.abs(newXPosition - originalXPosition) > Math.abs(newYPosition - originalYPosition)) {
-                            ManipulableButton.this.scale = Math.abs(newXPosition / (float) originalXPosition) * originalScale;
+                            ManipulableButton.this.scale = Math.abs(newXPosition / (float) originalXPosition) * ManipulableButton.this.originalScale;
                         } else {
-                            ManipulableButton.this.scale = Math.abs(originalYPosition / (float) newYPosition) * originalScale;
+                            ManipulableButton.this.scale = Math.abs(originalYPosition / (float) newYPosition) * ManipulableButton.this.originalScale;
                         }
-                        ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * scale) + 10;
-                        ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * scale) + 10;
+                        ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * ManipulableButton.this.scale) + 10;
+                        ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * ManipulableButton.this.scale) + 10;
                         ManipulableButton.this.xPosition = ManipulableButton.this.originalXPosition;
                         ManipulableButton.this.yPosition = ManipulableButton.this.originalYPosition + ManipulableButton.this.originalHeight - ManipulableButton.this.height;
                     }
@@ -67,12 +70,12 @@ public class ManipulableButton extends GuiButton {
                     @Override
                     public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
                         if (Math.abs(newXPosition - originalXPosition) > Math.abs(newYPosition - originalYPosition)) {
-                            ManipulableButton.this.scale = Math.abs(originalXPosition / (float) newXPosition) * originalScale;
+                            ManipulableButton.this.scale = Math.abs(originalXPosition / (float) newXPosition) * ManipulableButton.this.originalScale;
                         } else {
-                            ManipulableButton.this.scale = Math.abs(newYPosition / (float) originalYPosition) * originalScale;
+                            ManipulableButton.this.scale = Math.abs(newYPosition / (float) originalYPosition) * ManipulableButton.this.originalScale;
                         }
-                        ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * scale) + 10;
-                        ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * scale) + 10;
+                        ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * ManipulableButton.this.scale) + 10;
+                        ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * ManipulableButton.this.scale) + 10;
                         ManipulableButton.this.xPosition = ManipulableButton.this.originalXPosition + ManipulableButton.this.originalWidth - ManipulableButton.this.width;
                         ManipulableButton.this.yPosition = ManipulableButton.this.originalYPosition;
                     }
@@ -81,18 +84,18 @@ public class ManipulableButton extends GuiButton {
                     @Override
                     public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
                         if (Math.abs(newXPosition - originalXPosition) > Math.abs(newYPosition - originalYPosition)) {
-                            ManipulableButton.this.scale = Math.abs(newXPosition / (float) originalXPosition) * originalScale;
+                            ManipulableButton.this.scale = Math.abs(newXPosition / (float) originalXPosition) * ManipulableButton.this.originalScale;
                         } else {
-                            ManipulableButton.this.scale = Math.abs(newYPosition / (float) originalYPosition) * originalScale;
+                            ManipulableButton.this.scale = Math.abs(newYPosition / (float) originalYPosition) * ManipulableButton.this.originalScale;
                         }
-                        ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * scale) + 10;
-                        ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * scale) + 10;
+                        ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * ManipulableButton.this.scale) + 10;
+                        ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * ManipulableButton.this.scale) + 10;
                         ManipulableButton.this.xPosition = ManipulableButton.this.originalXPosition;
                         ManipulableButton.this.yPosition = ManipulableButton.this.originalYPosition;
                     }
                 }
         };
-        fixPosition();
+        this.fixPosition();
     }
 
     private int getManipulableWidth() {
@@ -114,22 +117,22 @@ public class ManipulableButton extends GuiButton {
     @Override
     public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
         if (this.visible) {
-            drawEmptyBox(this.getManipulableXPosition(), this.getManipulableYPosition(), this.getManipulableXPosition() + this.getManipulableWidth(), this.getManipulableYPosition() + this.getManipulableHeight(), isSelectedButton ? 0xeaff0000 : 0xffffffff);
+            Render.drawEmptyBox(this.getManipulableXPosition(), this.getManipulableYPosition(), this.getManipulableXPosition() + this.getManipulableWidth(), this.getManipulableYPosition() + this.getManipulableHeight() + 1, this.isSelectedButton ? Color.RED : Color.WHITE, 255F, 1);
 
             if (this.isSelectedButton) {
-                scaleButtons[0].xPosition = this.xPosition;
-                scaleButtons[0].yPosition = this.yPosition;
-                scaleButtons[1].xPosition = this.xPosition + this.width - 5;
-                scaleButtons[1].yPosition = this.yPosition;
-                scaleButtons[2].xPosition = this.xPosition;
-                scaleButtons[2].yPosition = this.yPosition + this.height - 5;
-                scaleButtons[3].xPosition = this.xPosition + this.width - 5;
-                scaleButtons[3].yPosition = this.yPosition + this.height - 5;
-                for (ScaleButton scaleButton : scaleButtons) {
+                this.scaleButtons[0].xPosition = this.xPosition;
+                this.scaleButtons[0].yPosition = this.yPosition;
+                this.scaleButtons[1].xPosition = this.xPosition + this.width - 5;
+                this.scaleButtons[1].yPosition = this.yPosition;
+                this.scaleButtons[2].xPosition = this.xPosition;
+                this.scaleButtons[2].yPosition = this.yPosition + this.height - 5;
+                this.scaleButtons[3].xPosition = this.xPosition + this.width - 5;
+                this.scaleButtons[3].yPosition = this.yPosition + this.height - 5;
+                for (ScaleButton scaleButton : this.scaleButtons) {
                     scaleButton.drawButton(minecraft, mouseX, mouseY);
                 }
             }
-            this.manipulable.drawButton(minecraft, mouseX, mouseY, this.getManipulableXPosition(), this.getManipulableYPosition(), this.getManipulableWidth(), this.getManipulableHeight(), scale, isSelectedButton);
+            this.manipulable.drawButton(minecraft, mouseX, mouseY, this.getManipulableXPosition(), this.getManipulableYPosition(), this.getManipulableWidth(), this.getManipulableHeight(), this.scale, this.isSelectedButton);
             this.mouseDragged(minecraft, mouseX, mouseY);
         }
     }
@@ -144,7 +147,7 @@ public class ManipulableButton extends GuiButton {
     }
 
     public boolean oneOfScaledButtonsPressed(Minecraft minecraft, int mouseX, int mouseY) {
-        for (ScaleButton scaleButton : scaleButtons) {
+        for (ScaleButton scaleButton : this.scaleButtons) {
             if (scaleButton.mousePressed(minecraft, mouseX, mouseY)) {
                 return true;
             }
@@ -172,16 +175,16 @@ public class ManipulableButton extends GuiButton {
                 this.originalYPosition = this.yPosition;
                 this.originalMouseXPosition = mouseX;
                 this.originalMouseYPosition = mouseY;
-                this.originalScale = scale;
+                this.originalScale = this.scale;
                 return true;
             }
-        } else if (isSelectedButton) {
+        } else if (this.isSelectedButton) {
             if (oneOfScaledButtonsPressed(minecraft, mouseX, mouseY)) {
                 return true;
             }
             boolean oneOfExtrasClicked = this.oneOfButtonsPressed(minecraft, mouseX, mouseY);
             if (!oneOfExtrasClicked) {
-                isSelectedButton = false;
+                this.isSelectedButton = false;
             }
         }
         return false;
@@ -190,8 +193,8 @@ public class ManipulableButton extends GuiButton {
     @Override
     public void mouseDragged(Minecraft minecraft, int mouseX, int mouseY) {
         if (super.visible && this.dragging) {
-            int newXPosition = originalXPosition + mouseX - originalMouseXPosition;
-            int newYPosition = originalYPosition + mouseY - originalMouseYPosition;
+            int newXPosition = this.originalXPosition + mouseX - this.originalMouseXPosition;
+            int newYPosition = this.originalYPosition + mouseY - this.originalMouseYPosition;
 
             if (gridSnapping.getValue()) {
                 int replacementXPosition = newXPosition;
@@ -217,9 +220,9 @@ public class ManipulableButton extends GuiButton {
                             toDrawY = replacementYPosition + 5;
                         }
                     }
-                    if (toDrawX != Integer.MIN_VALUE) drawVerticalLine(toDrawX, 0, Video.getGameHeight(), 0xeaff0000);
+                    if (toDrawX != Integer.MIN_VALUE && toDrawX != 0 && toDrawX != Video.getGameWidth()) drawVerticalLine(toDrawX, 0, Video.getGameHeight(), 0xeaff0000);
 
-                    if (toDrawY != Integer.MIN_VALUE) drawHorizontalLine(0, Video.getGameWidth(), toDrawY, 0xeaff0000);
+                    if (toDrawY != Integer.MIN_VALUE && toDrawY != 0 && toDrawY != Video.getGameHeight()) drawHorizontalLine(0, Video.getGameWidth(), toDrawY, 0xeaff0000);
                 }
                 newXPosition = replacementXPosition;
                 newYPosition = replacementYPosition;
@@ -307,8 +310,8 @@ public class ManipulableButton extends GuiButton {
         this.originalYPosition = this.yPosition;
         this.originalMouseXPosition = mouseX;
         this.originalMouseYPosition = mouseY;
-        this.originalScale = scale;
-        for (ScaleButton scaleButton: scaleButtons) {
+        this.originalScale = this.scale;
+        for (ScaleButton scaleButton : this.scaleButtons) {
             scaleButton.mouseReleased(mouseX, mouseY);
         }
 
@@ -319,14 +322,6 @@ public class ManipulableButton extends GuiButton {
     public void playPressSound(SoundHandler soundHandlerIn) {
     }
 
-    public void drawEmptyBox(int left, int top, int right, int bottom, int color) {
-        drawHorizontalLine(left, right, top, color);
-        drawHorizontalLine(left, right, bottom, color);
-
-        drawVerticalLine(left, top, bottom, color);
-        drawVerticalLine(right, top, bottom, color);
-    }
-
     public void reset() {
         this.manipulable.reset();
         this.scale = manipulable.getScale();
@@ -334,7 +329,7 @@ public class ManipulableButton extends GuiButton {
         this.yPosition = (int) manipulable.getRawYPosition() - 5;
         this.width = (int) manipulable.getWidth() + 10;
         this.height = (int) manipulable.getHeight() + 10;
-        fixPosition();
+        this.fixPosition();
     }
 
     private void fixPosition() {
@@ -392,25 +387,25 @@ public class ManipulableButton extends GuiButton {
         private int originalMouseYPosition;
         public ScaleButton(int buttonId, int x, int y) {
             super(buttonId, x, y, 5, 5, "");
-            updateOriginalPosition(0,0);
+            this.updateOriginalPosition(0,0);
         }
 
         @Override
         public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
             if (this.visible) {
                 drawRect(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, this.dragging ? 0xeaff0000 : 0xffffffff);
-                mouseDragged(minecraft, mouseX, mouseY);
+                this.mouseDragged(minecraft, mouseX, mouseY);
             }
         }
 
         @Override
         public boolean mousePressed(Minecraft minecraft, int mouseX, int mouseY) {
             if (super.mousePressed(minecraft, mouseX, mouseY)) {
-                dragging = true;
-                updateOriginalPosition(mouseX, mouseY);
+                this.dragging = true;
+                this.updateOriginalPosition(mouseX, mouseY);
                 return true;
             }
-            dragging = false;
+            this.dragging = false;
             return false;
         }
 
@@ -419,30 +414,27 @@ public class ManipulableButton extends GuiButton {
             if (this.dragging) {
                 int newXPosition = originalXPosition + mouseX - originalMouseXPosition;
                 int newYPosition = originalYPosition + mouseY - originalMouseYPosition;
-                onDrag(newXPosition, newYPosition, originalXPosition, originalYPosition);
+                this.onDrag(newXPosition, newYPosition, originalXPosition, originalYPosition);
             }
         }
 
         @Override
         public void mouseReleased(int mouseX, int mouseY) {
             dragging = false;
-            updateOriginalPosition(mouseX, mouseY);
+            this.updateOriginalPosition(mouseX, mouseY);
         }
 
         @Override
         public void playPressSound(SoundHandler soundHandlerIn) {
-
         }
 
-        public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
-
-        }
+        protected abstract void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition);
 
         public void updateOriginalPosition(int mouseX, int mouseY) {
-            originalXPosition = this.xPosition;
-            originalYPosition = this.yPosition;
-            originalMouseXPosition = mouseX;
-            originalMouseYPosition = mouseY;
+            this.originalXPosition = this.xPosition;
+            this.originalYPosition = this.yPosition;
+            this.originalMouseXPosition = mouseX;
+            this.originalMouseYPosition = mouseY;
         }
     }
 }

@@ -26,17 +26,17 @@ public abstract class Manipulable {
     }
 
     public void update(int newX, int newY, float newScale) {
-        positionX.setValue(Video.scaleTo1080pWidth(newX));
-        positionY.setValue(Video.scaleTo1080pHeight(newY));
-        scale.setValue(newScale);
+        this.positionX.setValue(Video.scaleTo1080pWidth(newX));
+        this.positionY.setValue(Video.scaleTo1080pHeight(newY));
+        this.scale.setValue(newScale);
     }
 
     public float getScale() {
-        return scale.getValue();
+        return this.scale.getValue();
     }
 
     public void setScale(float newScale) {
-        scale.setValue(newScale);
+        this.scale.setValue(newScale);
     }
 
     public abstract float getDefaultWidth();
@@ -44,57 +44,57 @@ public abstract class Manipulable {
     public abstract float getDefaultHeight();
 
     public float getWidth() {
-        return getDefaultWidth() * scale.getValue();
+        return this.getDefaultWidth() * this.scale.getValue();
     }
 
     public float getHeight() {
-        return getDefaultHeight() * scale.getValue();
+        return this.getDefaultHeight() * this.scale.getValue();
     }
 
     public float getXCoordinate() {
         float returnValue;
-        if ((returnValue = Video.scaleFrom1080pWidth(positionX.getValue()) / scale.getValue()) < -1) {
+        if ((returnValue = Video.scaleFrom1080pWidth(this.positionX.getValue()) / this.scale.getValue()) < -1) {
             returnValue = -1;
-            positionX.setValue(returnValue);
+            this.positionX.setValue(returnValue);
         } else if (returnValue + getWidth() > Video.getGameWidth() + 1) {
             returnValue = Video.getGameWidth() + 1 - getWidth();
-            positionX.setValue(returnValue);
+            this.positionX.setValue(returnValue);
         }
         return returnValue;
     }
 
     public float getYCoordinate() {
         float returnValue;
-        if ((returnValue = Video.scaleFrom1080pHeight(positionY.getValue()) / scale.getValue()) < -1) {
+        if ((returnValue = Video.scaleFrom1080pHeight(this.positionY.getValue()) / this.scale.getValue()) < -1) {
             returnValue = -1;
-            positionY.setValue(returnValue);
+            this.positionY.setValue(returnValue);
         } else if (returnValue + getHeight() > Video.getGameHeight() + 1) {
             returnValue = Video.getGameHeight() + 1 - getHeight();
-            positionY.setValue(returnValue);
+            this.positionY.setValue(returnValue);
         }
         return returnValue;
     }
 
     public float getUncheckedXPosition() {
-        return Video.scaleFrom1080pWidth(positionX.getValue()) / scale.getValue();
+        return Video.scaleFrom1080pWidth(this.positionX.getValue()) / this.scale.getValue();
     }
 
     public float getUncheckedYPosition() {
-        return Video.scaleFrom1080pWidth(positionY.getValue()) / scale.getValue();
+        return Video.scaleFrom1080pWidth(this.positionY.getValue()) /this. scale.getValue();
     }
 
     public float getRawXPosition() {
-        return Video.scaleFrom1080pWidth(positionX.getValue());
+        return Video.scaleFrom1080pWidth(this.positionX.getValue());
     }
 
     public float getRawYPosition() {
-        return Video.scaleFrom1080pHeight(positionY.getValue());
+        return Video.scaleFrom1080pHeight(this.positionY.getValue());
     }
 
     public void reset() {
-        positionX.reset();
-        positionY.reset();
-        scale.reset();
+        this.positionX.reset();
+        this.positionY.reset();
+        this.scale.reset();
     }
 
     public abstract boolean isVisible();
@@ -103,8 +103,8 @@ public abstract class Manipulable {
     
     public void render() {
         GlStateManager.pushMatrix();
-        GlStateManager.scale(scale.getValue(), scale.getValue(), scale.getValue());
-        doRender();
+        GlStateManager.scale(this.scale.getValue(), this.scale.getValue(), this.scale.getValue());
+        this.doRender();
         GlStateManager.popMatrix();
     }
 

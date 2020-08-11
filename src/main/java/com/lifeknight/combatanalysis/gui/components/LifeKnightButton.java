@@ -20,7 +20,7 @@ public abstract class LifeKnightButton extends GuiButton {
             this.width = j;
             this.xPosition = get2ndPanelCenter() - this.width / 2;
         }
-        originalYPosition = this.yPosition;
+        this.originalYPosition = this.yPosition;
     }
 
     public LifeKnightButton(int componentId, int x, int y, int width, int height, String buttonText) {
@@ -42,12 +42,8 @@ public abstract class LifeKnightButton extends GuiButton {
         this.buttonText = buttonText;
     }
 
-    public String getButtonText() {
-        return buttonText;
-    }
-
     public void updateOriginalYPosition() {
-        originalYPosition = this.yPosition;
+        this.originalYPosition = this.yPosition;
     }
 
     public abstract void work();

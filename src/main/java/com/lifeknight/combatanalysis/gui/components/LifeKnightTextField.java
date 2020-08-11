@@ -37,19 +37,19 @@ public abstract class LifeKnightTextField extends GuiTextField {
                 20,
                 lifeKnightVariable.getCustomDisplayString(),
                 lifeKnightVariable);
-        originalYPosition = this.yPosition;
+        this.originalYPosition = this.yPosition;
     }
 
     public void drawTextBoxAndName() {
         super.drawTextBox();
-        if (lifeKnightVariable != null) {
-            name = lifeKnightVariable.getCustomDisplayString();
+        if (this.lifeKnightVariable != null) {
+            this.name = this.lifeKnightVariable.getCustomDisplayString();
         }
-        super.drawCenteredString(Minecraft.getMinecraft().fontRendererObj, name, this.xPosition + this.width / 2, this.yPosition - 15, 0xffffffff);
+        super.drawCenteredString(Minecraft.getMinecraft().fontRendererObj, this.name, this.xPosition + this.width / 2, this.yPosition - 15, 0xffffffff);
     }
 
     public void drawStringBelowBox() {
-        super.drawCenteredString(Minecraft.getMinecraft().fontRendererObj, subDisplayMessage, this.xPosition + this.width / 2, this.yPosition + this.height + 10, 0xffffffff);
+        super.drawCenteredString(Minecraft.getMinecraft().fontRendererObj, this.subDisplayMessage, this.xPosition + this.width / 2, this.yPosition + this.height + 10, 0xffffffff);
     }
 
     public boolean textboxKeyTyped(char p_146201_1_, int p_146201_2_) {
@@ -63,7 +63,7 @@ public abstract class LifeKnightTextField extends GuiTextField {
     }
 
     public void updateOriginalYPosition() {
-        originalYPosition = this.yPosition;
+        this.originalYPosition = this.yPosition;
     }
 
     public abstract void handleInput();

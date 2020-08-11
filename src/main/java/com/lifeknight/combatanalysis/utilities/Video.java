@@ -19,6 +19,11 @@ public class Video {
         }
     }
 
+    public static int scaleTo1080p(int toScale) {
+        int scale;
+        return ((scale = Minecraft.getMinecraft().gameSettings.guiScale) == 0) ? (int) (toScale * (double) getScaleFactor()) : toScale * scale;
+    }
+
     public static int get2ndPanelCenter() {
         return getScaledHeight(300) + (getGameWidth() - getScaledWidth(300)) / 2;
     }

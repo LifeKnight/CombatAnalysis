@@ -50,7 +50,7 @@ public class BaseGui extends GuiScreen {
 
         if (this.visibleGuiPanels.size() != 0) {
             this.scrollBar.height = (int) ((this.height - 56) * ((this.height - 56) / (double) this.panelHeight));
-            this.scrollBar.visible = !(this.scrollBar.height >= this.height - 55);
+            this.scrollBar.visible = this.scrollBar.height < this.height - 55 - 5;
             int j = Mouse.getDWheel() / 7;
             if (j != 0 && this.notHoveringOver(mouseX, mouseY, j)) {
                 if (((j > 0) && this.scrollBar.yPosition > 0) || ((j < 0) && this.scrollBar.yPosition + this.scrollBar.height < super.height)) {
@@ -82,7 +82,7 @@ public class BaseGui extends GuiScreen {
             this.scrollBar.yPosition = (int) (((-(visibleGuiPanels.get(0).yPosition - 65)) / (this.panelHeight - (double) (this.height - 56))) * (this.height - 56 - this.scrollBar.height) + 56);
             this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.panelWidth));
             this.horizontalScrollBar.xPosition = (int) ((-visibleGuiPanels.get(0).xPosition / (this.panelWidth - (double) this.width)) * (this.width - this.horizontalScrollBar.width));
-            this.horizontalScrollBar.visible = !(this.horizontalScrollBar.width >= this.width);
+            this.horizontalScrollBar.visible = this.horizontalScrollBar.width < this.width - 5;
         }
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
@@ -457,13 +457,13 @@ public class BaseGui extends GuiScreen {
                     int modifiedHeight = this.height - 14;
                     this.scrollBar.height = (int) (modifiedHeight * (modifiedHeight / (double) this.getPanelHeight()));
                     this.scrollBar.yPosition = (int) (this.yPosition + (modifiedHeight * (-this.yOffsetPosition / (double) this.getPanelHeight()))) + 14;
-                    this.scrollBar.visible = !(this.scrollBar.height >= modifiedHeight);
+                    this.scrollBar.visible = this.scrollBar.height < modifiedHeight - 5;
                     this.scrollBar.xPosition = this.xPosition + this.width - 5;
                 }
                 if (horizontalScrollBar != null) {
                     this.horizontalScrollBar.xPosition = (int) (this.xPosition + (this.width * (-this.xOffsetPosition / (double) this.getPanelWidth())));
                     this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.getPanelWidth()));
-                    this.horizontalScrollBar.visible = !(this.horizontalScrollBar.width >= this.width);
+                    this.horizontalScrollBar.visible = this.horizontalScrollBar.width < this.width - 5;
                     this.horizontalScrollBar.yPosition = this.yPosition + this.height - 5;
                 }
                 GlStateManager.pushMatrix();
@@ -525,7 +525,7 @@ public class BaseGui extends GuiScreen {
                     longestWidth = width;
                 }
             }
-            this.width = Math.max(Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.name) + 15, longestWidth + 10);
+            this.width = Math.max(Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.name) + 15, longestWidth + 15);
         }
 
         public void updateHeight() {
@@ -564,7 +564,6 @@ public class BaseGui extends GuiScreen {
                 GlStateManager.popMatrix();
             }
         }
-
     }
 
     public ListPanel createListPanel(String name, List<?> contents) {

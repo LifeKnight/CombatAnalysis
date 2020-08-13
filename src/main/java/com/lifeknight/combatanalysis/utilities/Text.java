@@ -80,7 +80,7 @@ public class Text {
 
 	public static String shortenDouble(double value, int decimalDigits) {
 		String asString = String.valueOf(value);
-		int wholeDigits = asString.substring(0, asString.indexOf(".")).length();
+		int wholeDigits = asString.contains(".") ? asString.substring(0, asString.indexOf(".")).length() : asString.length();
 		return new DecimalFormat(multiplyString("#", wholeDigits) + "." + multiplyString("#", decimalDigits)).format(value);
 	}
 
@@ -132,7 +132,7 @@ public class Text {
         return Pattern.compile("[a-zA-Z]").matcher(input).find();
     }
 
-    public static String formatTimeFromMilliseconds(long milliseconds) {
+    public static String formatTimeFromMilliseconds(long milliseconds, int count) {
         long days;
         long hours;
         long minutes;
@@ -149,16 +149,17 @@ public class Text {
 
         StringBuilder result = new StringBuilder();
 
-        if (days > 0) {
+        if (days > 0 && count >= 4) {
             result.append(days).append(":");
             result.append(appendTime(hours)).append(":");
-        } else {
+        } else if (count >= 3) {
             result.append(hours).append(":");
         }
 
-        result.append(appendTime(minutes)).append(":");
 
-        result.append(appendTime(seconds)).append(".");
+        if (count >= 2) result.append(appendTime(minutes)).append(":");
+
+        if (count >= 1) result.append(appendTime(seconds)).append(".");
 
         result.append(formatMilliseconds(millisecondsLeft));
 

@@ -1,5 +1,9 @@
 package com.lifeknight.combatanalysis.utilities;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.lifeknight.combatanalysis.gui.hud.EnhancedHudText;
 import com.lifeknight.combatanalysis.variables.LifeKnightCycle;
 import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
@@ -7,6 +11,7 @@ import net.minecraft.util.EnumChatFormatting;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static com.lifeknight.combatanalysis.gui.hud.EnhancedHudText.textToRender;
@@ -154,5 +159,15 @@ public class Miscellaneous {
 				return "Default Content Color: " + Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString();
 			}
 		};
+	}
+
+	public static <T> JsonArray toJsonArrayString(List<T> elements) {
+		JsonArray asJsonArray = new JsonArray();
+
+		for (T element : elements) {
+			asJsonArray.add(new JsonParser().parse(element.toString()).getAsJsonObject());
+		}
+
+		return asJsonArray;
 	}
 }

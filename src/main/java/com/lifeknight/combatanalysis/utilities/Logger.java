@@ -31,7 +31,7 @@ public class Logger {
         }
 
         try {
-            if (!this.logFile.createNewFile()) getPreviousLog();
+            if (this.logFile.exists()) this.getPreviousLog();
         } catch (Exception e) {
             e.printStackTrace();
         }

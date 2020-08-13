@@ -1,8 +1,8 @@
 package com.lifeknight.combatanalysis.mod;
 
-import com.google.gson.JsonObject;
-import com.lifeknight.combatanalysis.utilities.Chat;
+import com.google.gson.*;
 import com.lifeknight.combatanalysis.utilities.Logic;
+import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -10,9 +10,13 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.entity.projectile.EntityFishHook;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.JsonToNBT;
+import net.minecraft.nbt.NBTException;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.potion.PotionEffect;
+import net.minecraft.util.DamageSource;
+import net.minecraft.world.WorldSettings;
 import net.minecraftforge.fml.common.FMLLog;
 import org.apache.logging.log4j.Level;
 import org.lwjgl.input.Keyboard;
@@ -34,13 +38,27 @@ public class CombatSession {
                 line = scanner.nextLine();
                 if (line.startsWith("{")) {
                     try {
-
+                        CombatSession combatSession = fromJson(line);
+                        highestId = Math.max(highestId, combatSession.id);
+                        combatSessions.add(combatSession);
                     } catch (Exception exception) {
-                        FMLLog.log(Level.WARN, exception.getMessage());
+                        FMLLog.log(Level.WARN, "An error occurred while attempting to interpret a logged Combat Session: %s", exception.getMessage());
                     }
                 }
             }
         }
+    }
+
+    private static boolean canStartCombatSession() {
+        if (Minecraft.getMinecraft().playerController.getCurrentGameType() != WorldSettings.GameType.SURVIVAL) return false;
+
+        for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
+            if (entityPlayer != null && entityPlayer.getUniqueID() != Minecraft.getMinecraft().thePlayer.getUniqueID() &&
+                    !entityPlayer.isInvisible() && !entityPlayer.isEntityInvulnerable(DamageSource.causePlayerDamage(Minecraft.getMinecraft().thePlayer))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static List<CombatSession> getCombatSessions() {
@@ -85,7 +103,8 @@ public class CombatSession {
     }
 
     public static void onArrowShot() {
-        if (Core.automaticSessions.getValue() || sessionIsRunning) getLatestAnalysis().arrowShot();
+        if ((Core.automaticSessions.getValue() && canStartCombatSession()) || sessionIsRunning)
+            getLatestAnalysis().arrowShot();
     }
 
     public static void onArrowHit(EntityPlayer target) {
@@ -98,11 +117,12 @@ public class CombatSession {
     }
 
     public static void onHitByArrow(EntityPlayer shooter) {
-        if (Core.automaticSessions.getValue() || sessionIsRunning) getLatestAnalysis().hitByArrow(shooter);
+        if ((Core.automaticSessions.getValue() && canStartCombatSession()) || sessionIsRunning)
+            getLatestAnalysis().hitByArrow(shooter);
     }
 
     public static void onProjectileThrown(int type) {
-        if ((Core.automaticSessions.getValue() && type == 0) || sessionIsRunning)
+        if ((Core.automaticSessions.getValue() && canStartCombatSession() && type == 0) || sessionIsRunning)
             getLatestAnalysis().projectileThrown(type);
     }
 
@@ -116,11 +136,12 @@ public class CombatSession {
     }
 
     public static void onHitByProjectile(EntityPlayer thrower) {
-        if (Core.automaticSessions.getValue() || sessionIsRunning) getLatestAnalysis().hitByProjectile(thrower, 1);
+        if ((Core.automaticSessions.getValue() && canStartCombatSession()) || sessionIsRunning)
+            getLatestAnalysis().hitByProjectile(thrower, 1);
     }
 
     public static void onAttack(EntityPlayer target) {
-        if (Core.automaticSessions.getValue() || sessionIsRunning) {
+        if ((Core.automaticSessions.getValue() && canStartCombatSession()) || sessionIsRunning) {
             getLatestAnalysis().attack(target);
         } else {
             attackTimer = 5;
@@ -204,15 +225,17 @@ public class CombatSession {
         return sessionIsRunning ? getLatestAnalysis().arrowsTaken : 0;
     }
 
-    private final int id = ++highestId;
+    private final int id;
+    String version = Core.MOD_VERSION;
     private long startTime;
     private long endTime;
-    private final String serverIp = Minecraft.getMinecraft().getCurrentServerData().serverIP;
+    private boolean deleted = false;
+    private final String serverIp;
 
     private int ticksSinceAction = 0;
     private int lastAttackType;
     private int lastAttackTimer = 0;
-    private final Map<UUID, Opponent> opponents = new HashMap<>();
+    private final Map<UUID, Opponent> opponents;
 
     private int leftClicks = 0;
     private int rightClicks = 0;
@@ -234,26 +257,66 @@ public class CombatSession {
     private boolean hitByFishingHook = false;
 
     // More fields such as armor and inventory items and potion effects
-    private ItemStack[] startingInventory;
-    private ItemStack[] startingArmor;
+    private List<ItemStack> startingInventory;
+    private List<ItemStack> startingArmor;
 
-    private ItemStack[] endingInventory;
-    private ItemStack[] endingArmor;
+    private List<ItemStack> endingInventory;
+    private List<ItemStack> endingArmor;
 
-    private Collection<PotionEffect> previousPotionEffects;
-    private final List<PotionEffectTracker> potionEffects = new ArrayList<>();
+    private final List<PotionEffectTracker> potionEffects;
 
     // Strafing data
-    private final List<StrafingTracker> strafes = new ArrayList<>();
+    private final List<StrafingTracker> strafes;
 
     // Proper w-tapping/blockhitting/projectile usage
 
     // Hotkey time
     private int lastHeldItemIndex;
-    private final List<HotKeyTracker> hotKeys = new ArrayList<>();
+    private final List<HotKeyTracker> hotKeys;
+
+    // Left Clicks Per Second
+    private final List<ClicksPerSecondTracker> clicksPerSecondTrackers;
+    private int ticksSinceLeftClick = 0;
 
     public CombatSession() {
+        this.id = ++highestId;
+        this.serverIp = Minecraft.getMinecraft().getCurrentServerData().serverIP;
+        this.opponents = new HashMap<>();
+        this.potionEffects = new ArrayList<>();
+        this.strafes = new ArrayList<>();
+        this.hotKeys = new ArrayList<>();
+        this.clicksPerSecondTrackers = new ArrayList<>();
+    }
 
+    public CombatSession(int id, String version, long startTime, long endTime, String serverIp, List<Opponent> opponents, int leftClicks, int rightClicks, int attacksSent, int attacksLanded, int projectilesThrown, int projectilesHit, int arrowsShot, int arrowsHit, int hitsTaken, int arrowsTaken, int projectilesTaken, List<ItemStack> startingInventory, List<ItemStack> startingArmor, List<ItemStack> endingInventory, List<ItemStack> endingArmor, List<PotionEffectTracker> potionEffects, List<StrafingTracker> strafes, List<HotKeyTracker> hotKeys, List<ClicksPerSecondTracker> clicksPerSecondTrackers) {
+        this.id = id;
+        this.version = version;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.serverIp = serverIp;
+        this.opponents = new HashMap<>();
+        for (Opponent opponent : opponents) {
+            this.opponents.put(UUID.randomUUID(), opponent);
+        }
+        this.leftClicks = leftClicks;
+        this.rightClicks = rightClicks;
+        this.attacksSent = attacksSent;
+        this.attacksLanded = attacksLanded;
+        this.projectilesThrown = projectilesThrown;
+        this.projectilesHit = projectilesHit;
+        this.arrowsShot = arrowsShot;
+        this.arrowsHit = arrowsHit;
+        this.hitsTaken = hitsTaken;
+        this.arrowsTaken = arrowsTaken;
+        this.projectilesTaken = projectilesTaken;
+        this.startingInventory = startingInventory;
+        this.startingArmor = startingArmor;
+        this.endingInventory = endingInventory;
+        this.endingArmor = endingArmor;
+        this.potionEffects = potionEffects;
+        this.strafes = strafes;
+        this.hotKeys = hotKeys;
+        this.clicksPerSecondTrackers = clicksPerSecondTrackers;
     }
 
     public void activate() {
@@ -266,28 +329,32 @@ public class CombatSession {
             this.opponents.put(closestPlayer.getUniqueID(), new Opponent(closestPlayer));
         }
 
-        this.startingInventory = thePlayer.inventory.mainInventory.clone();
-        this.startingArmor = thePlayer.inventory.armorInventory.clone();
-        this.lastHeldItemIndex = thePlayer.inventory.currentItem;
+        this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
 
-        this.endingArmor = thePlayer.inventory.armorInventory.clone();
-        this.endingInventory = thePlayer.inventory.mainInventory.clone();
+        this.startingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
+        this.startingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
+        this.lastHeldItemIndex =  thePlayer.inventory.currentItem;
 
-        this.previousPotionEffects = thePlayer.getActivePotionEffects();
+        this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
+        this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
     }
 
     public void tick() {
-        this.ticksSinceAction++;
-
         if (this.lastAttackTimer > 0) {
             this.lastAttackTimer--;
         } else {
-            attackType = Integer.MIN_VALUE;
+            this.lastAttackType = Integer.MIN_VALUE;
         }
 
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
-        if (thePlayer == null) {
-            end();
+        if (thePlayer == null || thePlayer.getDistance(thePlayer.prevPosX, thePlayer.prevPosY, thePlayer.prevPosZ) > 50) {
+            this.end();
+            return;
+        } else if (thePlayer.capabilities.allowFlying || thePlayer.isInvisible()) {
+            this.end();
+            return;
+        } else if (this.allOpponentsAreGone()) {
+            this.end();
             return;
         }
 
@@ -309,17 +376,6 @@ public class CombatSession {
             this.hitByFishingHook = entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != thePlayer.getUniqueID();
         }
 
-        if (thePlayer.getDistance(thePlayer.prevPosX, thePlayer.prevPosY, thePlayer.prevPosZ) > 50) {
-            end();
-            return;
-        } else if (thePlayer.capabilities.allowFlying || thePlayer.isInvisible()) {
-            end();
-            return;
-        } else if (allOpponentsAreGone()) {
-            end();
-            return;
-        }
-
         if (this.lastHeldItemIndex != thePlayer.inventory.currentItem) {
             this.heldItemChange();
         }
@@ -327,21 +383,42 @@ public class CombatSession {
 
         this.potionEffectChange();
 
-        if (Logic.isWithinRange(getNonNullElementCount(this.endingArmor), getNonNullElementCount(thePlayer.inventory.armorInventory), 1)) {
-            this.endingArmor = thePlayer.inventory.armorInventory.clone();
+        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingArmor), this.getNonNullElementCount(thePlayer.inventory.armorInventory), 1)) {
+            this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory);
         }
-        if (Logic.isWithinRange(getNonNullElementCount(this.endingInventory), getNonNullElementCount(thePlayer.inventory.mainInventory), 3)) {
-            this.endingInventory = thePlayer.inventory.mainInventory.clone();
+        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingInventory), this.getNonNullElementCount(thePlayer.inventory.mainInventory), 3)) {
+            this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory);
         }
+
+        if (this.ticksSinceLeftClick >= 10) {
+            ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
+            if (clicksPerSecondTracker.getClicksPerSecond() >= 6 && !clicksPerSecondTracker.hasEnded()) {
+                clicksPerSecondTracker.end();
+                this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
+            } else if (clicksPerSecondTracker.getLeftClicks() != 0) {
+                clicksPerSecondTracker.resetClicks();
+            }
+        }
+
+        this.ticksSinceAction++;
+        this.ticksSinceLeftClick++;
     }
 
     private boolean allOpponentsAreGone() {
-        for (Opponent opponent : opponents.values()) {
-            if (!(opponent.opponent == null || opponent.opponent.isInvisible() || opponent.opponent.isDead)) {
+        for (Opponent opponent : this.opponents.values()) {
+            if (!(opponent.opponent.isInvisible() || opponent.opponent.isDead)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private int getNonNullElementCount(List<?> objects) {
+        int nonNullCount = 0;
+        for (Object object : objects) {
+            if (object != null) nonNullCount++;
+        }
+        return nonNullCount;
     }
 
     private int getNonNullElementCount(Object[] objects) {
@@ -359,10 +436,14 @@ public class CombatSession {
             if (currentItem != Core.mainHotBarSlot.getValue() - 1) {
                 this.hotKeys.add(new HotKeyTracker());
             }
-        } else if (getLatestHotKeyTracker().hasEnded() && currentItem != Core.mainHotBarSlot.getValue() - 1) {
-            this.hotKeys.add(new HotKeyTracker());
-        } else if (!(hotKeyTracker = this.getLatestHotKeyTracker()).hasEnded() && currentItem == Core.mainHotBarSlot.getValue() - 1) {
-            hotKeyTracker.end();
+        }
+        if (this.hotKeys.size() != 0) {
+            if (!(hotKeyTracker = this.getLatestHotKeyTracker()).hasEnded() && currentItem == Core.mainHotBarSlot.getValue() - 1) {
+                hotKeyTracker.end();
+            }
+            if (this.getLatestHotKeyTracker().hasEnded() && currentItem != Core.mainHotBarSlot.getValue() - 1) {
+                this.hotKeys.add(new HotKeyTracker());
+            }
         }
     }
 
@@ -409,6 +490,7 @@ public class CombatSession {
 
     public void arrowShot() {
         this.updateTicksSinceAction();
+        if (this.rightClicks == 0) this.rightClicks = 1;
         this.arrowsShot++;
     }
 
@@ -428,6 +510,9 @@ public class CombatSession {
 
     public void projectileThrown(int type) {
         this.updateTicksSinceAction();
+        if (this.rightClicks == 0) {
+            this.rightClicks = 1;
+        }
         this.projectilesThrown++;
     }
 
@@ -448,6 +533,10 @@ public class CombatSession {
 
     public void attack(EntityPlayer target) {
         this.updateTicksSinceAction();
+        if (this.attacksSent == 0) {
+            this.attacksSent = 1;
+            this.leftClicks = 1;
+        }
         this.lastAttackType = 0;
         this.lastAttackTimer = 5;
         this.getOpponent(target).attacksLanded++;
@@ -466,7 +555,7 @@ public class CombatSession {
         if (this.lastAttackTimer > 0) {
             switch (this.lastAttackType) {
                 case 0:
-                    this.getOpponent(player).onOpponentHit(criticalHit);
+                    this.getOpponent(player).onOpponentHit(this.criticalHit);
                     break;
                 case 1:
                     this.getOpponent(player).arrowsHit++;
@@ -496,12 +585,21 @@ public class CombatSession {
         this.updateTicksSinceAction();
         this.leftClicks++;
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
-        EntityPlayer closestPlayer = getClosestPlayer();
-        if (thePlayer != null && closestPlayer != null && thePlayer.getDistanceToEntity(closestPlayer) <= 3.01) {
-            this.attacksSent++;
-            this.getOpponent(closestPlayer).attacksSent++;
+        EntityPlayer closestPlayer = this.getClosestPlayer();
+        if (thePlayer != null && closestPlayer != null) {
+            if (thePlayer.getDistanceToEntity(closestPlayer) <= 3.01) {
+                this.attacksSent++;
+                this.getOpponent(closestPlayer).attacksSent++;
+            }
+            if (thePlayer.getDistanceToEntity(closestPlayer) <= 6) {
+                this.ticksSinceLeftClick = 0;
+                this.getLatestClicksPerSecondCounter().incrementClicks();
+            }
         }
+    }
 
+    private ClicksPerSecondTracker getLatestClicksPerSecondCounter() {
+        return this.clicksPerSecondTrackers.get(this.clicksPerSecondTrackers.size() - 1);
     }
 
     private EntityPlayer getClosestPlayer() {
@@ -529,33 +627,24 @@ public class CombatSession {
         boolean leftIsDown = Keyboard.isKeyDown(Minecraft.getMinecraft().gameSettings.keyBindLeft.getKeyCode());
         boolean rightIsDown = Keyboard.isKeyDown(Minecraft.getMinecraft().gameSettings.keyBindRight.getKeyCode());
 
-        StrafingTracker strafingTracker;
-        if (state) {
-            if (leftIsDown && !rightIsDown) {
-                if (strafes.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded()) strafingTracker.end();
-                this.strafes.add(new StrafingTracker(false));
-            } else if (!leftIsDown && rightIsDown) {
-                this.strafes.add(new StrafingTracker(true));
-            } else if (rightIsDown && this.strafes.size() != 0 && !this.getLatestStrafingTracker().hasEnded()) {
-                this.getLatestStrafingTracker().end();
-            }
-        } else {
-            if (leftIsDown && !rightIsDown) {
-                if (strafes.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded()) strafingTracker.end();
-                this.strafes.add(new StrafingTracker(false));
-            } else if (!leftIsDown && rightIsDown) {
-                if (strafes.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded()) strafingTracker.end();
-                this.strafes.add(new StrafingTracker(true));
-            } else if (strafes.size() != 0) {
-                if (!this.getLatestStrafingTracker().hasEnded()) {
-                    this.getLatestStrafingTracker().end();
-                }
-            }
+        if (leftIsDown && !rightIsDown) {
+            this.checkAndEndAddStrafing(false);
+        } else if (!leftIsDown && rightIsDown) {
+            this.checkAndEndAddStrafing(true);
+        } else if (this.strafes.size() != 0 && !this.getLatestStrafingTracker().hasEnded()) {
+            this.getLatestStrafingTracker().end();
         }
     }
 
+    private void checkAndEndAddStrafing(boolean isRightStrafe) {
+        StrafingTracker strafingTracker;
+        if (this.strafes.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded())
+            strafingTracker.end();
+        this.strafes.add(new StrafingTracker(isRightStrafe));
+    }
+
     private StrafingTracker getLatestStrafingTracker() {
-        return strafes.get(strafes.size() - 1);
+        return this.strafes.get(this.strafes.size() - 1);
     }
 
     public void end() {
@@ -565,6 +654,7 @@ public class CombatSession {
         for (Opponent opponent : this.opponents.values()) {
             opponent.end();
         }
+
         HotKeyTracker hotKeyTracker;
         if (this.hotKeys.size() != 0 && !(hotKeyTracker = this.hotKeys.get(this.hotKeys.size() - 1)).hasEnded()) {
             hotKeyTracker.end();
@@ -579,21 +669,17 @@ public class CombatSession {
         if (this.strafes.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded()) {
             strafingTracker.end();
         }
+
+        ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
+        if ((clicksPerSecondTracker.getClicksPerSecond() >= 6 && !clicksPerSecondTracker.hasEnded()) || this.clicksPerSecondTrackers.size() == 0) {
+            clicksPerSecondTracker.end();
+        }
+
+        if (Core.logSessions.getValue()) {
+            Core.combatSessionLogger.plainLog(this.toString());
+        }
     }
 
-    @Override
-    public String toString() {
-        JsonObject asJsonObject = new JsonObject();
-
-        JsonObject information = new JsonObject();
-
-        information.addProperty("id", id);
-        information.addProperty("startTime", startTime);
-        information.addProperty("endTime", endTime);
-        information.addProperty("serverIp", serverIp);
-
-        return asJsonObject.toString();
-    }
 
     public int getProjectilesTaken() {
         return this.projectilesTaken;
@@ -637,6 +723,23 @@ public class CombatSession {
 
     public int getArrowsTaken() {
         return this.arrowsTaken;
+    }
+
+    public String getAverageClicksPerSecond() {
+        if (this.clicksPerSecondTrackers.size() == 0 || (this.clicksPerSecondTrackers.size() == 1 && !this.getLatestClicksPerSecondCounter().hasEnded()))
+            return "0";
+
+        double totalAverage = 0;
+        double trackers = 0;
+
+        for (ClicksPerSecondTracker clicksPerSecondTracker : this.clicksPerSecondTrackers) {
+            if (clicksPerSecondTracker.hasEnded()) {
+                totalAverage += clicksPerSecondTracker.getClicksPerSecond();
+                trackers++;
+            }
+        }
+
+        return Text.shortenDouble((totalAverage / trackers), 1);
     }
 
     public String getAttackAccuracy() {
@@ -696,20 +799,7 @@ public class CombatSession {
 
         for (ItemStack itemStack : this.startingArmor) {
             if (itemStack != null) {
-                Integer stackSize;
-                for (ItemStack itemStack1 : map.keySet()) {
-                    if (itemStack.getItem().getRegistryName().equals(itemStack1.getItem().getRegistryName())) {
-                        itemStack = itemStack1;
-                        break;
-                    }
-                }
-
-                if ((stackSize = map.get(itemStack)) != null) {
-                    map.remove(itemStack);
-                    map.put(itemStack, stackSize + itemStack.stackSize);
-                } else {
-                    map.put(itemStack, itemStack.stackSize);
-                }
+                map.put(itemStack, itemStack.stackSize);
             }
         }
         return map;
@@ -744,20 +834,7 @@ public class CombatSession {
 
         for (ItemStack itemStack : this.endingArmor) {
             if (itemStack != null) {
-                Integer stackSize;
-                for (ItemStack itemStack1 : map.keySet()) {
-                    if (itemStack.getItem().getRegistryName().equals(itemStack1.getItem().getRegistryName())) {
-                        itemStack = itemStack1;
-                        break;
-                    }
-                }
-
-                if ((stackSize = map.get(itemStack)) != null) {
-                    map.remove(itemStack);
-                    map.put(itemStack, stackSize + itemStack.stackSize);
-                } else {
-                    map.put(itemStack, itemStack.stackSize);
-                }
+                map.put(itemStack, itemStack.stackSize);
             }
         }
         return map;
@@ -775,6 +852,147 @@ public class CombatSession {
         return this.hotKeys;
     }
 
+    public long getTime() {
+        return this.endTime - this.startTime;
+    }
+
+    @Override
+    public String toString() {
+        JsonObject asJsonObject = new JsonObject();
+        asJsonObject.addProperty("id", this.id);
+        asJsonObject.addProperty("version", this.version);
+        asJsonObject.addProperty("startTime", this.startTime);
+        asJsonObject.addProperty("endTime", this.endTime);
+        asJsonObject.addProperty("serverIp", this.serverIp);
+        asJsonObject.add("opponents",  Miscellaneous.toJsonArrayString(new ArrayList<>(this.opponents.values())));
+        asJsonObject.addProperty("leftClicks", this.leftClicks);
+        asJsonObject.addProperty("rightClicks", this.rightClicks);
+        asJsonObject.addProperty("attacksSent", this.attacksSent);
+        asJsonObject.addProperty("attacksLanded", this.attacksLanded);
+        asJsonObject.addProperty("projectilesThrown", this.projectilesThrown);
+        asJsonObject.addProperty("projectilesHit", this.projectilesHit);
+        asJsonObject.addProperty("arrowsShot", this.arrowsShot);
+        asJsonObject.addProperty("arrowsHit", this.arrowsHit);
+        asJsonObject.addProperty("hitsTaken", this.hitsTaken);
+        asJsonObject.addProperty("arrowsTaken", this.arrowsTaken);
+        asJsonObject.addProperty("projectilesTaken", this.projectilesTaken);
+        asJsonObject.add("startingInventory", itemStackArrayToJsonArray(this.startingInventory));
+        asJsonObject.add("startingArmor", itemStackArrayToJsonArray(this.startingArmor));
+        asJsonObject.add("endingInventory", itemStackArrayToJsonArray(this.endingInventory));
+        asJsonObject.add("endingArmor", itemStackArrayToJsonArray(this.endingArmor));
+        asJsonObject.add("potionEffects", Miscellaneous.toJsonArrayString(this.potionEffects));
+        asJsonObject.add("strafes", Miscellaneous.toJsonArrayString(this.strafes));
+        asJsonObject.add("hotKeys", Miscellaneous.toJsonArrayString(this.hotKeys));
+        asJsonObject.add("clicksPerSecondTrackers", Miscellaneous.toJsonArrayString(this.clicksPerSecondTrackers));
+
+        return asJsonObject.toString();
+    }
+    
+    private static JsonArray itemStackArrayToJsonArray(List<ItemStack> itemStacks) {
+        JsonArray asJsonArray = new JsonArray();
+        
+        for (ItemStack itemStack : itemStacks) {
+            if (itemStack != null) {
+                asJsonArray.add(new JsonPrimitive(itemStack.serializeNBT().toString()));
+            }
+        }
+        return asJsonArray;
+    }
+
+    public static CombatSession fromJson(String json) throws Exception {
+        JsonObject jsonObject = new JsonParser().parse(json).getAsJsonObject();
+
+        int id = jsonObject.get("id").getAsInt();
+        String version = jsonObject.get("version").getAsString();
+        long startTime = jsonObject.get("startTime").getAsLong();
+        long endTime = jsonObject.get("endTime").getAsLong();
+        String serverIp = jsonObject.get("serverIp").getAsString();
+        List<Opponent> opponents = jsonArrayToOpponentList(jsonObject.get("opponents").getAsJsonArray());
+        int leftClicks = jsonObject.get("leftClicks").getAsInt();
+        int rightClicks = jsonObject.get("rightClicks").getAsInt();
+        int attacksSent = jsonObject.get("attacksSent").getAsInt();
+        int attacksLanded = jsonObject.get("attacksLanded").getAsInt();
+        int projectilesThrown = jsonObject.get("projectilesThrown").getAsInt();
+        int projectilesHit = jsonObject.get("projectilesHit").getAsInt();
+        int arrowsShot = jsonObject.get("arrowsShot").getAsInt();
+        int arrowsHit = jsonObject.get("arrowsHit").getAsInt();
+        int hitsTaken = jsonObject.get("hitsTaken").getAsInt();
+        int arrowsTaken = jsonObject.get("arrowsTaken").getAsInt();
+        int projectilesTaken = jsonObject.get("projectilesTaken").getAsInt();
+        List<ItemStack> startingInventory = jsonArrayToItemStackArray(jsonObject.get("startingInventory").getAsJsonArray());
+        List<ItemStack> startingArmor = jsonArrayToItemStackArray(jsonObject.get("startingArmor").getAsJsonArray());
+        List<ItemStack> endingInventory = jsonArrayToItemStackArray(jsonObject.get("endingInventory").getAsJsonArray());
+        List<ItemStack> endingArmor = jsonArrayToItemStackArray(jsonObject.get("endingArmor").getAsJsonArray());
+        List<PotionEffectTracker> potionEffects = jsonArrayToPotionEffectTrackerList(jsonObject.get("potionEffects").getAsJsonArray());
+        List<StrafingTracker> strafes = jsonArrayToStrafingTrackerList(jsonObject.get("strafes").getAsJsonArray());
+        List<HotKeyTracker> hotKeys = jsonArrayToHotKeyTrackerList(jsonObject.get("hotKeys").getAsJsonArray());
+        List<ClicksPerSecondTracker> clicksPerSecondTrackers = jsonArrayToClicksPerSecondTrackerList(jsonObject.get("clicksPerSecondTrackers").getAsJsonArray());
+
+        return new CombatSession(id, version, startTime, endTime, serverIp, opponents, leftClicks, rightClicks,
+                attacksSent, attacksLanded, projectilesThrown, projectilesHit, arrowsShot, arrowsHit, hitsTaken, arrowsTaken, projectilesTaken,
+                startingInventory, startingArmor, endingInventory, endingArmor, potionEffects, strafes, hotKeys, clicksPerSecondTrackers);
+    }
+    
+    private static List<Opponent> jsonArrayToOpponentList(JsonArray jsonArray) {
+        List<Opponent> opponents = new ArrayList<>();
+        
+        for (JsonElement jsonElement : jsonArray) {
+            opponents.add(Opponent.fromJson(jsonElement.getAsJsonObject()));
+        }
+        
+        return opponents;
+    }
+
+    private static List<PotionEffectTracker> jsonArrayToPotionEffectTrackerList(JsonArray jsonArray) throws NBTException {
+        List<PotionEffectTracker> potionEffectTrackers = new ArrayList<>();
+
+        for (JsonElement jsonElement : jsonArray) {
+            potionEffectTrackers.add(PotionEffectTracker.fromJson(jsonElement.getAsJsonObject()));
+        }
+
+        return potionEffectTrackers;
+    }
+
+    private static List<StrafingTracker> jsonArrayToStrafingTrackerList(JsonArray jsonArray) {
+        List<StrafingTracker> strafingTrackers = new ArrayList<>();
+
+        for (JsonElement jsonElement : jsonArray) {
+            strafingTrackers.add(StrafingTracker.fromJson(jsonElement.getAsJsonObject()));
+        }
+
+        return strafingTrackers;
+    }
+
+    private static List<HotKeyTracker> jsonArrayToHotKeyTrackerList(JsonArray jsonArray) throws NBTException {
+        List<HotKeyTracker> hotKeyTrackers = new ArrayList<>();
+
+        for (JsonElement jsonElement : jsonArray) {
+            hotKeyTrackers.add(HotKeyTracker.fromJson(jsonElement.getAsJsonObject()));
+        }
+
+        return hotKeyTrackers;
+    }
+
+    private static List<ClicksPerSecondTracker> jsonArrayToClicksPerSecondTrackerList(JsonArray jsonArray) {
+        List<ClicksPerSecondTracker> clicksPerSecondTrackers = new ArrayList<>();
+
+        for (JsonElement jsonElement : jsonArray) {
+            clicksPerSecondTrackers.add(ClicksPerSecondTracker.fromJson(jsonElement.getAsJsonObject()));
+        }
+
+        return clicksPerSecondTrackers;
+    }
+    
+    private static List<ItemStack> jsonArrayToItemStackArray(JsonArray jsonArray) throws NBTException {
+        List<ItemStack> itemStacks = new ArrayList<>();
+        
+        for (JsonElement jsonElement : jsonArray) {
+            itemStacks.add(ItemStack.loadItemStackFromNBT(JsonToNBT.getTagFromJson(jsonElement.getAsString())));
+        }
+
+        return itemStacks;
+    }
+
     public static class Opponent {
         private final EntityPlayer opponent;
         private final String name;
@@ -783,14 +1001,11 @@ public class CombatSession {
         private int criticalAttacksLanded = 0;
         private int opponentAttacksTaken = 0;
 
-        private final List<ComboTracker> combos = new ArrayList<>();
-
-        private int opponentMeleeCombo = 0;
-        private int meleeCombo = 0;
+        private final List<ComboTracker> combos;
 
         private int hitsTaken = 0;
-        private int projectilesTaken = 0;
         private int arrowsTaken = 0;
+        private int projectilesTaken = 0;
 
         private int arrowsHit = 0;
         private int projectilesHit = 0;
@@ -800,14 +1015,30 @@ public class CombatSession {
         public Opponent(EntityPlayer opponent) {
             this.opponent = opponent;
             this.name = opponent.getName();
-            combos.add(new ComboTracker());
+            this.combos = new ArrayList<>();
+            this.combos.add(new ComboTracker());
+        }
+
+        public Opponent(String name, int attacksSent, int attacksLanded, int criticalAttacksLanded, int opponentAttacksTaken, List<ComboTracker> combos, int hitsTaken, int arrowsTaken, int projectilesTaken, int arrowsHit, int projectilesHit) {
+            this.opponent = null;
+            this.name = name;
+            this.attacksSent = attacksSent;
+            this.attacksLanded = attacksLanded;
+            this.criticalAttacksLanded = criticalAttacksLanded;
+            this.opponentAttacksTaken = opponentAttacksTaken;
+            this.combos = combos;
+            this.hitsTaken = hitsTaken;
+            this.arrowsTaken = arrowsTaken;
+            this.projectilesTaken = projectilesTaken;
+            this.arrowsHit = arrowsHit;
+            this.projectilesHit = projectilesHit;
         }
 
         public void tick() {
             List<Entity> closestOpponentEntities = Minecraft.getMinecraft().theWorld.
                     getEntitiesWithinAABBExcludingEntity(
-                            opponent,
-                            opponent.getEntityBoundingBox().addCoord(opponent.motionX, opponent.motionY, opponent.motionZ).expand(1.0D, 1.0D, 1.0D));
+                            this.opponent,
+                            this.opponent.getEntityBoundingBox().addCoord(this.opponent.motionX, this.opponent.motionY, this.opponent.motionZ).expand(1.0D, 1.0D, 1.0D));
 
             for (Entity entity : closestOpponentEntities) {
                 this.opponentHitByFishingHook = entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != opponent.getUniqueID();
@@ -816,16 +1047,12 @@ public class CombatSession {
 
         private void onOpponentHit(boolean criticalHit) {
             this.opponentAttacksTaken++;
-            this.meleeCombo++;
-            this.opponentMeleeCombo = 0;
             if (criticalHit) this.criticalAttacksLanded++;
             this.getLatestComboTracker().incrementComboCount();
         }
 
         private void onDamage() {
             this.hitsTaken++;
-            this.opponentMeleeCombo++;
-            this.meleeCombo = 0;
             if (this.getLatestComboTracker().getComboCount() >= 3) {
                 this.getLatestComboTracker().end();
                 this.combos.add(new ComboTracker());
@@ -892,6 +1119,52 @@ public class CombatSession {
         public int getProjectilesHit() {
             return this.projectilesHit;
         }
+
+        @Override
+        public String toString() {
+            JsonObject asJsonObject = new JsonObject();
+            asJsonObject.addProperty("name", this.name);
+            asJsonObject.addProperty("attacksSent", this.attacksSent);
+            asJsonObject.addProperty("attacksLanded", this.attacksLanded);
+            asJsonObject.addProperty("criticalAttacksLanded", this.criticalAttacksLanded);
+            asJsonObject.addProperty("opponentAttacksTaken", this.opponentAttacksTaken);
+            asJsonObject.add("combos", Miscellaneous.toJsonArrayString(combos));
+            asJsonObject.addProperty("hitsTaken", this.hitsTaken);
+            asJsonObject.addProperty("arrowsTaken", this.arrowsTaken);
+            asJsonObject.addProperty("projectilesTaken", this.projectilesTaken);
+            asJsonObject.addProperty("arrowsHit", this.arrowsHit);
+            asJsonObject.addProperty("projectilesHit", this.projectilesHit);
+            return asJsonObject.toString();
+        }
+
+        public static Opponent fromJson(JsonObject jsonObject) {
+            String name = jsonObject.get("name").getAsString();
+            int attacksSent = jsonObject.get("attacksSent").getAsInt();
+            int attacksLanded = jsonObject.get("attacksLanded").getAsInt();
+            int criticalAttacksLanded = jsonObject.get("criticalAttacksLanded").getAsInt();
+            int opponentAttacksTaken = jsonObject.get("opponentAttacksTaken").getAsInt();
+            List<ComboTracker> combos = combosToList(jsonObject.get("combos").getAsJsonArray());
+            int hitsTaken = jsonObject.get("hitsTaken").getAsInt();
+            int arrowsTaken = jsonObject.get("arrowsTaken").getAsInt();
+            int projectilesTaken = jsonObject.get("projectilesTaken").getAsInt();
+            int arrowsHit = jsonObject.get("arrowsHit").getAsInt();
+            int projectilesHit = jsonObject.get("projectilesHit").getAsInt();
+
+            return new Opponent(name, attacksSent, attacksLanded, criticalAttacksLanded, opponentAttacksTaken, combos, hitsTaken, arrowsTaken, projectilesTaken, arrowsHit, projectilesHit);
+        }
+
+        private static List<ComboTracker> combosToList(JsonArray jsonArray) {
+            List<ComboTracker> combos = new ArrayList<>();
+
+            for (JsonElement jsonElement : jsonArray) {
+                try {
+                    combos.add(ComboTracker.fromJson(jsonElement.getAsString()));
+                } catch (Exception exception) {
+
+                }
+            }
+            return combos;
+        }
     }
 
     public static class HotKeyTracker {
@@ -906,6 +1179,13 @@ public class CombatSession {
             this.startTime = System.currentTimeMillis();
         }
 
+        private HotKeyTracker(long startTime, long endTime, int index, ItemStack itemStack) {
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.index = index;
+            this.itemStack = itemStack;
+        }
+
         public void end() {
             this.endTime = System.currentTimeMillis();
         }
@@ -914,24 +1194,35 @@ public class CombatSession {
             return this.endTime != 0;
         }
 
-        public int getIndex() {
-            return this.index;
-        }
-
-        public Item getItem() {
-            return this.itemStack == null ? null : this.itemStack.getItem();
-        }
-
-        public long getStartTime() {
-            return this.startTime;
-        }
-
-        public long getEndTime() {
-            return this.endTime;
-        }
-
         public ItemStack getItemStack() {
             return this.itemStack;
+        }
+
+        public long getTime() {
+            return this.endTime - this.startTime;
+        }
+
+        @Override
+        public String toString() {
+            JsonObject asJsonObject = new JsonObject();
+            asJsonObject.addProperty("startTime", startTime);
+            asJsonObject.addProperty("endTime", endTime);
+            asJsonObject.addProperty("index", index);
+            asJsonObject.addProperty("itemStack", itemStack == null ? "null" : itemStack.serializeNBT().toString());
+            return asJsonObject.toString();
+        }
+
+        public static HotKeyTracker fromJson(JsonObject jsonObject) throws NBTException {
+            long startTime = jsonObject.get("startTime").getAsLong();
+            long endTime = jsonObject.get("endTime").getAsLong();
+            int index = jsonObject.get("index").getAsInt();
+            ItemStack itemStack = null;
+            String asJson;
+            if (!(asJson = jsonObject.get("itemStack").getAsString()).equals("null")) {
+                itemStack = ItemStack.loadItemStackFromNBT(JsonToNBT.getTagFromJson(asJson));
+            }
+
+            return new HotKeyTracker(startTime, endTime, index, itemStack);
         }
     }
 
@@ -945,6 +1236,13 @@ public class CombatSession {
             this.potionEffect = potionEffect;
             this.startTime = System.currentTimeMillis();
             this.totalDuration = potionEffect.getDuration();
+        }
+
+        private PotionEffectTracker(long startTime, long endTime, PotionEffect potionEffect, int totalDuration) {
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.potionEffect = potionEffect;
+            this.totalDuration = totalDuration;
         }
 
         public void end() {
@@ -970,6 +1268,25 @@ public class CombatSession {
         public int getTotalDuration() {
             return totalDuration;
         }
+
+        @Override
+        public String toString() {
+            JsonObject asJsonObject = new JsonObject();
+            asJsonObject.addProperty("startTime", this.startTime);
+            asJsonObject.addProperty("endTime", this.endTime);
+            asJsonObject.addProperty("potionEffect", this.potionEffect.writeCustomPotionEffectToNBT(new NBTTagCompound()).toString());
+            asJsonObject.addProperty("totalDuration", this.totalDuration);
+            return asJsonObject.toString();
+        }
+
+        public static PotionEffectTracker fromJson(JsonObject jsonObject) throws NBTException {
+            long startTime = jsonObject.get("startTime").getAsLong();
+            long endTime = jsonObject.get("endTime").getAsLong();
+            PotionEffect potionEffect = PotionEffect.readCustomPotionEffectFromNBT(JsonToNBT.getTagFromJson(jsonObject.get("potionEffect").getAsString()));
+            int totalDuration = jsonObject.get("totalDuration").getAsInt();
+
+            return new PotionEffectTracker(startTime, endTime, potionEffect, totalDuration);
+        }
     }
 
     public static class StrafingTracker {
@@ -980,6 +1297,12 @@ public class CombatSession {
         public StrafingTracker(boolean isRightStrafe) {
             this.isRightStrafe = isRightStrafe;
             this.startTime = System.currentTimeMillis();
+        }
+
+        private StrafingTracker(long startTime, long endTime, boolean isRightStrafe) {
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.isRightStrafe = isRightStrafe;
         }
 
         public void end() {
@@ -1001,6 +1324,27 @@ public class CombatSession {
         public long getEndTime() {
             return this.endTime;
         }
+
+        public long getTime() {
+            return this.endTime - this.startTime;
+        }
+
+        @Override
+        public String toString() {
+            JsonObject asJsonObject = new JsonObject();
+            asJsonObject.addProperty("startTime", this.startTime);
+            asJsonObject.addProperty("endTime", this.endTime);
+            asJsonObject.addProperty("isRightStrafe", this.isRightStrafe);
+            return asJsonObject.toString();
+        }
+
+        public static StrafingTracker fromJson(JsonObject jsonObject) {
+            long startTime = jsonObject.get("startTime").getAsLong();
+            long endTime = jsonObject.get("endTime").getAsLong();
+            boolean isRightStrafe = jsonObject.get("isRightStrafe").getAsBoolean();
+
+            return new StrafingTracker(startTime, endTime, isRightStrafe);
+        }
     }
 
     public static class ComboTracker {
@@ -1009,6 +1353,12 @@ public class CombatSession {
         private int comboCount = 0;
 
         public ComboTracker() {
+        }
+
+        private ComboTracker(long startTime, long endTime, int comboCount) {
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.comboCount = comboCount;
         }
 
         public void end() {
@@ -1038,6 +1388,99 @@ public class CombatSession {
 
         public long getEndTime() {
             return this.endTime;
+        }
+
+        public long getTime() {
+            return this.endTime - this.startTime;
+        }
+
+        @Override
+        public String toString() {
+            JsonObject asJsonObject = new JsonObject();
+            asJsonObject.addProperty("startTime", this.startTime);
+            asJsonObject.addProperty("endTime", this.endTime);
+            asJsonObject.addProperty("comboCount", this.comboCount);
+            return asJsonObject.toString();
+        }
+
+        public static ComboTracker fromJson(String json) {
+            JsonObject jsonObject = new JsonParser().parse(json).getAsJsonObject();
+
+            long startTime = jsonObject.get("startTime").getAsLong();
+            long endTime = jsonObject.get("endTime").getAsLong();
+            int comboCount = jsonObject.get("comboCount").getAsInt();
+
+            return new ComboTracker(startTime, endTime, comboCount);
+        }
+    }
+
+    private static class ClicksPerSecondTracker {
+        private long startTime;
+        private long endTime = 0;
+        private int leftClicks;
+        private boolean ended = false;
+
+        public ClicksPerSecondTracker() {
+        }
+
+        private ClicksPerSecondTracker(long startTime, long endTime, int leftClicks, boolean ended) {
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.leftClicks = leftClicks;
+            this.ended = ended;
+        }
+
+        public void incrementClicks() {
+            if (this.leftClicks == 0) this.startTime = System.currentTimeMillis();
+            this.leftClicks++;
+            this.endTime = System.currentTimeMillis();
+        }
+
+        public void resetClicks() {
+            this.ended = false;
+            this.leftClicks = 0;
+        }
+
+        public int getLeftClicks() {
+            return this.leftClicks;
+        }
+
+        public boolean hasEnded() {
+            return this.ended;
+        }
+
+        public void end() {
+            this.ended = true;
+        }
+
+        public long getStartTime() {
+            return startTime;
+        }
+
+        public long getEndTime() {
+            return endTime;
+        }
+
+        public double getClicksPerSecond() {
+            return this.endTime == 0 ? 0 : 1000 * this.leftClicks / (double) (this.endTime - this.startTime);
+        }
+
+        @Override
+        public String toString() {
+            JsonObject asJsonObject = new JsonObject();
+            asJsonObject.addProperty("startTime", this.startTime);
+            asJsonObject.addProperty("endTime", this.endTime);
+            asJsonObject.addProperty("leftClicks", this.leftClicks);
+            asJsonObject.addProperty("ended", this.ended);
+            return asJsonObject.toString();
+        }
+
+        public static ClicksPerSecondTracker fromJson(JsonObject jsonObject) {
+            long startTime = jsonObject.get("startTime").getAsLong();
+            long endTime = jsonObject.get("endTime").getAsLong();
+            int leftClicks = jsonObject.get("leftClicks").getAsInt();
+
+            return new ClicksPerSecondTracker(startTime, endTime, leftClicks, true);
         }
     }
 }

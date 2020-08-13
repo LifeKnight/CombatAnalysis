@@ -70,13 +70,14 @@ public class CombatSessionGui extends BaseGui {
 
             basicData.add("Server: " + this.combatSession.getServerIp());
             basicData.add("Date: " + Miscellaneous.getTimeAndDate(this.combatSession.getStartTime()));
-            basicData.add("Duration: " + Text.formatTimeFromMilliseconds(this.combatSession.getEndTime() - this.combatSession.getStartTime()));
+            basicData.add("Duration: " + Text.formatTimeFromMilliseconds(this.combatSession.getTime(), 2));
 
             super.createListPanel("Details", basicData).setColor(Color.RED);
 
             List<String> overall = new ArrayList<>();
             overall.add("Left Clicks: " + this.combatSession.getLeftClicks());
             overall.add("Right Clicks: " + this.combatSession.getRightClicks());
+            overall.add("Average CPS: " + this.combatSession.getAverageClicksPerSecond());
             overall.add("");
             overall.add("Melee Accuracy: " + this.combatSession.getAttackAccuracy());
             overall.add("Arrow Accuracy: " + this.combatSession.getArrowAccuracy());
@@ -91,7 +92,10 @@ public class CombatSessionGui extends BaseGui {
             List<String> strafing = new ArrayList<>();
 
             for (CombatSession.StrafingTracker strafingTracker : this.combatSession.getStrafes()) {
-                strafing.add((strafingTracker.isRightStrafe() ? ">" : "<") + " - " + Text.formatTimeFromMilliseconds(strafingTracker.getEndTime() - strafingTracker.getStartTime()));
+                long time = strafingTracker.getTime();
+                if (time != 0L) {
+                    strafing.add((strafingTracker.isRightStrafe() ? ">" : "<") + " - " + Text.formatTimeFromMilliseconds(strafingTracker.getTime(), 0) + "ms");
+                }
             }
 
             super.createListPanel("Strafes", strafing.size() != 0 ? strafing : Collections.singletonList("There are no strafes to display."));
@@ -137,7 +141,7 @@ public class CombatSessionGui extends BaseGui {
                 List<String> combos = new ArrayList<>();
                 for (CombatSession.ComboTracker comboTracker : opponent.getCombos()) {
                     if (comboTracker.getComboCount() >= 3) {
-                        combos.add(Text.formatTimeFromMilliseconds(comboTracker.getEndTime() - comboTracker.getStartTime()) + " - " + comboTracker.getComboCount());
+                        combos.add(Text.formatTimeFromMilliseconds(comboTracker.getTime(), 2) + " - " + comboTracker.getComboCount());
                     }
                 }
                 super.createListPanel("Combos - " + opponent.getName(), combos.size() == 0 ? Collections.singletonList("No combos to display.") : combos).setColor(Color.CYAN);
@@ -185,7 +189,7 @@ public class CombatSessionGui extends BaseGui {
 
             for (CombatSession.HotKeyTracker hotKeyTracker : this.hotKeyTrackers) {
                 int width = 16 +
-                        fontRenderer.getStringWidth(" - " + Text.formatTimeFromMilliseconds(hotKeyTracker.getEndTime() - hotKeyTracker.getStartTime()));
+                        fontRenderer.getStringWidth(" - " + Text.formatTimeFromMilliseconds(hotKeyTracker.getTime(), 0) + "ms");
                 longestWidth = Math.max(longestWidth, width);
             }
             return Math.max(fontRenderer.getStringWidth(this.name) + 15, longestWidth + 15);
@@ -206,10 +210,10 @@ public class CombatSessionGui extends BaseGui {
                         CombatSession.HotKeyTracker hotKeyTracker = this.hotKeyTrackers.get(i);
                         if (hotKeyTracker.getItemStack() != null) {
                             Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(
-                                    hotKeyTracker.getItemStack(), this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 + 2 + this.yOffsetPosition
+                                    hotKeyTracker.getItemStack(), this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 +  + this.yOffsetPosition
                             );
                         }
-                        fontRenderer.drawString(" - " + Text.formatTimeFromMilliseconds(hotKeyTracker.getEndTime() - hotKeyTracker.getStartTime()), this.xPosition + 5 + this.xOffsetPosition + 16, this.yPosition + 14 + i * 20 + 9 + this.yOffsetPosition, 0xffffffff);
+                        fontRenderer.drawString(" - " + Text.formatTimeFromMilliseconds(hotKeyTracker.getTime(), 0) + "ms", this.xPosition + 5 + this.xOffsetPosition + 16, this.yPosition + 14 + i * 20 + 7 + this.yOffsetPosition, 0xffffffff);
                     }
                 }
                 GL11.glDisable(GL11.GL_SCISSOR_TEST);
@@ -234,8 +238,7 @@ public class CombatSessionGui extends BaseGui {
             FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
 
             if (this.itemStacks.size() == 0) {
-                    return Math.max(fontRenderer.getStringWidth(this.name) + 15, fontRenderer.getStringWidth("No items to display.") + 10);
-
+                return Math.max(fontRenderer.getStringWidth(this.name) + 15, fontRenderer.getStringWidth("No items to display.") + 10);
             }
 
             for (ItemStack itemStack : this.itemStacks.keySet()) {
@@ -306,7 +309,7 @@ public class CombatSessionGui extends BaseGui {
                 PotionEffect potionEffect = potionEffectTracker.getPotionEffect();
                 longestWidth = Math.max(longestWidth, Math.max(
                         fontRenderer.getStringWidth(
-                                Text.formatTimeFromMilliseconds(potionEffectTracker.getStartTime() - this.combatSessionStartTime) +
+                                Text.formatTimeFromMilliseconds(potionEffectTracker.getStartTime() - this.combatSessionStartTime, 2) +
                                         " (" + StringUtils.ticksToElapsedTime(potionEffectTracker.getTotalDuration()) + ")"),
                         fontRenderer.getStringWidth(potionEffect.getEffectName())) + 25);
             }
@@ -356,7 +359,7 @@ public class CombatSessionGui extends BaseGui {
                         }
 
                         fontRenderer.drawString(s1, x + 22, y + 25 * i, 0xffffffff);
-                        String s = Text.formatTimeFromMilliseconds(potionEffectTracker.getStartTime() - this.combatSessionStartTime) + " (" + StringUtils.ticksToElapsedTime(potionEffectTracker.getTotalDuration()) + ")";
+                        String s = Text.formatTimeFromMilliseconds(potionEffectTracker.getStartTime() - this.combatSessionStartTime, 2) + " (" + StringUtils.ticksToElapsedTime(potionEffectTracker.getTotalDuration()) + ")";
                         fontRenderer.drawString(s, x + 22, y + 25 * i + 10, 0xffffffff);
                     }
                 }

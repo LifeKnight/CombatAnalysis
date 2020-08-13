@@ -6,6 +6,7 @@ import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Logger;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
+import com.lifeknight.combatanalysis.variables.LifeKnightList;
 import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
@@ -36,6 +37,8 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
@@ -59,18 +62,32 @@ public class Core {
     public static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
     public static final LifeKnightBoolean logSessions = new LifeKnightBoolean("Log Sessions", "Settings", true);
-    public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main Hotbar Slot", "Settings", 1, 1, 9);
+    public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main HotBar Slot", "Settings", 1, 1, 9);
+    public static final LifeKnightList.LifeKnightIntegerList deletedSessionIds = new LifeKnightList.LifeKnightIntegerList("Deleted Session IDs", "Extra");
     public static final Logger combatSessionLogger = new Logger(new File("logs/combatsessions"));
+    private static final List<Long> leftClicks = new ArrayList<>();
     public static Configuration configuration;
+
+    /*
+    Make hotkey show multiple of same item
+    Remove strafe entries that are 0 long
+    Change text time format to have argument for time measures (hours, minutes, etc.)
+    Fix Hotkey display, match inventory armor
+    Settings button under navigate, opening GUI where you can change the things that appear or search for certain analyses
+    toString, interpret from json
+    Add clicks if necessary for CombatSession when activated
+    */
 
     @EventHandler
     public void init(FMLInitializationEvent initEvent) {
         MinecraftForge.EVENT_BUS.register(this);
         ClientCommandHandler.instance.registerCommand(new ModCommand());
 
+        deletedSessionIds.setShowInLifeKnightGui(false);
+
         Miscellaneous.createEnhancedHudTextDefaultPropertyVariables();
         
-        createEnhancedHudTexts();
+        this.createEnhancedHudTexts();
 
         configuration = new Configuration();
 
@@ -166,6 +183,19 @@ public class Core {
             @Override
             public String getTextToDisplay() {
                 return String.valueOf(CombatSession.projectilesTaken());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("CPS", 0, 700, "CPS") {
+            @Override
+            public String getTextToDisplay() {
+                leftClicks.removeIf( time -> time < System.currentTimeMillis() - 1000L);
+                return String.valueOf(leftClicks.size());
             }
 
             @Override
@@ -270,6 +300,7 @@ public class Core {
         if (runMod.getValue() && Mouse.getEventButtonState()) {
             if (Mouse.getEventButton() == 0) {
                 CombatSession.onLeftClick();
+                leftClicks.add(System.currentTimeMillis());
             } else if (Mouse.getEventButton() == 1) {
                 CombatSession.onRightClick();
             }

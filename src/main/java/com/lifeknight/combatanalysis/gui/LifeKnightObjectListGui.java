@@ -30,7 +30,7 @@ public class LifeKnightObjectListGui extends GuiScreen {
 
     public LifeKnightObjectListGui(LifeKnightObjectList lifeKnightObjectList) {
         this.lifeKnightObjectList = lifeKnightObjectList;
-        lastGui = null;
+        this.lastGui = null;
     }
 
     public LifeKnightObjectListGui(LifeKnightObjectList lifeKnightObjectList, GuiScreen lastGui) {
@@ -46,11 +46,7 @@ public class LifeKnightObjectListGui extends GuiScreen {
         this.searchField.drawTextBoxAndName();
 
         if (this.listItemButtons.size() != 0) {
-            int panelHeight = this.listItemButtons.size() * 30;
-
-            this.scrollBar.height = (int) (this.height * (this.height / (double) panelHeight));
             int j = Mouse.getDWheel() / 7;
-            this.scrollBar.visible = !(this.scrollBar.height >= this.height);
             while (j > 0 && this.listItemButtons.get(0).yPosition + j > 10) {
                 j--;
             }
@@ -61,9 +57,8 @@ public class LifeKnightObjectListGui extends GuiScreen {
             for (ListItemButton listItemButton : this.listItemButtons) {
                 listItemButton.yPosition += j;
             }
+            int panelHeight = this.listItemButtons.size() * 30;
             this.scrollBar.yPosition = (int) ((this.height * (-this.listItemButtons.get(0).yPosition - 10) / (double) (panelHeight - this.height)) * ((this.height - scrollBar.height) / (double) this.height)) + 8;
-        } else {
-            this.scrollBar.visible = false;
         }
 
         super.drawScreen(mouseX, mouseY, partialTicks);
@@ -139,6 +134,10 @@ public class LifeKnightObjectListGui extends GuiScreen {
                 }
             }
         });
+        int panelHeight = this.listItemButtons.size() * 30;
+
+        this.scrollBar.height = (int) (this.height * (this.height / (double) panelHeight));
+        this.scrollBar.visible = this.scrollBar.height < this.height;
 
         if (this.lastGui != null) {
             super.buttonList.add(new LifeKnightButton("Back", 5, 5, 5, 50) {

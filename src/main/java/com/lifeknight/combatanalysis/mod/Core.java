@@ -11,6 +11,7 @@ import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
@@ -63,19 +64,15 @@ public class Core {
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
     public static final LifeKnightBoolean logSessions = new LifeKnightBoolean("Log Sessions", "Settings", true);
     public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main HotBar Slot", "Settings", 1, 1, 9);
+    public static final KeyBinding toggleCombatSessionKeyBinding = new KeyBinding("Toggle combat session", 0x1B, MOD_NAME);
     public static final LifeKnightList.LifeKnightIntegerList deletedSessionIds = new LifeKnightList.LifeKnightIntegerList("Deleted Session IDs", "Extra");
+    public static final LifeKnightList.LifeKnightIntegerList wonSessionIds = new LifeKnightList.LifeKnightIntegerList("Won Session IDS", "Extra");
     public static final Logger combatSessionLogger = new Logger(new File("logs/combatsessions"));
     private static final List<Long> leftClicks = new ArrayList<>();
     public static Configuration configuration;
-
     /*
-    Make hotkey show multiple of same item
-    Remove strafe entries that are 0 long
-    Change text time format to have argument for time measures (hours, minutes, etc.)
-    Fix Hotkey display, match inventory armor
     Settings button under navigate, opening GUI where you can change the things that appear or search for certain analyses
-    toString, interpret from json
-    Add clicks if necessary for CombatSession when activated
+    Add ending health field
     */
 
     @EventHandler
@@ -84,6 +81,7 @@ public class Core {
         ClientCommandHandler.instance.registerCommand(new ModCommand());
 
         deletedSessionIds.setShowInLifeKnightGui(false);
+        wonSessionIds.setShowInLifeKnightGui(false);
 
         Miscellaneous.createEnhancedHudTextDefaultPropertyVariables();
         
@@ -256,9 +254,6 @@ public class Core {
                 break;
             case "arrow":
                 CombatSession.onHitByArrow((EntityPlayer) damageSource.getEntity());
-                break;
-            case "thrown":
-                CombatSession.onHitByProjectile((EntityPlayer) damageSource.getEntity());
                 break;
         }
     }

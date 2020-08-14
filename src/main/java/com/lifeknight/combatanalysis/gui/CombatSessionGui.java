@@ -5,17 +5,10 @@ import com.lifeknight.combatanalysis.mod.CombatSession;
 import com.lifeknight.combatanalysis.mod.Core;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
-import javafx.scene.text.Font;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.WorldRenderer;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.resources.I18n;
-import net.minecraft.client.resources.model.IBakedModel;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
@@ -28,20 +21,22 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 
+import static net.minecraft.util.EnumChatFormatting.*;
+
 public class CombatSessionGui extends BaseGui {
     private final CombatSession combatSession;
     private final String panelMessage;
+    private final List<CombatSession> combatSessions;
     private final int index;
     private final int combatSessionSize;
-    private final List<CombatSession> combatSessions;
 
     public CombatSessionGui(CombatSession combatSession) {
         this.combatSession = combatSession;
-        this.panelMessage = combatSession == null ? EnumChatFormatting.GRAY + "There is no combat session to display" : "";
-        this.name = "Combat Session";
+        this.panelMessage = combatSession == null ? GRAY + "There is no combat session to display" : "";
         this.combatSessions = CombatSession.getCombatSessionsForGui();
         this.index = combatSession == null ? Integer.MIN_VALUE : this.combatSessions.indexOf(combatSession);
         this.combatSessionSize = this.combatSessions.size();
+        this.name = "Combat Session";
     }
 
     @Override
@@ -53,7 +48,7 @@ public class CombatSessionGui extends BaseGui {
                 super.buttonList.add(new LifeKnightButton(super.buttonList.size(), this.width - 200 - 20, 10, 20, 20, "<") {
                     @Override
                     public void work() {
-                        Core.openGui(new CombatSessionGui(CombatSessionGui.this.combatSessions.get(index - 1)));
+                        Core.openGui(new CombatSessionGui(CombatSessionGui.this.combatSessions.get(CombatSessionGui.this.index - 1)));
                     }
                 });
             }
@@ -61,7 +56,7 @@ public class CombatSessionGui extends BaseGui {
                 super.buttonList.add(new LifeKnightButton(super.buttonList.size(), this.width - 140, 10, 20, 20, ">") {
                     @Override
                     public void work() {
-                        Core.openGui(new CombatSessionGui(CombatSessionGui.this.combatSessions.get(index + 1)));
+                        Core.openGui(new CombatSessionGui(CombatSessionGui.this.combatSessions.get(CombatSessionGui.this.index + 1)));
                     }
                 });
             }
@@ -71,6 +66,10 @@ public class CombatSessionGui extends BaseGui {
             basicData.add("Server: " + this.combatSession.getServerIp());
             basicData.add("Date: " + Miscellaneous.getTimeAndDate(this.combatSession.getStartTime()));
             basicData.add("Duration: " + Text.formatTimeFromMilliseconds(this.combatSession.getTime(), 2));
+            basicData.add(this.combatSession.isWon() ? GREEN + "Won" + RESET + String.format("(%f/20)", this.combatSession.getEndingHealth()) : RED + "Lost");
+            basicData.add("");
+            basicData.add("Version: " + this.combatSession.getVersion());
+            basicData.add("Status: " + (this.combatSession.isDeleted() ? "Deleted" : "Available"));
 
             super.createListPanel("Details", basicData).setColor(Color.RED);
 
@@ -92,10 +91,7 @@ public class CombatSessionGui extends BaseGui {
             List<String> strafing = new ArrayList<>();
 
             for (CombatSession.StrafingTracker strafingTracker : this.combatSession.getStrafes()) {
-                long time = strafingTracker.getTime();
-                if (time != 0L) {
-                    strafing.add((strafingTracker.isRightStrafe() ? ">" : "<") + " - " + Text.formatTimeFromMilliseconds(strafingTracker.getTime(), 0) + "ms");
-                }
+                strafing.add((strafingTracker.isRightStrafe() ? ">" : "<") + " - " + Text.formatTimeFromMilliseconds(strafingTracker.getTime(), 0) + "ms");
             }
 
             super.createListPanel("Strafes", strafing.size() != 0 ? strafing : Collections.singletonList("There are no strafes to display."));
@@ -124,27 +120,29 @@ public class CombatSessionGui extends BaseGui {
             endingInventory.setColor(Color.GREEN);
             super.guiPanels.add(endingInventory);
 
-            for (CombatSession.Opponent opponent : this.combatSession.getOpponents()) {
+            for (CombatSession.OpponentTracker opponentTracker : this.combatSession.getOpponents()) {
                 List<String> data = new ArrayList<>();
-                data.add("Melee Hits: " + opponent.getOpponentAttacksTaken());
-                data.add("Critical Hits Dealt: " + opponent.getCriticalAttacksLanded());
-                data.add("Times Shot: " + opponent.getArrowsHit());
-                data.add("Projectile Hits: " + opponent.getProjectilesHit());
+                data.add("Melee Hits: " + opponentTracker.getOpponentAttacksTaken());
+                data.add("Critical Hits Dealt: " + opponentTracker.getCriticalAttacksLanded());
+                data.add("Times Shot: " + opponentTracker.getArrowsHit());
+                data.add("Projectile Hits: " + opponentTracker.getProjectilesHit());
                 data.add("");
-                data.add("Melee Accuracy: " + opponent.attackAccuracy());
+                data.add("Melee Accuracy: " + opponentTracker.attackAccuracy());
                 data.add("");
-                data.add("Melee Hits Taken: " + opponent.getHitsTaken());
-                data.add("Shots Taken: " + opponent.getArrowsTaken());
-                data.add("Projectiles Taken: " + opponent.getProjectilesTaken());
-                super.createListPanel(opponent.getName(), data).setColor(Color.YELLOW);
+                data.add("Melee Hits Taken: " + opponentTracker.getHitsTaken());
+                data.add("Shots Taken: " + opponentTracker.getArrowsTaken());
+                data.add("Projectiles Taken: " + opponentTracker.getProjectilesTaken());
+                super.createListPanel(opponentTracker.getName(), data).setColor(Color.YELLOW);
+
+                InventoryPanel opponentStartingArmor = new InventoryPanel(opponentTracker.getName() + " - Armor", opponentTracker.getOpponentStartingArmor());
+                opponentStartingArmor.setColor(Color.BLACK);
+                super.guiPanels.add(opponentStartingArmor);
 
                 List<String> combos = new ArrayList<>();
-                for (CombatSession.ComboTracker comboTracker : opponent.getCombos()) {
-                    if (comboTracker.getComboCount() >= 3) {
-                        combos.add(Text.formatTimeFromMilliseconds(comboTracker.getTime(), 2) + " - " + comboTracker.getComboCount());
-                    }
+                for (CombatSession.ComboTracker comboTracker : opponentTracker.getCombos()) {
+                    combos.add(Text.formatTimeFromMilliseconds(comboTracker.getTime(), 2) + " - " + comboTracker.getComboCount());
                 }
-                super.createListPanel("Combos - " + opponent.getName(), combos.size() == 0 ? Collections.singletonList("No combos to display.") : combos).setColor(Color.CYAN);
+                super.createListPanel("Combos - " + opponentTracker.getName(), combos.size() == 0 ? Collections.singletonList("No combos to display.") : combos).setColor(Color.CYAN);
             }
         }
         super.initGui();
@@ -345,7 +343,7 @@ public class CombatSessionGui extends BaseGui {
                         Minecraft.getMinecraft().getTextureManager().bindTexture(new ResourceLocation("textures/gui/container/inventory.png"));
                         if (potion.hasStatusIcon()) {
                             int i1 = potion.getStatusIconIndex();
-                            drawTexturedModalRect(x + 1, y + 1 + 25 * i, i1 % 8 * 18, 198 + i1 / 8 * 18, 18, 18);
+                            super.drawTexturedModalRect(x + 1, y + 1 + 25 * i, i1 % 8 * 18, 198 + i1 / 8 * 18, 18, 18);
                         }
                         potion.renderInventoryEffect(x + 1, y + 1 + 25 * i, potionEffect, Minecraft.getMinecraft());
                         String s1 = I18n.format(potion.getName());

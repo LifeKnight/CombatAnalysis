@@ -5,9 +5,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.lifeknight.combatanalysis.gui.hud.EnhancedHudText;
+import com.lifeknight.combatanalysis.mod.Core;
 import com.lifeknight.combatanalysis.variables.LifeKnightCycle;
 import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraftforge.fml.common.FMLLog;
+import org.apache.logging.log4j.Level;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -169,5 +172,17 @@ public class Miscellaneous {
 		}
 
 		return asJsonArray;
+	}
+
+	public static void info(String info, Object... data) {
+		FMLLog.info(Core.MOD_NAME + " > " + info, data);
+	}
+
+	public static void logWarn(String warn, Object... data) {
+		FMLLog.log(Level.WARN, Core.MOD_NAME + " > " + warn, data);
+	}
+
+	public static void logError(String error, Object... data) {
+		FMLLog.log(Level.ERROR, Core.MOD_NAME + " > " + error, data);
 	}
 }

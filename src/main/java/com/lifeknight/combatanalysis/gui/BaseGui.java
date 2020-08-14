@@ -37,7 +37,7 @@ public class BaseGui extends GuiScreen {
         GlStateManager.pushMatrix();
         double scale = 5 * (Video.getGameWidth() / (double) Video.getSupposedWidth());
         GlStateManager.scale(scale, scale, scale);
-        this.fontRendererObj.drawString(name, 1, 2, 0xffffffff, true);
+        this.fontRendererObj.drawString(this.name, 1, 2, 0xffffffff, true);
         GlStateManager.popMatrix();
 
         Render.drawHorizontalLine(0, this.width, 55, new float[]{255, 255, 255}, 255F, 2);
@@ -49,8 +49,6 @@ public class BaseGui extends GuiScreen {
         this.searchField.drawTextBoxAndName();
 
         if (this.visibleGuiPanels.size() != 0) {
-            this.scrollBar.height = (int) ((this.height - 56) * ((this.height - 56) / (double) this.panelHeight));
-            this.scrollBar.visible = this.scrollBar.height < this.height - 55 - 5;
             int j = Mouse.getDWheel() / 7;
             if (j != 0 && this.notHoveringOver(mouseX, mouseY, j)) {
                 if (((j > 0) && this.scrollBar.yPosition > 0) || ((j < 0) && this.scrollBar.yPosition + this.scrollBar.height < super.height)) {
@@ -80,9 +78,7 @@ public class BaseGui extends GuiScreen {
                 }
             }
             this.scrollBar.yPosition = (int) (((-(visibleGuiPanels.get(0).yPosition - 65)) / (this.panelHeight - (double) (this.height - 56))) * (this.height - 56 - this.scrollBar.height) + 56);
-            this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.panelWidth));
             this.horizontalScrollBar.xPosition = (int) ((-visibleGuiPanels.get(0).xPosition / (this.panelWidth - (double) this.width)) * (this.width - this.horizontalScrollBar.width));
-            this.horizontalScrollBar.visible = this.horizontalScrollBar.width < this.width - 5;
         }
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
@@ -138,77 +134,6 @@ public class BaseGui extends GuiScreen {
             }
         }
 
-        this.scrollBar = new ScrollBar() {
-            @Override
-            protected void onMousePress() {
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
-                    guiPanel.updateOriginals();
-                }
-            }
-
-            @Override
-            public void onDrag(int scroll) {
-                scroll = -scroll;
-                int scaledScroll = (int) (scroll * BaseGui.this.panelHeight / (double) BaseGui.this.height);
-                while (scaledScroll > 0 && BaseGui.this.visibleGuiPanels.get(0).originalYPosition + 5 + scaledScroll > 65) {
-                    scaledScroll--;
-                }
-                while (scaledScroll < 0 && this.getLastPanelEndY() + 5 + scaledScroll < BaseGui.this.height) {
-                    scaledScroll++;
-                }
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
-                    guiPanel.yPosition = guiPanel.originalYPosition + scaledScroll;
-                }
-            }
-
-            private int getLastPanelEndY() {
-                int lastPanelEndY = 0;
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
-                    if (guiPanel.originalYPosition + guiPanel.height > lastPanelEndY) {
-                        lastPanelEndY = guiPanel.originalYPosition + guiPanel.height;
-                    }
-                }
-                return lastPanelEndY;
-            }
-        };
-
-        super.buttonList.add(this.scrollBar);
-
-        this.horizontalScrollBar = new ScrollBar.HorizontalScrollBar() {
-            @Override
-            protected void onMousePress() {
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
-                    guiPanel.updateOriginals();
-                }
-            }
-
-            @Override
-            public void onDrag(int scroll) {
-                scroll = -scroll;
-                int scaledScroll = (int) (scroll * BaseGui.this.panelWidth / (double) BaseGui.this.width);
-                while (scaledScroll > 0 && BaseGui.this.visibleGuiPanels.get(0).originalXPosition + scaledScroll > 5) {
-                    scaledScroll--;
-                }
-                while (scaledScroll < 0 && getRightMostPanelEndX() + 5 + scaledScroll < BaseGui.this.width - 5) {
-                    scaledScroll++;
-                }
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
-                    guiPanel.xPosition = guiPanel.originalXPosition + scaledScroll;
-                }
-            }
-
-            protected int getRightMostPanelEndX() {
-                int lastPanelEndX = 0;
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
-                    if (guiPanel.originalXPosition + guiPanel.width > lastPanelEndX) {
-                        lastPanelEndX = guiPanel.originalXPosition + guiPanel.width;
-                    }
-                }
-                return lastPanelEndX;
-            }
-        };
-
-        super.buttonList.add(this.horizontalScrollBar);
 
         if (this.uniformHeight) {
             List<List<GuiPanel>> guiPanelRowList = new ArrayList<>();
@@ -264,6 +189,82 @@ public class BaseGui extends GuiScreen {
             this.panelHeight = Math.max(panelHeight, current.yPosition + current.height - 45);
             this.panelWidth = Math.max(panelWidth, current.xPosition + current.width);
         }
+
+        this.scrollBar = new ScrollBar() {
+            @Override
+            protected void onMousePress() {
+                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                    guiPanel.updateOriginals();
+                }
+            }
+
+            @Override
+            public void onDrag(int scroll) {
+                scroll = -scroll;
+                int scaledScroll = (int) (scroll * BaseGui.this.panelHeight / (double) BaseGui.this.height);
+                while (scaledScroll > 0 && BaseGui.this.visibleGuiPanels.get(0).originalYPosition + 5 + scaledScroll > 65) {
+                    scaledScroll--;
+                }
+                while (scaledScroll < 0 && this.getLastPanelEndY() + 5 + scaledScroll < BaseGui.this.height) {
+                    scaledScroll++;
+                }
+                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                    guiPanel.yPosition = guiPanel.originalYPosition + scaledScroll;
+                }
+            }
+
+            private int getLastPanelEndY() {
+                int lastPanelEndY = 0;
+                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                    if (guiPanel.originalYPosition + guiPanel.height > lastPanelEndY) {
+                        lastPanelEndY = guiPanel.originalYPosition + guiPanel.height;
+                    }
+                }
+                return lastPanelEndY;
+            }
+        };
+        this.scrollBar.height = (int) ((this.height - 56) * ((this.height - 56) / (double) this.panelHeight));
+        this.scrollBar.visible = this.scrollBar.height < this.height - 55 - 5;
+
+        super.buttonList.add(this.scrollBar);
+
+        this.horizontalScrollBar = new ScrollBar.HorizontalScrollBar() {
+            @Override
+            protected void onMousePress() {
+                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                    guiPanel.updateOriginals();
+                }
+            }
+
+            @Override
+            public void onDrag(int scroll) {
+                scroll = -scroll;
+                int scaledScroll = (int) (scroll * BaseGui.this.panelWidth / (double) BaseGui.this.width);
+                while (scaledScroll > 0 && BaseGui.this.visibleGuiPanels.get(0).originalXPosition + scaledScroll > 5) {
+                    scaledScroll--;
+                }
+                while (scaledScroll < 0 && getRightMostPanelEndX() + 5 + scaledScroll < BaseGui.this.width - 5) {
+                    scaledScroll++;
+                }
+                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                    guiPanel.xPosition = guiPanel.originalXPosition + scaledScroll;
+                }
+            }
+
+            protected int getRightMostPanelEndX() {
+                int lastPanelEndX = 0;
+                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                    if (guiPanel.originalXPosition + guiPanel.width > lastPanelEndX) {
+                        lastPanelEndX = guiPanel.originalXPosition + guiPanel.width;
+                    }
+                }
+                return lastPanelEndX;
+            }
+        };
+        this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.panelWidth));
+        this.horizontalScrollBar.visible = this.horizontalScrollBar.width < this.width - 5;
+
+        super.buttonList.add(this.horizontalScrollBar);
     }
 
     @Override
@@ -343,67 +344,76 @@ public class BaseGui extends GuiScreen {
 
             if (this.height > 150) {
                 this.height = 150;
-                scrollBar = new ScrollBar(-1, this.xPosition + this.width - 5, this.yPosition, 4, getPanelHeight()) {
-                    @Override
-                    protected void onMousePress() {
-                        GuiPanel.this.originalYOffsetPosition = GuiPanel.this.yOffsetPosition;
-                    }
-
-                    @Override
-                    public void onDrag(int scroll) {
-                        scroll = -scroll;
-                        int scaledScroll = (int) (scroll * GuiPanel.this.getPanelHeight() / (double) (GuiPanel.this.height - 14));
-                        while (scaledScroll > 0 && GuiPanel.this.originalYOffsetPosition + 2 + scaledScroll > 2) {
-                            scaledScroll--;
+                int modifiedHeight = this.height - 14;
+                if ((int) (modifiedHeight * (modifiedHeight / (double) this.getPanelHeight())) < modifiedHeight - 5) {
+                    this.scrollBar = new ScrollBar(-1, this.xPosition + this.width - 5, this.yPosition, 4, getPanelHeight()) {
+                        @Override
+                        protected void onMousePress() {
+                            GuiPanel.this.originalYOffsetPosition = GuiPanel.this.yOffsetPosition;
                         }
-                        while (scaledScroll < 0 && GuiPanel.this.getLastElementEndY() + 2 + scaledScroll < GuiPanel.this.yPosition + GuiPanel.this.height - 2) {
-                            scaledScroll++;
-                        }
-                        GuiPanel.this.yOffsetPosition = GuiPanel.this.originalYOffsetPosition + scaledScroll;
-                    }
 
-                    @Override
-                    public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-                        GlStateManager.pushMatrix();
-                        GuiPanel.this.scissor();
-                        GL11.glEnable(GL11.GL_SCISSOR_TEST);
-                        super.drawButton(mc, mouseX, mouseY);
-                        GL11.glDisable(GL11.GL_SCISSOR_TEST);
-                        GlStateManager.popMatrix();
-                    }
-                };
+                        @Override
+                        public void onDrag(int scroll) {
+                            scroll = -scroll;
+                            int scaledScroll = (int) (scroll * GuiPanel.this.getPanelHeight() / (double) (GuiPanel.this.height - 14));
+                            while (scaledScroll > 0 && GuiPanel.this.originalYOffsetPosition + 2 + scaledScroll > 2) {
+                                scaledScroll--;
+                            }
+                            while (scaledScroll < 0 && GuiPanel.this.getLastElementEndY() + 2 + scaledScroll < GuiPanel.this.yPosition + GuiPanel.this.height - 2) {
+                                scaledScroll++;
+                            }
+                            GuiPanel.this.yOffsetPosition = GuiPanel.this.originalYOffsetPosition + scaledScroll;
+                        }
+
+                        @Override
+                        public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+                            GlStateManager.pushMatrix();
+                            GuiPanel.this.scissor();
+                            GL11.glEnable(GL11.GL_SCISSOR_TEST);
+                            super.drawButton(mc, mouseX, mouseY);
+                            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+                            GlStateManager.popMatrix();
+                        }
+                    };
+                    this.scrollBar.height = (int) (modifiedHeight * (modifiedHeight / (double) this.getPanelHeight()));
+                    this.scrollBar.visible = true;
+                }
             }
             if (this.width > 250) {
                 this.width = 250;
-                this.horizontalScrollBar = new ScrollBar.HorizontalScrollBar(-1, this.xPosition, this.yPosition + this.height - 5, this.width, 4) {
-                    @Override
-                    protected void onMousePress() {
-                        GuiPanel.this.originalXOffsetPosition = GuiPanel.this.xOffsetPosition;
-                    }
-
-                    @Override
-                    public void onDrag(int scroll) {
-                        scroll = -scroll;
-                        int scaledScroll = (int) (scroll * GuiPanel.this.getPanelWidth() / (double) GuiPanel.this.width);
-                        while (scaledScroll > 0 && GuiPanel.this.originalXOffsetPosition + scaledScroll > 0) {
-                            scaledScroll--;
+                if ((int) (this.width * (this.width / (double) this.getPanelWidth())) < this.width - 5) {
+                    this.horizontalScrollBar = new ScrollBar.HorizontalScrollBar(-1, this.xPosition, this.yPosition + this.height - 5, this.width, 4) {
+                        @Override
+                        protected void onMousePress() {
+                            GuiPanel.this.originalXOffsetPosition = GuiPanel.this.xOffsetPosition;
                         }
-                        while (scaledScroll < 0 && GuiPanel.this.getLongestElementEndX() + scaledScroll < GuiPanel.this.xPosition + GuiPanel.this.width - 5) {
-                            scaledScroll++;
-                        }
-                        GuiPanel.this.xOffsetPosition = GuiPanel.this.originalXOffsetPosition + scaledScroll;
-                    }
 
-                    @Override
-                    public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-                        GlStateManager.pushMatrix();
-                        GuiPanel.this.scissor();
-                        GL11.glEnable(GL11.GL_SCISSOR_TEST);
-                        super.drawButton(mc, mouseX, mouseY);
-                        GL11.glDisable(GL11.GL_SCISSOR_TEST);
-                        GlStateManager.popMatrix();
-                    }
-                };
+                        @Override
+                        public void onDrag(int scroll) {
+                            scroll = -scroll;
+                            int scaledScroll = (int) (scroll * GuiPanel.this.getPanelWidth() / (double) GuiPanel.this.width);
+                            while (scaledScroll > 0 && GuiPanel.this.originalXOffsetPosition + scaledScroll > 0) {
+                                scaledScroll--;
+                            }
+                            while (scaledScroll < 0 && GuiPanel.this.getLongestElementEndX() + scaledScroll < GuiPanel.this.xPosition + GuiPanel.this.width - 5) {
+                                scaledScroll++;
+                            }
+                            GuiPanel.this.xOffsetPosition = GuiPanel.this.originalXOffsetPosition + scaledScroll;
+                        }
+
+                        @Override
+                        public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+                            GlStateManager.pushMatrix();
+                            GuiPanel.this.scissor();
+                            GL11.glEnable(GL11.GL_SCISSOR_TEST);
+                            super.drawButton(mc, mouseX, mouseY);
+                            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+                            GlStateManager.popMatrix();
+                        }
+                    };
+                    this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.getPanelWidth()));
+                    this.horizontalScrollBar.visible = true;
+                }
             }
         }
 
@@ -428,7 +438,6 @@ public class BaseGui extends GuiScreen {
         protected void updateDimensions() {
             this.width = this.getPanelWidth();
             this.height = this.getPanelHeight() + 14;
-
         }
 
         protected int getLastElementEndY() {
@@ -455,15 +464,11 @@ public class BaseGui extends GuiScreen {
             if (this.visible && this.yPosition + this.height > 56) {
                 if (this.scrollBar != null) {
                     int modifiedHeight = this.height - 14;
-                    this.scrollBar.height = (int) (modifiedHeight * (modifiedHeight / (double) this.getPanelHeight()));
                     this.scrollBar.yPosition = (int) (this.yPosition + (modifiedHeight * (-this.yOffsetPosition / (double) this.getPanelHeight()))) + 14;
-                    this.scrollBar.visible = this.scrollBar.height < modifiedHeight - 5;
                     this.scrollBar.xPosition = this.xPosition + this.width - 5;
                 }
-                if (horizontalScrollBar != null) {
+                if (this.horizontalScrollBar != null) {
                     this.horizontalScrollBar.xPosition = (int) (this.xPosition + (this.width * (-this.xOffsetPosition / (double) this.getPanelWidth())));
-                    this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.getPanelWidth()));
-                    this.horizontalScrollBar.visible = this.horizontalScrollBar.width < this.width - 5;
                     this.horizontalScrollBar.yPosition = this.yPosition + this.height - 5;
                 }
                 GlStateManager.pushMatrix();

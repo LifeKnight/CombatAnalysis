@@ -2,6 +2,7 @@ package com.lifeknight.combatanalysis.gui.components;
 
 import com.lifeknight.combatanalysis.gui.Manipulable;
 import com.lifeknight.combatanalysis.utilities.Logic;
+import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Render;
 import com.lifeknight.combatanalysis.utilities.Video;
 import net.minecraft.client.Minecraft;
@@ -117,7 +118,7 @@ public class ManipulableButton extends GuiButton {
     @Override
     public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
         if (this.visible) {
-            Render.drawEmptyBox(this.getManipulableXPosition(), this.getManipulableYPosition(), this.getManipulableXPosition() + this.getManipulableWidth(), this.getManipulableYPosition() + this.getManipulableHeight() + 1, this.isSelectedButton ? Color.RED : Color.WHITE, 255F, 1);
+            Render.drawEmptyBox(this.getManipulableXPosition() - 1, this.getManipulableYPosition() - 1, this.getManipulableXPosition() + this.getManipulableWidth() + 1, this.getManipulableYPosition() + this.getManipulableHeight() + 1, this.isSelectedButton ? Color.RED : Color.WHITE, 255F, 1);
 
             if (this.isSelectedButton) {
                 this.scaleButtons[0].xPosition = this.xPosition;
@@ -179,7 +180,7 @@ public class ManipulableButton extends GuiButton {
                 return true;
             }
         } else if (this.isSelectedButton) {
-            if (oneOfScaledButtonsPressed(minecraft, mouseX, mouseY)) {
+            if (this.oneOfScaledButtonsPressed(minecraft, mouseX, mouseY)) {
                 return true;
             }
             boolean oneOfExtrasClicked = this.oneOfButtonsPressed(minecraft, mouseX, mouseY);
@@ -242,7 +243,10 @@ public class ManipulableButton extends GuiButton {
                         break;
                     }
                     xIterations++;
-                    if (xIterations > 10000) break;
+                    if (xIterations > 10000) {
+                        Miscellaneous.logWarn("X-iteration check exceeded 10000; breaking.");
+                        break;
+                    }
                 }
                 this.xPosition = newXPosition;
             }
@@ -261,7 +265,10 @@ public class ManipulableButton extends GuiButton {
                         break;
                     }
                     yIterations++;
-                    if (yIterations > 10000) break;
+                    if (yIterations > 10000) {
+                        Miscellaneous.logWarn("Y-iteration check exceeded 10000; breaking.");
+                        break;
+                    }
                 }
                 this.yPosition = newYPosition;
             }

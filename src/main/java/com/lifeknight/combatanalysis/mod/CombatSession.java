@@ -9,7 +9,9 @@ import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.entity.projectile.EntityEgg;
 import net.minecraft.entity.projectile.EntityFishHook;
+import net.minecraft.entity.projectile.EntitySnowball;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.NBTException;
@@ -17,10 +19,9 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.world.WorldSettings;
-import net.minecraftforge.fml.common.FMLLog;
-import org.apache.logging.log4j.Level;
 import org.lwjgl.input.Keyboard;
 
+import java.io.IOException;
 import java.util.*;
 
 public class CombatSession {
@@ -29,28 +30,34 @@ public class CombatSession {
     private static boolean sessionIsRunning = false;
     private static int attackTimer = 0;
     private static int attackType;
+    private static final JsonParser jsonParser = new JsonParser();
 
     public static void readLoggedCombatSessions() {
         for (String log : Core.combatSessionLogger.getLogs()) {
-            Scanner scanner = new Scanner(log);
-            String line;
-            while (scanner.hasNextLine()) {
-                line = scanner.nextLine();
-                if (line.startsWith("{")) {
-                    try {
-                        CombatSession combatSession = fromJson(line);
-                        highestId = Math.max(highestId, combatSession.id);
-                        combatSessions.add(combatSession);
-                    } catch (Exception exception) {
-                        FMLLog.log(Level.WARN, "An error occurred while attempting to interpret a logged Combat Session: %s", exception.getMessage());
+            if (log != null) {
+                Scanner scanner = new Scanner(log);
+                String line;
+                while (scanner.hasNextLine()) {
+                    line = scanner.nextLine();
+                    if (line.startsWith("{")) {
+                        try {
+                            CombatSession combatSession = fromJson(line);
+                            highestId = Math.max(highestId, combatSession.id);
+                            combatSessions.add(combatSession);
+                        } catch (Exception exception) {
+                            Miscellaneous.logError("An error occurred while trying to interpret a Combat Session from logs: %s", exception.getMessage());
+                        }
                     }
                 }
+                scanner.close();
             }
         }
+        if (highestId != 0) highestId++;
     }
 
     private static boolean canStartCombatSession() {
-        if (Minecraft.getMinecraft().playerController.getCurrentGameType() != WorldSettings.GameType.SURVIVAL) return false;
+        if (Minecraft.getMinecraft().playerController.getCurrentGameType() != WorldSettings.GameType.SURVIVAL)
+            return false;
 
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
             if (entityPlayer != null && entityPlayer.getUniqueID() != Minecraft.getMinecraft().thePlayer.getUniqueID() &&
@@ -77,7 +84,7 @@ public class CombatSession {
     }
 
     public static CombatSession getLatestAnalysis() {
-        return !sessionIsRunning ? createAndActivate() : combatSessions.get(combatSessions.size() - 1);
+        return sessionIsRunning ? combatSessions.get(combatSessions.size() - 1) : createAndActivate();
     }
 
     public static CombatSession getLatestAnalysisForGui() {
@@ -135,11 +142,6 @@ public class CombatSession {
         }
     }
 
-    public static void onHitByProjectile(EntityPlayer thrower) {
-        if ((Core.automaticSessions.getValue() && canStartCombatSession()) || sessionIsRunning)
-            getLatestAnalysis().hitByProjectile(thrower, 1);
-    }
-
     public static void onAttack(EntityPlayer target) {
         if ((Core.automaticSessions.getValue() && canStartCombatSession()) || sessionIsRunning) {
             getLatestAnalysis().attack(target);
@@ -166,6 +168,13 @@ public class CombatSession {
     }
 
     public static void onKeyTyped(int keyCode, boolean state) {
+        if (keyCode == Core.toggleCombatSessionKeyBinding.getKeyCode()) {
+            if (sessionIsRunning) {
+                getLatestAnalysis().end();
+            } else {
+                createAndActivate();
+            }
+        }
         if (sessionIsRunning) getLatestAnalysis().keyTyped(keyCode, state);
     }
 
@@ -231,18 +240,17 @@ public class CombatSession {
     private long endTime;
     private boolean deleted = false;
     private final String serverIp;
+    private boolean won = false;
 
-    private int ticksSinceAction = 0;
     private int lastAttackType;
     private int lastAttackTimer = 0;
-    private final Map<UUID, Opponent> opponents;
+    private final Map<UUID, OpponentTracker> opponents;
 
     private int leftClicks = 0;
     private int rightClicks = 0;
 
     private int attacksSent = 0;
     private int attacksLanded = 0;
-    private boolean criticalHit = false;
 
     private int projectilesThrown = 0;
     private int projectilesHit = 0;
@@ -250,11 +258,14 @@ public class CombatSession {
     private int arrowsShot = 0;
     private int arrowsHit = 0;
 
+    private boolean hitByProjectile = false;
+
     private int hitsTaken = 0;
     private int arrowsTaken = 0;
     private boolean hitByArrow = false;
     private int projectilesTaken = 0;
-    private boolean hitByFishingHook = false;
+
+    private float endingHealth = 0F;
 
     // More fields such as armor and inventory items and potion effects
     private List<ItemStack> startingInventory;
@@ -279,7 +290,7 @@ public class CombatSession {
     private int ticksSinceLeftClick = 0;
 
     public CombatSession() {
-        this.id = ++highestId;
+        this.id = highestId++;
         this.serverIp = Minecraft.getMinecraft().getCurrentServerData().serverIP;
         this.opponents = new HashMap<>();
         this.potionEffects = new ArrayList<>();
@@ -288,15 +299,15 @@ public class CombatSession {
         this.clicksPerSecondTrackers = new ArrayList<>();
     }
 
-    public CombatSession(int id, String version, long startTime, long endTime, String serverIp, List<Opponent> opponents, int leftClicks, int rightClicks, int attacksSent, int attacksLanded, int projectilesThrown, int projectilesHit, int arrowsShot, int arrowsHit, int hitsTaken, int arrowsTaken, int projectilesTaken, List<ItemStack> startingInventory, List<ItemStack> startingArmor, List<ItemStack> endingInventory, List<ItemStack> endingArmor, List<PotionEffectTracker> potionEffects, List<StrafingTracker> strafes, List<HotKeyTracker> hotKeys, List<ClicksPerSecondTracker> clicksPerSecondTrackers) {
+    public CombatSession(int id, String version, long startTime, long endTime, String serverIp, List<OpponentTracker> opponentTrackers, int leftClicks, int rightClicks, int attacksSent, int attacksLanded, int projectilesThrown, int projectilesHit, int arrowsShot, int arrowsHit, int hitsTaken, int arrowsTaken, int projectilesTaken, float endingHealth, List<ItemStack> startingInventory, List<ItemStack> startingArmor, List<ItemStack> endingInventory, List<ItemStack> endingArmor, List<PotionEffectTracker> potionEffects, List<StrafingTracker> strafes, List<HotKeyTracker> hotKeys, List<ClicksPerSecondTracker> clicksPerSecondTrackers) {
         this.id = id;
         this.version = version;
         this.startTime = startTime;
         this.endTime = endTime;
         this.serverIp = serverIp;
         this.opponents = new HashMap<>();
-        for (Opponent opponent : opponents) {
-            this.opponents.put(UUID.randomUUID(), opponent);
+        for (OpponentTracker opponentTracker : opponentTrackers) {
+            this.opponents.put(UUID.randomUUID(), opponentTracker);
         }
         this.leftClicks = leftClicks;
         this.rightClicks = rightClicks;
@@ -309,6 +320,7 @@ public class CombatSession {
         this.hitsTaken = hitsTaken;
         this.arrowsTaken = arrowsTaken;
         this.projectilesTaken = projectilesTaken;
+        this.endingHealth = endingHealth;
         this.startingInventory = startingInventory;
         this.startingArmor = startingArmor;
         this.endingInventory = endingInventory;
@@ -317,6 +329,8 @@ public class CombatSession {
         this.strafes = strafes;
         this.hotKeys = hotKeys;
         this.clicksPerSecondTrackers = clicksPerSecondTrackers;
+        this.deleted = Core.deletedSessionIds.getValue().contains(this.id);
+        this.won = Core.wonSessionIds.getValue().contains(this.id);
     }
 
     public void activate() {
@@ -326,14 +340,16 @@ public class CombatSession {
 
         EntityPlayer closestPlayer;
         if ((closestPlayer = this.getClosestPlayer()) != null) {
-            this.opponents.put(closestPlayer.getUniqueID(), new Opponent(closestPlayer));
+            this.opponents.put(closestPlayer.getUniqueID(), new OpponentTracker(closestPlayer));
         }
 
         this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
 
+        this.endingHealth = thePlayer.getHealth();
+
         this.startingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
         this.startingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
-        this.lastHeldItemIndex =  thePlayer.inventory.currentItem;
+        this.lastHeldItemIndex = thePlayer.inventory.currentItem;
 
         this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
         this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
@@ -358,8 +374,22 @@ public class CombatSession {
             return;
         }
 
-        for (Opponent opponent : this.opponents.values()) {
-            opponent.tick();
+        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingArmor), this.getNonNullElementCount(thePlayer.inventory.armorInventory), 1)) {
+            this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
+        } else {
+            this.end();
+            return;
+        }
+
+        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingInventory), this.getNonNullElementCount(thePlayer.inventory.mainInventory), 3)) {
+            this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
+        } else {
+            this.end();
+            return;
+        }
+
+        for (OpponentTracker opponentTracker : this.opponents.values()) {
+            opponentTracker.tick();
         }
 
         List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
@@ -373,8 +403,18 @@ public class CombatSession {
                     this.hitByArrow = true;
                 }
             }
-            this.hitByFishingHook = entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != thePlayer.getUniqueID();
+            if (entity instanceof EntityEgg) {
+                if (((EntityEgg) entity).getThrower().getUniqueID() != thePlayer.getUniqueID()) {
+                    this.hitByProjectile = true;
+                }
+            } else if (entity instanceof EntitySnowball) {
+                if (((EntitySnowball) entity).getThrower().getUniqueID() != thePlayer.getUniqueID()) {
+                    this.hitByProjectile = true;
+                }
+            }
         }
+
+        this.endingHealth = thePlayer.getHealth();
 
         if (this.lastHeldItemIndex != thePlayer.inventory.currentItem) {
             this.heldItemChange();
@@ -383,16 +423,10 @@ public class CombatSession {
 
         this.potionEffectChange();
 
-        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingArmor), this.getNonNullElementCount(thePlayer.inventory.armorInventory), 1)) {
-            this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory);
-        }
-        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingInventory), this.getNonNullElementCount(thePlayer.inventory.mainInventory), 3)) {
-            this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory);
-        }
 
         if (this.ticksSinceLeftClick >= 10) {
             ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
-            if (clicksPerSecondTracker.getClicksPerSecond() >= 6 && !clicksPerSecondTracker.hasEnded()) {
+            if (clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) {
                 clicksPerSecondTracker.end();
                 this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
             } else if (clicksPerSecondTracker.getLeftClicks() != 0) {
@@ -400,13 +434,12 @@ public class CombatSession {
             }
         }
 
-        this.ticksSinceAction++;
         this.ticksSinceLeftClick++;
     }
 
     private boolean allOpponentsAreGone() {
-        for (Opponent opponent : this.opponents.values()) {
-            if (!(opponent.opponent.isInvisible() || opponent.opponent.isDead)) {
+        for (OpponentTracker opponentTracker : this.opponents.values()) {
+            if (!(opponentTracker.opponent.isInvisible() || opponentTracker.opponent.isDead)) {
                 return false;
             }
         }
@@ -445,6 +478,15 @@ public class CombatSession {
                 this.hotKeys.add(new HotKeyTracker());
             }
         }
+        if (currentItem != Core.mainHotBarSlot.getValue() - 1) {
+            ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
+            if (clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) {
+                clicksPerSecondTracker.end();
+                this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
+            } else if (clicksPerSecondTracker.getLeftClicks() != 0) {
+                clicksPerSecondTracker.resetClicks();
+            }
+        }
     }
 
     private HotKeyTracker getLatestHotKeyTracker() {
@@ -476,16 +518,15 @@ public class CombatSession {
     }
 
     public void updateTicksSinceAction() {
-        this.ticksSinceAction = 0;
     }
 
-    private Opponent getOpponent(EntityPlayer opponent) {
+    private OpponentTracker getOpponent(EntityPlayer opponent) {
         if (opponent == null) opponent = this.getClosestPlayer();
-        Opponent theOpponent;
-        if ((theOpponent = this.opponents.get(opponent.getUniqueID())) != null) return theOpponent;
+        OpponentTracker theOpponentTracker;
+        if ((theOpponentTracker = this.opponents.get(opponent.getUniqueID())) != null) return theOpponentTracker;
 
-        this.opponents.put(opponent.getUniqueID(), (theOpponent = new Opponent(opponent)));
-        return theOpponent;
+        this.opponents.put(opponent.getUniqueID(), (theOpponentTracker = new OpponentTracker(opponent)));
+        return theOpponentTracker;
     }
 
     public void arrowShot() {
@@ -522,13 +563,10 @@ public class CombatSession {
         this.lastAttackTimer = 5;
     }
 
-    public void hitByProjectile(EntityPlayer thrower, int source) {
-        if (thrower == null) return;
+    public void hitByProjectile(EntityPlayer thrower) {
         this.updateTicksSinceAction();
-        this.hitByFishingHook = false;
-        if (source == 1 && thrower.fishEntity != null) return;
+        this.hitByProjectile = false;
         this.projectilesTaken++;
-        this.getOpponent(thrower).projectilesTaken++;
     }
 
     public void attack(EntityPlayer target) {
@@ -541,13 +579,13 @@ public class CombatSession {
         this.lastAttackTimer = 5;
         this.getOpponent(target).attacksLanded++;
         this.attacksLanded++;
-        this.criticalHit = Minecraft.getMinecraft().thePlayer.motionY < 0;
     }
 
     public void playerHurt(EntityPlayer player) {
         this.updateTicksSinceAction();
-        if (this.getOpponent(player).opponentHitByFishingHook) {
-            this.getOpponent(player).projectilesHit++;
+        OpponentTracker opponent = this.getOpponent(player);
+        if (opponent.hitByProjectile || opponent.hitByFishingRodHook()) {
+            opponent.projectilesHit++;
             this.projectilesHit++;
             return;
         }
@@ -555,7 +593,7 @@ public class CombatSession {
         if (this.lastAttackTimer > 0) {
             switch (this.lastAttackType) {
                 case 0:
-                    this.getOpponent(player).onOpponentHit(this.criticalHit);
+                    this.getOpponent(player).onOpponentHit();
                     break;
                 case 1:
                     this.getOpponent(player).arrowsHit++;
@@ -571,14 +609,30 @@ public class CombatSession {
 
     public void hurt(EntityPlayer attacker) {
         this.updateTicksSinceAction();
+        EntityPlayer entityPlayer = this.hitByFishingRodHook();
         if (this.hitByArrow) {
             this.hitByArrow(attacker);
-        } else if (this.hitByFishingHook) {
-            this.hitByProjectile(attacker, 0);
+        } else if (entityPlayer != null || this.hitByProjectile) {
+            this.hitByProjectile(entityPlayer);
         } else {
             this.hitsTaken++;
             this.getOpponent(attacker).onDamage();
         }
+    }
+
+    private EntityPlayer hitByFishingRodHook() {
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+        List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
+                getEntitiesWithinAABBExcludingEntity(
+                        thePlayer,
+                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(1.5, 1.5, 1.5));
+
+        for (Entity entity : closestEntities) {
+            if (entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != thePlayer.getUniqueID()) {
+                return ((EntityFishHook) entity).angler;
+            }
+        }
+        return null;
     }
 
     public void leftClick() {
@@ -651,15 +705,17 @@ public class CombatSession {
         this.endTime = System.currentTimeMillis();
         sessionIsRunning = false;
 
-        for (Opponent opponent : this.opponents.values()) {
-            opponent.end();
+        for (OpponentTracker opponentTracker : this.opponents.values()) {
+            opponentTracker.end();
+            opponentTracker.combos.removeIf(comboTracker -> comboTracker.getComboCount() < 3);
         }
+
+        this.hotKeys.removeIf(hotKeyTracker -> hotKeyTracker.getTime() == 0);
 
         HotKeyTracker hotKeyTracker;
-        if (this.hotKeys.size() != 0 && !(hotKeyTracker = this.hotKeys.get(this.hotKeys.size() - 1)).hasEnded()) {
+        if (this.hotKeys.size() != 0 && !(hotKeyTracker = this.getLatestHotKeyTracker()).hasEnded()) {
             hotKeyTracker.end();
         }
-
 
         for (PotionEffectTracker potionEffectTracker : this.potionEffects) {
             if (!potionEffectTracker.hasEnded()) potionEffectTracker.end();
@@ -671,13 +727,27 @@ public class CombatSession {
         }
 
         ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
-        if ((clicksPerSecondTracker.getClicksPerSecond() >= 6 && !clicksPerSecondTracker.hasEnded()) || this.clicksPerSecondTrackers.size() == 0) {
+        if ((clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) || this.clicksPerSecondTrackers.size() == 0) {
             clicksPerSecondTracker.end();
         }
 
-        if (Core.logSessions.getValue()) {
+        this.won = this.mostHitsOnOpponent();
+        try {
+            if (this.won) Core.wonSessionIds.addElement(this.id);
+        } catch (IOException ioException) {
+            Miscellaneous.logWarn("Combat Session winning-id addition to winning-id list action denied: %s", ioException.getMessage());
+        }
+
+        if (Core.logSessions.getValue() && (this.opponents.size() > 0 && (this.leftClicks > 5 || this.rightClicks > 5))) {
             Core.combatSessionLogger.plainLog(this.toString());
         }
+    }
+
+    private boolean mostHitsOnOpponent() {
+        if (this.opponents.size() == 0) return false;
+        List<OpponentTracker> opponentTrackers = new ArrayList<>(this.opponents.values());
+        OpponentTracker opponentTracker = opponentTrackers.get(opponentTrackers.size() - 1);
+        return opponentTracker.hitsTaken <= opponentTracker.opponentAttacksTaken || opponentTracker.hitsTaken <= 3 && opponentTracker.arrowsTaken <= opponentTracker.arrowsHit;
     }
 
 
@@ -766,7 +836,7 @@ public class CombatSession {
         return this.serverIp;
     }
 
-    public Collection<Opponent> getOpponents() {
+    public Collection<OpponentTracker> getOpponents() {
         return this.opponents.values();
     }
 
@@ -856,15 +926,36 @@ public class CombatSession {
         return this.endTime - this.startTime;
     }
 
+    public int getId() {
+        return this.id;
+    }
+
+    public String getVersion() {
+        return this.version;
+    }
+
+    public boolean isDeleted() {
+        return this.deleted;
+    }
+
+    public boolean isWon() {
+        return this.won;
+    }
+
+    public float getEndingHealth() {
+        return endingHealth;
+    }
+
     @Override
     public String toString() {
         JsonObject asJsonObject = new JsonObject();
+
         asJsonObject.addProperty("id", this.id);
         asJsonObject.addProperty("version", this.version);
         asJsonObject.addProperty("startTime", this.startTime);
         asJsonObject.addProperty("endTime", this.endTime);
         asJsonObject.addProperty("serverIp", this.serverIp);
-        asJsonObject.add("opponents",  Miscellaneous.toJsonArrayString(new ArrayList<>(this.opponents.values())));
+        asJsonObject.add("opponentTrackers", Miscellaneous.toJsonArrayString(new ArrayList<>(this.opponents.values())));
         asJsonObject.addProperty("leftClicks", this.leftClicks);
         asJsonObject.addProperty("rightClicks", this.rightClicks);
         asJsonObject.addProperty("attacksSent", this.attacksSent);
@@ -876,10 +967,11 @@ public class CombatSession {
         asJsonObject.addProperty("hitsTaken", this.hitsTaken);
         asJsonObject.addProperty("arrowsTaken", this.arrowsTaken);
         asJsonObject.addProperty("projectilesTaken", this.projectilesTaken);
-        asJsonObject.add("startingInventory", itemStackArrayToJsonArray(this.startingInventory));
-        asJsonObject.add("startingArmor", itemStackArrayToJsonArray(this.startingArmor));
-        asJsonObject.add("endingInventory", itemStackArrayToJsonArray(this.endingInventory));
-        asJsonObject.add("endingArmor", itemStackArrayToJsonArray(this.endingArmor));
+        asJsonObject.addProperty("endingHealth", this.endingHealth);
+        asJsonObject.add("startingInventory", itemStackListToJsonArray(this.startingInventory));
+        asJsonObject.add("startingArmor", itemStackListToJsonArray(this.startingArmor));
+        asJsonObject.add("endingInventory", itemStackListToJsonArray(this.endingInventory));
+        asJsonObject.add("endingArmor", itemStackListToJsonArray(this.endingArmor));
         asJsonObject.add("potionEffects", Miscellaneous.toJsonArrayString(this.potionEffects));
         asJsonObject.add("strafes", Miscellaneous.toJsonArrayString(this.strafes));
         asJsonObject.add("hotKeys", Miscellaneous.toJsonArrayString(this.hotKeys));
@@ -887,10 +979,10 @@ public class CombatSession {
 
         return asJsonObject.toString();
     }
-    
-    private static JsonArray itemStackArrayToJsonArray(List<ItemStack> itemStacks) {
+
+    private static JsonArray itemStackListToJsonArray(List<ItemStack> itemStacks) {
         JsonArray asJsonArray = new JsonArray();
-        
+
         for (ItemStack itemStack : itemStacks) {
             if (itemStack != null) {
                 asJsonArray.add(new JsonPrimitive(itemStack.serializeNBT().toString()));
@@ -900,14 +992,14 @@ public class CombatSession {
     }
 
     public static CombatSession fromJson(String json) throws Exception {
-        JsonObject jsonObject = new JsonParser().parse(json).getAsJsonObject();
+        JsonObject jsonObject = jsonParser.parse(json).getAsJsonObject();
 
         int id = jsonObject.get("id").getAsInt();
         String version = jsonObject.get("version").getAsString();
         long startTime = jsonObject.get("startTime").getAsLong();
         long endTime = jsonObject.get("endTime").getAsLong();
         String serverIp = jsonObject.get("serverIp").getAsString();
-        List<Opponent> opponents = jsonArrayToOpponentList(jsonObject.get("opponents").getAsJsonArray());
+        List<OpponentTracker> opponentTrackers = jsonArrayToOpponentList(jsonObject.get("opponentTrackers").getAsJsonArray());
         int leftClicks = jsonObject.get("leftClicks").getAsInt();
         int rightClicks = jsonObject.get("rightClicks").getAsInt();
         int attacksSent = jsonObject.get("attacksSent").getAsInt();
@@ -919,28 +1011,29 @@ public class CombatSession {
         int hitsTaken = jsonObject.get("hitsTaken").getAsInt();
         int arrowsTaken = jsonObject.get("arrowsTaken").getAsInt();
         int projectilesTaken = jsonObject.get("projectilesTaken").getAsInt();
-        List<ItemStack> startingInventory = jsonArrayToItemStackArray(jsonObject.get("startingInventory").getAsJsonArray());
-        List<ItemStack> startingArmor = jsonArrayToItemStackArray(jsonObject.get("startingArmor").getAsJsonArray());
-        List<ItemStack> endingInventory = jsonArrayToItemStackArray(jsonObject.get("endingInventory").getAsJsonArray());
-        List<ItemStack> endingArmor = jsonArrayToItemStackArray(jsonObject.get("endingArmor").getAsJsonArray());
+        float endingHealth = jsonObject.get("endingHealth").getAsFloat();
+        List<ItemStack> startingInventory = jsonArrayToItemStackList(jsonObject.get("startingInventory").getAsJsonArray());
+        List<ItemStack> startingArmor = jsonArrayToItemStackList(jsonObject.get("startingArmor").getAsJsonArray());
+        List<ItemStack> endingInventory = jsonArrayToItemStackList(jsonObject.get("endingInventory").getAsJsonArray());
+        List<ItemStack> endingArmor = jsonArrayToItemStackList(jsonObject.get("endingArmor").getAsJsonArray());
         List<PotionEffectTracker> potionEffects = jsonArrayToPotionEffectTrackerList(jsonObject.get("potionEffects").getAsJsonArray());
         List<StrafingTracker> strafes = jsonArrayToStrafingTrackerList(jsonObject.get("strafes").getAsJsonArray());
         List<HotKeyTracker> hotKeys = jsonArrayToHotKeyTrackerList(jsonObject.get("hotKeys").getAsJsonArray());
         List<ClicksPerSecondTracker> clicksPerSecondTrackers = jsonArrayToClicksPerSecondTrackerList(jsonObject.get("clicksPerSecondTrackers").getAsJsonArray());
 
-        return new CombatSession(id, version, startTime, endTime, serverIp, opponents, leftClicks, rightClicks,
-                attacksSent, attacksLanded, projectilesThrown, projectilesHit, arrowsShot, arrowsHit, hitsTaken, arrowsTaken, projectilesTaken,
+        return new CombatSession(id, version, startTime, endTime, serverIp, opponentTrackers, leftClicks, rightClicks,
+                attacksSent, attacksLanded, projectilesThrown, projectilesHit, arrowsShot, arrowsHit, hitsTaken, arrowsTaken, projectilesTaken, endingHealth,
                 startingInventory, startingArmor, endingInventory, endingArmor, potionEffects, strafes, hotKeys, clicksPerSecondTrackers);
     }
-    
-    private static List<Opponent> jsonArrayToOpponentList(JsonArray jsonArray) {
-        List<Opponent> opponents = new ArrayList<>();
-        
+
+    private static List<OpponentTracker> jsonArrayToOpponentList(JsonArray jsonArray) throws NBTException {
+        List<OpponentTracker> opponentTrackers = new ArrayList<>();
+
         for (JsonElement jsonElement : jsonArray) {
-            opponents.add(Opponent.fromJson(jsonElement.getAsJsonObject()));
+            opponentTrackers.add(OpponentTracker.fromJson(jsonElement.getAsJsonObject()));
         }
-        
-        return opponents;
+
+        return opponentTrackers;
     }
 
     private static List<PotionEffectTracker> jsonArrayToPotionEffectTrackerList(JsonArray jsonArray) throws NBTException {
@@ -982,10 +1075,10 @@ public class CombatSession {
 
         return clicksPerSecondTrackers;
     }
-    
-    private static List<ItemStack> jsonArrayToItemStackArray(JsonArray jsonArray) throws NBTException {
+
+    private static List<ItemStack> jsonArrayToItemStackList(JsonArray jsonArray) throws NBTException {
         List<ItemStack> itemStacks = new ArrayList<>();
-        
+
         for (JsonElement jsonElement : jsonArray) {
             itemStacks.add(ItemStack.loadItemStackFromNBT(JsonToNBT.getTagFromJson(jsonElement.getAsString())));
         }
@@ -993,8 +1086,9 @@ public class CombatSession {
         return itemStacks;
     }
 
-    public static class Opponent {
+    public static class OpponentTracker {
         private final EntityPlayer opponent;
+        private final List<ItemStack> opponentStartingArmor;
         private final String name;
         private int attacksSent = 0;
         private int attacksLanded = 0;
@@ -1004,23 +1098,26 @@ public class CombatSession {
         private final List<ComboTracker> combos;
 
         private int hitsTaken = 0;
+        private int criticalHitsTaken = 0;
         private int arrowsTaken = 0;
         private int projectilesTaken = 0;
 
         private int arrowsHit = 0;
         private int projectilesHit = 0;
 
-        private boolean opponentHitByFishingHook = false;
+        private boolean hitByProjectile = false;
 
-        public Opponent(EntityPlayer opponent) {
+        public OpponentTracker(EntityPlayer opponent) {
             this.opponent = opponent;
+            this.opponentStartingArmor = Arrays.asList(opponent.inventory.armorInventory.clone());
             this.name = opponent.getName();
             this.combos = new ArrayList<>();
             this.combos.add(new ComboTracker());
         }
 
-        public Opponent(String name, int attacksSent, int attacksLanded, int criticalAttacksLanded, int opponentAttacksTaken, List<ComboTracker> combos, int hitsTaken, int arrowsTaken, int projectilesTaken, int arrowsHit, int projectilesHit) {
+        public OpponentTracker(List<ItemStack> opponentStartingArmor, String name, int attacksSent, int attacksLanded, int criticalAttacksLanded, int opponentAttacksTaken, List<ComboTracker> combos, int hitsTaken, int criticalHitsTaken, int arrowsTaken, int projectilesTaken, int arrowsHit, int projectilesHit) {
             this.opponent = null;
+            this.opponentStartingArmor = opponentStartingArmor;
             this.name = name;
             this.attacksSent = attacksSent;
             this.attacksLanded = attacksLanded;
@@ -1028,6 +1125,7 @@ public class CombatSession {
             this.opponentAttacksTaken = opponentAttacksTaken;
             this.combos = combos;
             this.hitsTaken = hitsTaken;
+            this.criticalHitsTaken = criticalHitsTaken;
             this.arrowsTaken = arrowsTaken;
             this.projectilesTaken = projectilesTaken;
             this.arrowsHit = arrowsHit;
@@ -1035,24 +1133,33 @@ public class CombatSession {
         }
 
         public void tick() {
+            EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
             List<Entity> closestOpponentEntities = Minecraft.getMinecraft().theWorld.
                     getEntitiesWithinAABBExcludingEntity(
                             this.opponent,
-                            this.opponent.getEntityBoundingBox().addCoord(this.opponent.motionX, this.opponent.motionY, this.opponent.motionZ).expand(1.0D, 1.0D, 1.0D));
-
+                            this.opponent.getEntityBoundingBox().addCoord(this.opponent.motionX, this.opponent.motionY, this.opponent.motionZ).expand(1.5, 1.5, 1.5));
             for (Entity entity : closestOpponentEntities) {
-                this.opponentHitByFishingHook = entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != opponent.getUniqueID();
+                if (entity instanceof EntityEgg) {
+                    if (((EntityEgg) entity).getThrower().getUniqueID() == thePlayer.getUniqueID()) {
+                        this.hitByProjectile = true;
+                    }
+                } else if (entity instanceof EntitySnowball) {
+                    if (((EntitySnowball) entity).getThrower().getUniqueID() == thePlayer.getUniqueID()) {
+                        this.hitByProjectile = true;
+                    }
+                }
             }
         }
 
-        private void onOpponentHit(boolean criticalHit) {
+        private void onOpponentHit() {
             this.opponentAttacksTaken++;
-            if (criticalHit) this.criticalAttacksLanded++;
+            if (Minecraft.getMinecraft().thePlayer.motionY < 0) this.criticalAttacksLanded++;
             this.getLatestComboTracker().incrementComboCount();
         }
 
         private void onDamage() {
             this.hitsTaken++;
+            if (this.opponent.motionY < 0) this.criticalHitsTaken++;
             if (this.getLatestComboTracker().getComboCount() >= 3) {
                 this.getLatestComboTracker().end();
                 this.combos.add(new ComboTracker());
@@ -1120,50 +1227,80 @@ public class CombatSession {
             return this.projectilesHit;
         }
 
+        public Map<ItemStack, Integer> getOpponentStartingArmor() {
+            Map<ItemStack, Integer> map = new HashMap<>();
+
+            for (ItemStack itemStack : this.opponentStartingArmor) {
+                if (itemStack != null) {
+                    map.put(itemStack, itemStack.stackSize);
+                }
+            }
+            return map;
+        }
+
         @Override
         public String toString() {
             JsonObject asJsonObject = new JsonObject();
+
+            asJsonObject.add("opponentStartingArmor", CombatSession.itemStackListToJsonArray(this.opponentStartingArmor));
             asJsonObject.addProperty("name", this.name);
             asJsonObject.addProperty("attacksSent", this.attacksSent);
             asJsonObject.addProperty("attacksLanded", this.attacksLanded);
             asJsonObject.addProperty("criticalAttacksLanded", this.criticalAttacksLanded);
             asJsonObject.addProperty("opponentAttacksTaken", this.opponentAttacksTaken);
-            asJsonObject.add("combos", Miscellaneous.toJsonArrayString(combos));
+            asJsonObject.add("combos", Miscellaneous.toJsonArrayString(this.combos));
             asJsonObject.addProperty("hitsTaken", this.hitsTaken);
+            asJsonObject.addProperty("criticalHitsTaken", this.criticalHitsTaken);
             asJsonObject.addProperty("arrowsTaken", this.arrowsTaken);
             asJsonObject.addProperty("projectilesTaken", this.projectilesTaken);
             asJsonObject.addProperty("arrowsHit", this.arrowsHit);
             asJsonObject.addProperty("projectilesHit", this.projectilesHit);
+
             return asJsonObject.toString();
         }
 
-        public static Opponent fromJson(JsonObject jsonObject) {
+        public static OpponentTracker fromJson(JsonObject jsonObject) throws NBTException {
+            List<ItemStack> opponentStartingArmor = CombatSession.jsonArrayToItemStackList(jsonObject.get("opponentStartingArmor").getAsJsonArray());
             String name = jsonObject.get("name").getAsString();
             int attacksSent = jsonObject.get("attacksSent").getAsInt();
             int attacksLanded = jsonObject.get("attacksLanded").getAsInt();
             int criticalAttacksLanded = jsonObject.get("criticalAttacksLanded").getAsInt();
             int opponentAttacksTaken = jsonObject.get("opponentAttacksTaken").getAsInt();
-            List<ComboTracker> combos = combosToList(jsonObject.get("combos").getAsJsonArray());
+            List<ComboTracker> combos = jsonArrayToComboList(jsonObject.get("combos").getAsJsonArray());
             int hitsTaken = jsonObject.get("hitsTaken").getAsInt();
+            int criticalHitsTaken = jsonObject.get("criticalHitsTaken").getAsInt();
             int arrowsTaken = jsonObject.get("arrowsTaken").getAsInt();
             int projectilesTaken = jsonObject.get("projectilesTaken").getAsInt();
             int arrowsHit = jsonObject.get("arrowsHit").getAsInt();
             int projectilesHit = jsonObject.get("projectilesHit").getAsInt();
 
-            return new Opponent(name, attacksSent, attacksLanded, criticalAttacksLanded, opponentAttacksTaken, combos, hitsTaken, arrowsTaken, projectilesTaken, arrowsHit, projectilesHit);
+            return new OpponentTracker(opponentStartingArmor, name, attacksSent, attacksLanded, criticalAttacksLanded, opponentAttacksTaken, combos, hitsTaken, criticalHitsTaken, arrowsTaken, projectilesTaken, arrowsHit, projectilesHit);
         }
 
-        private static List<ComboTracker> combosToList(JsonArray jsonArray) {
+        private static List<ComboTracker> jsonArrayToComboList(JsonArray jsonArray) {
             List<ComboTracker> combos = new ArrayList<>();
 
             for (JsonElement jsonElement : jsonArray) {
-                try {
-                    combos.add(ComboTracker.fromJson(jsonElement.getAsString()));
-                } catch (Exception exception) {
+                ComboTracker comboTracker = ComboTracker.fromJson(jsonElement.getAsJsonObject());
+                if (comboTracker.getComboCount() >= 3) combos.add(comboTracker);
+            }
 
+            return combos;
+        }
+
+        public boolean hitByFishingRodHook() {
+            EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+            List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
+                    getEntitiesWithinAABBExcludingEntity(
+                            thePlayer,
+                            thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(1.0D, 1.0D, 1.0D));
+
+            for (Entity entity : closestEntities) {
+                if (entity instanceof EntityFishHook) {
+                    return ((EntityFishHook) entity).angler.getUniqueID() == thePlayer.getUniqueID();
                 }
             }
-            return combos;
+            return false;
         }
     }
 
@@ -1403,9 +1540,7 @@ public class CombatSession {
             return asJsonObject.toString();
         }
 
-        public static ComboTracker fromJson(String json) {
-            JsonObject jsonObject = new JsonParser().parse(json).getAsJsonObject();
-
+        public static ComboTracker fromJson(JsonObject jsonObject) {
             long startTime = jsonObject.get("startTime").getAsLong();
             long endTime = jsonObject.get("endTime").getAsLong();
             int comboCount = jsonObject.get("comboCount").getAsInt();

@@ -45,11 +45,7 @@ public class ListGui extends GuiScreen {
         this.addField.drawStringBelowBox();
 
         if (this.listItemButtons.size() != 0) {
-            int panelHeight = this.listItemButtons.size() * 30;
-
-            this.scrollBar.height = (int) (this.height * (this.height / (double) panelHeight));
             int j = Mouse.getDWheel() / 7;
-            this.scrollBar.visible = !(this.scrollBar.height >= super.height);
             while (j > 0 && this.listItemButtons.get(0).yPosition + j > 10) {
                 j--;
             }
@@ -60,9 +56,8 @@ public class ListGui extends GuiScreen {
             for (ListItemButton listItemButton : this.listItemButtons) {
                 listItemButton.yPosition += j;
             }
+            int panelHeight = this.listItemButtons.size() * 30;
             this.scrollBar.yPosition = (int) ((super.height * (-this.listItemButtons.get(0).yPosition - 10) / (double) (panelHeight - super.height)) * ((super.height - scrollBar.height) / (double) super.height)) + 8;
-        } else {
-            this.scrollBar.visible = false;
         }
 
         super.drawScreen(mouseX, mouseY, partialTicks);
@@ -135,7 +130,7 @@ public class ListGui extends GuiScreen {
             public void onDrag(int scroll) {
                 scroll = -scroll;
                 int scaledScroll = (int) (scroll * (ListGui.this.listItemButtons.size() * 30) / (double) ListGui.super.height);
-                while (scaledScroll > 0 &&ListGui.this.listItemButtons.get(0).originalYPosition + scaledScroll > 10) {
+                while (scaledScroll > 0 && ListGui.this.listItemButtons.get(0).originalYPosition + scaledScroll > 10) {
                     scaledScroll--;
                 }
                 while (scaledScroll < 0 && ListGui.this.listItemButtons.get(listItemButtons.size() - 1).originalYPosition + 30 + scaledScroll < ListGui.super.height - 10) {
@@ -153,6 +148,11 @@ public class ListGui extends GuiScreen {
                 }
             }
         });
+
+        int panelHeight = this.listItemButtons.size() * 30;
+
+        this.scrollBar.height = (int) (this.height * (this.height / (double) panelHeight));
+        this.scrollBar.visible = this.scrollBar.height < this.height;
 
         if (this.lastGui != null) {
             super.buttonList.add(new LifeKnightButton("Back", 5, 5, 5, 50) {

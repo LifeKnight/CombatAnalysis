@@ -39,27 +39,25 @@ public class LifeKnightObjectGui extends GuiScreen {
         this(lifeKnightObject);
         this.lastGui = lastGui;
         for (LifeKnightVariable lifeKnightVariable : lifeKnightObject.getConnectedVariables()) {
-            if (!groupNames.contains(lifeKnightVariable.getGroup())) {
-                groupNames.add(lifeKnightVariable.getGroup());
+            if (!this.groupNames.contains(lifeKnightVariable.getGroup())) {
+                this.groupNames.add(lifeKnightVariable.getGroup());
             }
         }
     }
 
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         super.drawDefaultBackground();
-        super.drawCenteredString(fontRendererObj, lifeKnightObject.getCustomDisplayString(), Video.getScaledWidth(150), Video.getScaledHeight(60), 0xffffffff);
-        super.drawCenteredString(fontRendererObj, panelMessage, Video.get2ndPanelCenter(), this.height / 2, 0xffffffff);
+        super.drawCenteredString(this.fontRendererObj, this.lifeKnightObject.getCustomDisplayString(), Video.getScaledWidth(150), Video.getScaledHeight(60), 0xffffffff);
+        super.drawCenteredString(this.fontRendererObj, this.panelMessage, Video.get2ndPanelCenter(), this.height / 2, 0xffffffff);
         super.drawVerticalLine(Video.getScaledWidth(300), 0, this.height, 0xffffffff);
-        searchField.drawTextBoxAndName();
+        this.searchField.drawTextBoxAndName();
 
         for (int i = 0; i < this.groupNames.size() - 1; i++) {
             drawHorizontalLine(Video.getScaledWidth(100), Video.getScaledWidth(200), Video.getScaledHeight(150) + 25 * i + 22, 0xffffffff);
         }
 
         if (this.displayedButtons.size() != 0) {
-            this.scrollBar.height = (int) (this.height * (this.height / (double) panelHeight));
             int j = Mouse.getDWheel() / 7;
-            this.scrollBar.visible = !(this.scrollBar.height >= this.height);
             if (((j > 0) && this.scrollBar.yPosition > 0) || ((j < 0) && this.scrollBar.yPosition + this.scrollBar.height < this.height)) {
                 while (j > 0 && this.displayedButtons.get(0).yPosition + j > 10) {
                     j--;
@@ -89,8 +87,6 @@ public class LifeKnightObjectGui extends GuiScreen {
                 }
             }
             this.scrollBar.yPosition = (int) (((-(this.displayedButtons.get(0).yPosition - 10)) / (this.panelHeight - (double) this.height) * (this.height - this.scrollBar.height)));
-        } else {
-            this.scrollBar.visible = false;
         }
 
         for (LifeKnightTextField lifeKnightTextField : textFields) {
@@ -444,6 +440,8 @@ public class LifeKnightObjectGui extends GuiScreen {
                 }
             }
         });
+        this.scrollBar.height = (int) (this.height * (this.height / (double) this.panelHeight));
+        this.scrollBar.visible = this.scrollBar.height < this.height;
     }
 
     private int getFirstComponentOriginalYPosition() {

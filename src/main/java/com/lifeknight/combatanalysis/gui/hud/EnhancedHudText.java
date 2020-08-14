@@ -34,7 +34,7 @@ public abstract class EnhancedHudText extends Manipulable {
         super(name, defaultX, defaultY);
         this.prefix = prefix;
         this.hudTextVisible = new LifeKnightBoolean("Visible", name + " HUD Text", true);
-        this.separator = new LifeKnightCycle(name + " Prefix Color", name + " HUD Text", Arrays.asList(" > ", ": ", " | ", " - "));
+        this.separator = new LifeKnightCycle("Prefix Color", name + " HUD Text", Arrays.asList(" > ", ": ", " | ", " - "));
         this.prefixColor = new LifeKnightCycle("Color", name + " HUD Text", Arrays.asList(
                         "Red",
                         "Gold",

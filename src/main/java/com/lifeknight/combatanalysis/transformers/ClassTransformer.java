@@ -1,5 +1,6 @@
 package com.lifeknight.combatanalysis.transformers;
 
+import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraftforge.fml.common.FMLLog;
 import org.apache.logging.log4j.Level;
@@ -9,6 +10,7 @@ import org.objectweb.asm.tree.*;
 
 import java.util.Arrays;
 
+import static com.lifeknight.combatanalysis.mod.Core.MOD_NAME;
 import static org.objectweb.asm.Opcodes.*;
 
 public class ClassTransformer implements IClassTransformer {
@@ -67,13 +69,13 @@ public class ClassTransformer implements IClassTransformer {
                 }
 
                 if (targetNode == null) {
-                    FMLLog.log(Level.ERROR, "An error occurred while trying to insert method instruction into EntityLivingBase.");
+                    Miscellaneous.logError("An error occurred while trying to insert method instruction into EntityLivingBase.");
                 } else {
                     InsnList insnList = new InsnList();
                     insnList.add(new VarInsnNode(ALOAD, 0));
                     insnList.add(new MethodInsnNode(INVOKESTATIC, "com/lifeknight/combatanalysis/mod/Core", "onLivingHurt", "(Lnet/minecraft/entity/EntityLivingBase;)V", false));
                     method.instructions.insert(targetNode, insnList);
-                    FMLLog.info("Successfully inserted instructions into EntityLivingBase.");
+                    Miscellaneous.info("Successfully inserted instructions into EntityLivingBase.");
                 }
                 break;
             }
@@ -96,14 +98,14 @@ public class ClassTransformer implements IClassTransformer {
                 }
 
                 if (targetNode == null) {
-                    FMLLog.log(Level.ERROR,"An error occurred while trying to insert method instructions into EntityPlayerSP.");
+                    Miscellaneous.logError("An error occurred while trying to insert method instructions into EntityPlayerSP.");
                 } else {
                     InsnList insnList = new InsnList();
                     insnList.add(new VarInsnNode(ALOAD, 0));
                     insnList.add(new VarInsnNode(ALOAD, 1));
                     insnList.add(new MethodInsnNode(INVOKESTATIC, "com/lifeknight/combatanalysis/mod/Core", "onAttackEntityPlayerSPFrom", "(Lnet/minecraft/util/DamageSource;)V", false));
                     method.instructions.insert(targetNode, insnList);
-                    FMLLog.info("Successfully inserted instructions into EntityPlayerSP.");
+                    Miscellaneous.info("Successfully inserted instructions into EntityPlayerSP.");
                 }
                 break;
             }
@@ -126,14 +128,14 @@ public class ClassTransformer implements IClassTransformer {
                 }
 
                 if (targetNode == null) {
-                    FMLLog.log(Level.ERROR,"An error occurred while trying to insert method instructions into EntityOtherPlayerMP.");
+                    Miscellaneous.logError("An error occurred while trying to insert method instructions into EntityOtherPlayerMP.");
                 } else {
                     InsnList insnList = new InsnList();
                     insnList.add(new VarInsnNode(ALOAD, 0));
                     insnList.add(new VarInsnNode(ALOAD, 1));
                     insnList.add(new MethodInsnNode(INVOKESTATIC, "com/lifeknight/combatanalysis/mod/Core", "onAttackEntityOtherPlayerMPFrom", "(Lnet/minecraft/client/entity/EntityOtherPlayerMP;Lnet/minecraft/util/DamageSource;)V", false));
                     method.instructions.insert(targetNode, insnList);
-                    FMLLog.info("Successfully inserted instructions into EntityOtherPlayerMP.");
+                    Miscellaneous.info("Successfully inserted instructions into EntityOtherPlayerMP.");
                 }
                 break;
             }

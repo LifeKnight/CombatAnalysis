@@ -1,9 +1,8 @@
 package com.lifeknight.combatanalysis.mod;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import com.lifeknight.combatanalysis.utilities.Chat;
+import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.variables.*;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.fml.common.FMLLog;
@@ -19,40 +18,41 @@ import java.util.List;
 import java.util.Scanner;
 
 import static com.lifeknight.combatanalysis.mod.Core.MOD_ID;
+import static com.lifeknight.combatanalysis.mod.Core.MOD_NAME;
 
 public class Configuration {
 	private JsonObject configurationAsJsonObject = new JsonObject();
+	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
 	public Configuration() {
 		if (configExists()) {
-			updateVariablesFromConfiguration();
+			this.updateVariablesFromConfiguration();
 		}
-		updateConfigurationFromVariables();
+		this.updateConfigurationFromVariables();
 	}
 
 	private void updateVariablesFromConfiguration() {
-		getConfigurationContent();
+		this.getConfigurationContent();
 		for (int i = 0; i < LifeKnightVariable.getVariables().size(); i++) {
 			LifeKnightVariable variable = LifeKnightVariable.getVariables().get(i);
 			if (variable.isStoreValue()) {
 				try {
 					if (variable instanceof LifeKnightBoolean) {
-						((LifeKnightBoolean) variable).setValue(configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsBoolean());
+						((LifeKnightBoolean) variable).setValue(this.configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsBoolean());
 					} else if (variable instanceof LifeKnightString) {
-						((LifeKnightString) variable).setValue(configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsString());
+						((LifeKnightString) variable).setValue(this.configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsString());
 					} else if (variable instanceof LifeKnightNumber) {
-						((LifeKnightNumber) variable).setValue(configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsNumber());
+						((LifeKnightNumber) variable).setValue(this.configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsNumber());
 					} else if (variable instanceof LifeKnightList<?>) {
-						((LifeKnightList<?>) variable).setValueFromJsonArray(configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsJsonArray());
+						((LifeKnightList<?>) variable).setValueFromJsonArray(this.configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsJsonArray());
 					} else if (variable instanceof LifeKnightCycle) {
-						((LifeKnightCycle) variable).setCurrentValue(configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsInt());
+						((LifeKnightCycle) variable).setCurrentValue(this.configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsInt());
 					} else if (variable instanceof LifeKnightObject) {
-						((LifeKnightObject) variable).setValueFromJsonObject(configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsJsonObject());
+						((LifeKnightObject) variable).setValueFromJsonObject(this.configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsJsonObject());
 					} else if (variable instanceof LifeKnightObjectList) {
-						((LifeKnightObjectList) variable).setValueFromJsonArray(configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsJsonArray());
+						((LifeKnightObjectList) variable).setValueFromJsonArray(this.configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsJsonArray());
 					}
-				} catch (Exception e) {
-					e.printStackTrace();
+				} catch (Exception exception) {
 					Chat.queueChatMessageForConnection(EnumChatFormatting.RED + "An error occurred while extracting the value of \"" + variable.getName() + "\" from the config; the value will be interpreted as " + variable.getValue() + ".");
 				}
 			}
@@ -94,16 +94,16 @@ public class Configuration {
 			configAsJsonReplacement.add(group, jsonObject);
 		}
 
-		configurationAsJsonObject = configAsJsonReplacement;
+		this.configurationAsJsonObject = configAsJsonReplacement;
 
-		writeToConfigurationFile();
+		this.writeToConfigurationFile();
 	}
 
 	private boolean configExists() {
 		try {
 			return !new File("config/" + MOD_ID + ".json").createNewFile();
-		} catch (Exception e) {
-			FMLLog.log(Level.ERROR, "An error occurred while checking the configuration file's existence.");
+		} catch (Exception exception) {
+			Miscellaneous.logError("An error occurred while attempting to check for the configuration file's existence: %s", exception.getMessage());
 			return false;
 		}
 	}
@@ -112,11 +112,11 @@ public class Configuration {
 		try {
 			PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream("config/" + MOD_ID + ".json"), StandardCharsets.UTF_8));
 
-			writer.write(this.configurationAsJsonObject.toString());
+			writer.write(gson.toJson(this.configurationAsJsonObject));
 
 			writer.close();
-		} catch (Exception e) {
-			FMLLog.log(Level.ERROR, "Could not write to configuration file.");
+		} catch (Exception exception) {
+			Miscellaneous.logError("Could not write to configuration file: %s", exception.getMessage());
 		}
 	}
 
@@ -132,12 +132,12 @@ public class Configuration {
 			reader.close();
 
 			this.configurationAsJsonObject = new JsonParser().parse(configContent.toString()).getAsJsonObject();
-		} catch (Exception e) {
-			FMLLog.log(Level.ERROR, "Could not read configuration file.");
+		} catch (Exception exception) {
+			Miscellaneous.logError("Could not read configuration file: %s", exception.getMessage());
 		}
 	}
 
 	public JsonObject getConfigurationAsJsonObject() {
-		return configurationAsJsonObject;
+		return this.configurationAsJsonObject;
 	}
 }

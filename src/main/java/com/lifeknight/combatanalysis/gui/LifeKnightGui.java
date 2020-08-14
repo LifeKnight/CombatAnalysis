@@ -65,9 +65,7 @@ public class LifeKnightGui extends GuiScreen {
         }
 
         if (this.displayedButtons.size() != 0) {
-            this.scrollBar.height = (int) (this.height * (this.height / (double) panelHeight));
             int j = Mouse.getDWheel() / 7;
-            this.scrollBar.visible = !(this.scrollBar.height >= this.height);
             if (((j > 0) && this.scrollBar.yPosition > 0) || ((j < 0) && this.scrollBar.yPosition + this.scrollBar.height < this.height)) {
                 while (j > 0 && this.displayedButtons.get(0).yPosition + j > 10) {
                     j--;
@@ -456,6 +454,9 @@ public class LifeKnightGui extends GuiScreen {
                 }
             }
         });
+
+        this.scrollBar.height = (int) (this.height * (this.height / (double) this.panelHeight));
+        this.scrollBar.visible = this.scrollBar.height < this.height;
     }
 
     private int getFirstComponentOriginalYPosition() {

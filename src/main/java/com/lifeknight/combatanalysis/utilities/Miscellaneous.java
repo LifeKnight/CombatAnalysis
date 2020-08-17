@@ -164,14 +164,25 @@ public class Miscellaneous {
 		};
 	}
 
-	public static <T> JsonArray toJsonArrayString(List<T> elements) {
+	public static JsonArray toJsonArrayString(List<?> elements) {
 		JsonArray asJsonArray = new JsonArray();
 
-		for (T element : elements) {
+		for (Object element : elements) {
 			asJsonArray.add(new JsonParser().parse(element.toString()).getAsJsonObject());
 		}
 
 		return asJsonArray;
+	}
+
+	public static String toCSV(List<?> elements) {
+		if (elements.size() == 0) return "";
+		StringBuilder result = new StringBuilder();
+
+		for (Object element : elements) {
+			result.append(element.toString()).append(",");
+		}
+
+		return result.substring(0, result.length() - 1);
 	}
 
 	public static void info(String info, Object... data) {

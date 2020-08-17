@@ -83,7 +83,7 @@ public class LifeKnightGui extends GuiScreen {
                         ((LifeKnightSlider) guiButton).updateOriginalYPosition();
                     }
                 }
-                for (GuiButton guiButton : LifeKnightGui.super.buttonList) {
+                for (GuiButton guiButton : LifeKnightGui.this.buttonList) {
                     if (guiButton instanceof LifeKnightButton && (guiButton.displayString.equals(">") || guiButton.displayString.equals("<"))) {
                         guiButton.yPosition += j;
                         ((LifeKnightButton) guiButton).updateOriginalYPosition();
@@ -158,7 +158,7 @@ public class LifeKnightGui extends GuiScreen {
 
     private void listComponents() {
         this.textFields.clear();
-        super.buttonList.clear();
+        this.buttonList.clear();
         this.displayedButtons.clear();
         this.panelHeight = 5;
         boolean noButtons = true;
@@ -170,7 +170,7 @@ public class LifeKnightGui extends GuiScreen {
                 if (lifeKnightVariable instanceof LifeKnightBoolean) {
                     if (((LifeKnightBoolean) lifeKnightVariable).hasList()) {
                         LifeKnightButton open;
-                        super.buttonList.add(open = new LifeKnightButton(componentId,
+                        this.buttonList.add(open = new LifeKnightButton(componentId,
                                 Video.get2ndPanelCenter() + 110,
                                 10 + componentId * 30,
                                 20,
@@ -221,7 +221,7 @@ public class LifeKnightGui extends GuiScreen {
                                 }
                             }
                         });
-                        super.buttonList.add(new LifeKnightButton(componentId + 1, Video.get2ndPanelCenter() + 110,
+                        this.buttonList.add(new LifeKnightButton(componentId + 1, Video.get2ndPanelCenter() + 110,
                                 10 + (componentId + 1) * 30,
                                 20,
                                 20, ">") {
@@ -246,7 +246,7 @@ public class LifeKnightGui extends GuiScreen {
                             }
                         }
                     });
-                    super.buttonList.add(new LifeKnightButton(componentId, Video.get2ndPanelCenter() + 110,
+                    this.buttonList.add(new LifeKnightButton(componentId, Video.get2ndPanelCenter() + 110,
                             10 + (componentId + 1) * 30,
                             20,
                             20, ">") {
@@ -259,7 +259,7 @@ public class LifeKnightGui extends GuiScreen {
                     componentId += 2;
                 } else if (lifeKnightVariable instanceof LifeKnightCycle) {
                     LifeKnightButton previous;
-                    super.buttonList.add(previous = new LifeKnightButton(componentId,
+                    this.buttonList.add(previous = new LifeKnightButton(componentId,
                             Video.get2ndPanelCenter() - 130,
                             10 + componentId * 30,
                             20,
@@ -270,7 +270,7 @@ public class LifeKnightGui extends GuiScreen {
                         }
                     });
                     LifeKnightButton next;
-                    super.buttonList.add(next = new LifeKnightButton(componentId,
+                    this.buttonList.add(next = new LifeKnightButton(componentId,
                             Video.get2ndPanelCenter() + 110,
                             10 + componentId * 30,
                             20,
@@ -342,11 +342,11 @@ public class LifeKnightGui extends GuiScreen {
                 componentId++;
             }
         }
-        super.buttonList.addAll(displayedButtons);
+        this.buttonList.addAll(displayedButtons);
 
         for (int i = 0; i < this.groupNames.size(); i++) {
             int finalI = i;
-            super.buttonList.add(new LifeKnightButton(super.buttonList.size() - 1, Video.getScaledWidth(100), Video.getScaledHeight(150) + 25 * i, Video.getScaledWidth(100), 20, this.groupNames.get(i)) {
+            this.buttonList.add(new LifeKnightButton(this.buttonList.size() - 1, Video.getScaledWidth(100), Video.getScaledHeight(150) + 25 * i, Video.getScaledWidth(100), 20, this.groupNames.get(i)) {
                 final String name = LifeKnightGui.this.groupNames.get(finalI);
 
                 @Override
@@ -366,7 +366,7 @@ public class LifeKnightGui extends GuiScreen {
             });
         }
         this.panelMessage = noButtons ? GRAY + "No settings found" : "";
-        super.buttonList.add(this.scrollBar = new ScrollBar() {
+        this.buttonList.add(this.scrollBar = new ScrollBar() {
             @Override
             public void onDrag(int scroll) {
                 scroll = -scroll;
@@ -425,7 +425,7 @@ public class LifeKnightGui extends GuiScreen {
                     }
                 }
 
-                for (GuiButton guiButton : LifeKnightGui.super.buttonList) {
+                for (GuiButton guiButton : LifeKnightGui.this.buttonList) {
                     if (guiButton instanceof LifeKnightButton && guiButton.displayString.equals(">") || guiButton.displayString.equals("<")) {
                         guiButton.yPosition = ((LifeKnightButton) guiButton).originalYPosition + scaledScroll;
                     }
@@ -444,8 +444,8 @@ public class LifeKnightGui extends GuiScreen {
                         ((LifeKnightSlider) guiButton).updateOriginalYPosition();
                     }
                 }
-                for (GuiButton guiButton : LifeKnightGui.super.buttonList) {
-                    if (guiButton instanceof LifeKnightButton && guiButton.displayString.equals(">")) {
+                for (GuiButton guiButton : LifeKnightGui.this.buttonList) {
+                    if (guiButton instanceof LifeKnightButton && (guiButton.displayString.equals(">") || guiButton.displayString.equals("<"))) {
                         ((LifeKnightButton) guiButton).updateOriginalYPosition();
                     }
                 }

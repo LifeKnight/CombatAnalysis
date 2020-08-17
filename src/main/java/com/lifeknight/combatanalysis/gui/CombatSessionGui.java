@@ -12,18 +12,17 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StringUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 
 import static net.minecraft.util.EnumChatFormatting.*;
 
-public class CombatSessionGui extends BaseGui {
+public class CombatSessionGui extends PanelGui {
     private final CombatSession combatSession;
     private final String panelMessage;
     private final List<CombatSession> combatSessions;
@@ -43,9 +42,25 @@ public class CombatSessionGui extends BaseGui {
     public void initGui() {
         super.guiPanels.clear();
 
+        this.buttonList.add(new LifeKnightButton("Filter", this.buttonList.size(), this.width - 200 - 20, 25, 100) {
+            @Override
+            public void work() {
+                Core.openGui(new CombatSessionFilterGui(CombatSessionGui.this));
+            }
+        });
+
         if (this.combatSession != null) {
+            if (!this.combatSession.isLogged()) {
+                this.buttonList.add(new LifeKnightButton("Log", this.buttonList.size(), this.width - 200 - 20 - 40 - 10, 5, 40) {
+                    @Override
+                    public void work() {
+                        CombatSessionGui.this.combatSession.log();
+                        CombatSessionGui.this.buttonList.remove(this);
+                    }
+                });
+            }
             if (this.index > 0) {
-                super.buttonList.add(new LifeKnightButton(super.buttonList.size(), this.width - 200 - 20, 10, 20, 20, "<") {
+                this.buttonList.add(new LifeKnightButton("<", this.buttonList.size(), this.width - 200 - 20, 5, 20) {
                     @Override
                     public void work() {
                         Core.openGui(new CombatSessionGui(CombatSessionGui.this.combatSessions.get(CombatSessionGui.this.index - 1)));
@@ -53,7 +68,7 @@ public class CombatSessionGui extends BaseGui {
                 });
             }
             if (this.index < this.combatSessionSize - 1) {
-                super.buttonList.add(new LifeKnightButton(super.buttonList.size(), this.width - 140, 10, 20, 20, ">") {
+                this.buttonList.add(new LifeKnightButton(">", this.buttonList.size(), this.width - 140, 5, 20) {
                     @Override
                     public void work() {
                         Core.openGui(new CombatSessionGui(CombatSessionGui.this.combatSessions.get(CombatSessionGui.this.index + 1)));
@@ -66,19 +81,50 @@ public class CombatSessionGui extends BaseGui {
             basicData.add("Server: " + this.combatSession.getServerIp());
             basicData.add("Date: " + Miscellaneous.getTimeAndDate(this.combatSession.getStartTime()));
             basicData.add("Duration: " + Text.formatTimeFromMilliseconds(this.combatSession.getTime(), 2));
-            basicData.add(this.combatSession.isWon() ? GREEN + "Won" + RESET + String.format("(%f/20)", this.combatSession.getEndingHealth()) : RED + "Lost");
+            basicData.add("Detected Type: " + this.combatSession.detectType());
             basicData.add("");
             basicData.add("Version: " + this.combatSession.getVersion());
-            basicData.add("Status: " + (this.combatSession.isDeleted() ? "Deleted" : "Available"));
 
             super.createListPanel("Details", basicData).setColor(Color.RED);
 
+            super.createButtonPanel("Properties", Arrays.asList(
+                    new LifeKnightButton.VersatileLifeKnightButton(this.combatSession.isWon() ? GREEN + "Won" : RED + "Lost", versatileLifeKnightButton -> {
+                        try {
+                            if (CombatSessionGui.this.combatSession.isWon()) {
+                                Core.wonSessionIds.removeElement(CombatSessionGui.this.combatSession.getId());
+                                CombatSessionGui.this.combatSession.setWon(false);
+                            } else {
+                                Core.wonSessionIds.addElement(CombatSessionGui.this.combatSession.getId());
+                                CombatSessionGui.this.combatSession.setWon(true);
+                            }
+                            versatileLifeKnightButton.displayString = CombatSessionGui.this.combatSession.isWon() ? GREEN + "Won" : RED + "Lost";
+                        } catch (Exception exception) {
+                            Miscellaneous.logError("Tried to remove or add combat session from the won-id list: %s", exception.getMessage());
+                        }
+                    }), new LifeKnightButton.VersatileLifeKnightButton(this.combatSession.isDeleted() ? RED + "Deleted" : GREEN + "Available", versatileLifeKnightButton -> {
+                        try {
+                            if (CombatSessionGui.this.combatSession.isDeleted()) {
+                                Core.deletedSessionIds.removeElement(CombatSessionGui.this.combatSession.getId());
+                                CombatSessionGui.this.combatSession.setDeleted(false);
+                            } else {
+                                Core.deletedSessionIds.addElement(CombatSessionGui.this.combatSession.getId());
+                                CombatSessionGui.this.combatSession.setDeleted(true);
+                            }
+                            versatileLifeKnightButton.displayString = CombatSessionGui.this.combatSession.isDeleted() ? RED + "Deleted" : GREEN + "Available";
+                        } catch (Exception exception) {
+                            Miscellaneous.logError("Tried to remove or add combat session from the deleted-id list: %s", exception.getMessage());
+                        }
+                    })));
+
             List<String> overall = new ArrayList<>();
+            overall.add("Starting Health: " + Text.shortenDouble(this.combatSession.getStartingHealth(), 1));
+            overall.add("Ending Health: " + Text.shortenDouble(this.combatSession.getEndingHealth(), 1));
+            overall.add("");
             overall.add("Left Clicks: " + this.combatSession.getLeftClicks());
             overall.add("Right Clicks: " + this.combatSession.getRightClicks());
             overall.add("Average CPS: " + this.combatSession.getAverageClicksPerSecond());
             overall.add("");
-            overall.add("Melee Accuracy: " + this.combatSession.getAttackAccuracy());
+            overall.add("Melee Accuracy: " + this.combatSession.getMeleeAccuracy());
             overall.add("Arrow Accuracy: " + this.combatSession.getArrowAccuracy());
             overall.add("Projectile Accuracy: " + this.combatSession.getProjectileAccuracy());
             overall.add("");
@@ -120,16 +166,17 @@ public class CombatSessionGui extends BaseGui {
             endingInventory.setColor(Color.GREEN);
             super.guiPanels.add(endingInventory);
 
-            for (CombatSession.OpponentTracker opponentTracker : this.combatSession.getOpponents()) {
+            for (CombatSession.OpponentTracker opponentTracker : this.combatSession.getOpponentTrackerMap()) {
                 List<String> data = new ArrayList<>();
-                data.add("Melee Hits: " + opponentTracker.getOpponentAttacksTaken());
-                data.add("Critical Hits Dealt: " + opponentTracker.getCriticalAttacksLanded());
+                data.add("Melee Hits: " + opponentTracker.getOpponentHitsTaken());
+                data.add("Critical Hits Dealt: " + opponentTracker.getCriticalHitsLanded());
                 data.add("Times Shot: " + opponentTracker.getArrowsHit());
                 data.add("Projectile Hits: " + opponentTracker.getProjectilesHit());
                 data.add("");
                 data.add("Melee Accuracy: " + opponentTracker.attackAccuracy());
                 data.add("");
                 data.add("Melee Hits Taken: " + opponentTracker.getHitsTaken());
+                data.add("Critical Hits Taken: " + opponentTracker.getCriticalHitsTaken());
                 data.add("Shots Taken: " + opponentTracker.getArrowsTaken());
                 data.add("Projectiles Taken: " + opponentTracker.getProjectilesTaken());
                 super.createListPanel(opponentTracker.getName(), data).setColor(Color.YELLOW);
@@ -139,7 +186,7 @@ public class CombatSessionGui extends BaseGui {
                 super.guiPanels.add(opponentStartingArmor);
 
                 List<String> combos = new ArrayList<>();
-                for (CombatSession.ComboTracker comboTracker : opponentTracker.getCombos()) {
+                for (CombatSession.ComboTracker comboTracker : opponentTracker.getComboTrackers()) {
                     combos.add(Text.formatTimeFromMilliseconds(comboTracker.getTime(), 2) + " - " + comboTracker.getComboCount());
                 }
                 super.createListPanel("Combos - " + opponentTracker.getName(), combos.size() == 0 ? Collections.singletonList("No combos to display.") : combos).setColor(Color.CYAN);
@@ -153,7 +200,7 @@ public class CombatSessionGui extends BaseGui {
         this.drawDefaultBackground();
         this.drawCenteredString(this.fontRendererObj, this.panelMessage, this.width / 2, (this.height - 55) / 2 + 55, 0xffffffff);
         if (this.combatSession != null) {
-            this.drawCenteredString(this.fontRendererObj, (this.index + 1) + " / " + this.combatSessionSize, this.width - 170, 16, 0xffffffff);
+            this.drawCenteredString(this.fontRendererObj, (this.index + 1) + " / " + this.combatSessionSize, this.width - 170, 11, 0xffffffff);
         }
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
@@ -208,7 +255,7 @@ public class CombatSessionGui extends BaseGui {
                         CombatSession.HotKeyTracker hotKeyTracker = this.hotKeyTrackers.get(i);
                         if (hotKeyTracker.getItemStack() != null) {
                             Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(
-                                    hotKeyTracker.getItemStack(), this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 +  + this.yOffsetPosition
+                                    hotKeyTracker.getItemStack(), this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 + +this.yOffsetPosition
                             );
                         }
                         fontRenderer.drawString(" - " + Text.formatTimeFromMilliseconds(hotKeyTracker.getTime(), 0) + "ms", this.xPosition + 5 + this.xOffsetPosition + 16, this.yPosition + 14 + i * 20 + 7 + this.yOffsetPosition, 0xffffffff);
@@ -247,7 +294,7 @@ public class CombatSessionGui extends BaseGui {
                         fontRenderer.getStringWidth(description);
                 longestWidth = Math.max(longestWidth, width);
             }
-            return Math.max(fontRenderer.getStringWidth(this.name),  longestWidth) + 15;
+            return Math.max(fontRenderer.getStringWidth(this.name), longestWidth) + 15;
         }
 
         @Override
@@ -287,6 +334,7 @@ public class CombatSessionGui extends BaseGui {
     private static class PotionEffectPanel extends GuiPanel {
         private final List<CombatSession.PotionEffectTracker> potionEffectTrackers;
         private final long combatSessionStartTime;
+
         public PotionEffectPanel(String name, List<CombatSession.PotionEffectTracker> potionEffectTrackers, long combatSessionStartTime) {
             super(0, 0, name);
             this.potionEffectTrackers = potionEffectTrackers;

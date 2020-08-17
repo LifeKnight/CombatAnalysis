@@ -5,8 +5,6 @@ import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.variables.*;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraftforge.fml.common.FMLLog;
-import org.apache.logging.log4j.Level;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -18,14 +16,13 @@ import java.util.List;
 import java.util.Scanner;
 
 import static com.lifeknight.combatanalysis.mod.Core.MOD_ID;
-import static com.lifeknight.combatanalysis.mod.Core.MOD_NAME;
 
 public class Configuration {
+	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private JsonObject configurationAsJsonObject = new JsonObject();
-	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
 	public Configuration() {
-		if (configExists()) {
+		if (this.configExists()) {
 			this.updateVariablesFromConfiguration();
 		}
 		this.updateConfigurationFromVariables();
@@ -53,7 +50,7 @@ public class Configuration {
 						((LifeKnightObjectList) variable).setValueFromJsonArray(this.configurationAsJsonObject.getAsJsonObject(variable.getGroupForConfiguration()).get(variable.getNameForConfiguration()).getAsJsonArray());
 					}
 				} catch (Exception exception) {
-					Chat.queueChatMessageForConnection(EnumChatFormatting.RED + "An error occurred while extracting the value of \"" + variable.getName() + "\" from the config; the value will be interpreted as " + variable.getValue() + ".");
+					Chat.queueChatMessageForConnection(EnumChatFormatting.RED + "An error occurred while extracting the value of " + variable.getName() + " from the config; the value will be interpreted as " + variable.getValue() + ".");
 				}
 			}
 		}
@@ -112,7 +109,7 @@ public class Configuration {
 		try {
 			PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream("config/" + MOD_ID + ".json"), StandardCharsets.UTF_8));
 
-			writer.write(gson.toJson(this.configurationAsJsonObject));
+			writer.write(GSON.toJson(this.configurationAsJsonObject));
 
 			writer.close();
 		} catch (Exception exception) {

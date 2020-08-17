@@ -12,10 +12,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemEgg;
 import net.minecraft.item.ItemFishingRod;
@@ -51,7 +49,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.1",
+            MOD_VERSION = "0.2",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -66,14 +64,11 @@ public class Core {
     public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main HotBar Slot", "Settings", 1, 1, 9);
     public static final KeyBinding toggleCombatSessionKeyBinding = new KeyBinding("Toggle combat session", 0x1B, MOD_NAME);
     public static final LifeKnightList.LifeKnightIntegerList deletedSessionIds = new LifeKnightList.LifeKnightIntegerList("Deleted Session IDs", "Extra");
-    public static final LifeKnightList.LifeKnightIntegerList wonSessionIds = new LifeKnightList.LifeKnightIntegerList("Won Session IDS", "Extra");
-    public static final Logger combatSessionLogger = new Logger(new File("logs/combatsessions"));
+    public static final LifeKnightList.LifeKnightIntegerList wonSessionIds = new LifeKnightList.LifeKnightIntegerList("Won Session IDs", "Extra");
+    public static final LifeKnightList.LifeKnightIntegerList loggedSessionIds = new LifeKnightList.LifeKnightIntegerList("Logged Session IDs", "Extra");
+    public static final Logger combatSessionLogger = new Logger(new File("logs/lifeknight/combatsessions"));
     private static final List<Long> leftClicks = new ArrayList<>();
     public static Configuration configuration;
-    /*
-    Settings button under navigate, opening GUI where you can change the things that appear or search for certain analyses
-    Add ending health field
-    */
 
     @EventHandler
     public void init(FMLInitializationEvent initEvent) {
@@ -82,6 +77,7 @@ public class Core {
 
         deletedSessionIds.setShowInLifeKnightGui(false);
         wonSessionIds.setShowInLifeKnightGui(false);
+        loggedSessionIds.setShowInLifeKnightGui(false);
 
         Miscellaneous.createEnhancedHudTextDefaultPropertyVariables();
         
@@ -89,7 +85,7 @@ public class Core {
 
         configuration = new Configuration();
 
-        CombatSession.readLoggedCombatSessions();
+        CombatSession.getLoggedCombatSessions();
     }
 
     private void createEnhancedHudTexts() {
@@ -120,7 +116,7 @@ public class Core {
         new EnhancedHudText("Melee Accuracy", 0, 200, "Melee Accuracy") {
             @Override
             public String getTextToDisplay() {
-                return CombatSession.attackAccuracy();
+                return CombatSession.meleeAccuracy();
             }
 
             @Override

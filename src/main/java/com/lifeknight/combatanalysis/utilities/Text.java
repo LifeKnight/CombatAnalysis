@@ -84,7 +84,7 @@ public class Text {
 		return new DecimalFormat(multiplyString("#", wholeDigits) + "." + multiplyString("#", decimalDigits)).format(value);
 	}
 
-    public static boolean equalsAny(String text, String[] strings, boolean ignoreCase) {
+    public static boolean equalsAny(String text, List<String> strings, boolean ignoreCase) {
         for (String string : strings) {
             if (ignoreCase) {
                 if (string.equalsIgnoreCase(text)) return true;
@@ -95,12 +95,38 @@ public class Text {
         return false;
     }
 
-    public static boolean containsAny(String text, String[] strings, boolean ignoreCase) {
+    public static boolean equalsAny(List<String> strings, List<String> strings2, boolean ignoreCase) {
+        for (String string : strings) {
+            for (String string2 : strings2) {
+                if (ignoreCase) {
+                    if (string.equalsIgnoreCase(string2)) return true;
+                } else {
+                    if (string.equals(string2)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean containsAny(String text, List<String> strings, boolean ignoreCase) {
         for (String string : strings) {
             if (ignoreCase) {
                 if (text.toLowerCase().contains(string.toLowerCase())) return true;
             } else {
                 if (text.contains(string)) return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean containsAny(List<String> strings, List<String> strings2, boolean ignoreCase) {
+        for (String string : strings) {
+            for (String string2 : strings2) {
+                if (ignoreCase) {
+                    if (string.toLowerCase().contains(string2.toLowerCase())) return true;
+                } else {
+                    if (string.contains(string2)) return true;
+                }
             }
         }
         return false;

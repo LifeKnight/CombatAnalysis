@@ -1,31 +1,30 @@
 package com.lifeknight.combatanalysis.gui.components;
 
+import com.lifeknight.combatanalysis.utilities.Miscellaneous;
+import com.lifeknight.combatanalysis.utilities.Video;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 
 import static com.lifeknight.combatanalysis.utilities.Video.get2ndPanelCenter;
 
 public abstract class LifeKnightButton extends GuiButton {
-    private final String buttonText;
     public int originalYPosition = 0;
 
     public LifeKnightButton(int componentId, String buttonText) {
-        super(componentId, get2ndPanelCenter() - 100,
+        super(componentId, Video.get2ndPanelCenter() - 100,
                 componentId * 30 + 10,
                 200,
                 20, buttonText);
-        this.buttonText = buttonText;
         int j;
         if ((j = Minecraft.getMinecraft().fontRendererObj.getStringWidth(buttonText) + 30) > this.width) {
             this.width = j;
-            this.xPosition = get2ndPanelCenter() - this.width / 2;
+            this.xPosition = Video.get2ndPanelCenter() - this.width / 2;
         }
         this.originalYPosition = this.yPosition;
     }
 
     public LifeKnightButton(int componentId, int x, int y, int width, int height, String buttonText) {
         super(componentId, x, y, width, height, buttonText);
-        this.buttonText = buttonText;
     }
 
     public LifeKnightButton(String buttonText, int componentId, int x, int y, int width) {
@@ -34,12 +33,10 @@ public abstract class LifeKnightButton extends GuiButton {
                 width,
                 20,
                 buttonText);
-        this.buttonText = buttonText;
     }
 
     public LifeKnightButton(String buttonText) {
         super(0, 0, 0, 200, 20, buttonText);
-        this.buttonText = buttonText;
     }
 
     public void updateOriginalYPosition() {
@@ -47,4 +44,21 @@ public abstract class LifeKnightButton extends GuiButton {
     }
 
     public abstract void work();
+
+    public static class VersatileLifeKnightButton extends LifeKnightButton {
+        public IAction iAction = null;
+        public VersatileLifeKnightButton(String buttonText, IAction iAction) {
+            super(0, 0, 0, Minecraft.getMinecraft().fontRendererObj.getStringWidth(buttonText) + 15, 20, buttonText);
+            this.iAction = iAction;
+        }
+
+        @Override
+        public void work() {
+            if (this.iAction != null) this.iAction.work(this);
+        }
+    }
+
+    public interface IAction {
+        public void work(VersatileLifeKnightButton versatileLifeKnightButton);
+    }
 }

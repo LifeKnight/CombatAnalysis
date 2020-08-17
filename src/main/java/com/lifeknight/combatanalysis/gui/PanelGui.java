@@ -21,16 +21,16 @@ import java.util.List;
 
 import static java.awt.Color.WHITE;
 
-public class BaseGui extends GuiScreen {
-    String name = "";
-    final List<GuiPanel> guiPanels = new ArrayList<>();
-    final List<GuiPanel> visibleGuiPanels = new ArrayList<>();
-    ScrollBar scrollBar;
-    ScrollBar.HorizontalScrollBar horizontalScrollBar;
-    LifeKnightTextField searchField;
-    int panelHeight = 0;
-    int panelWidth = 0;
-    boolean uniformHeight = true;
+public class PanelGui extends GuiScreen {
+    protected String name = "";
+    protected final List<GuiPanel> guiPanels = new ArrayList<>();
+    protected final List<GuiPanel> visibleGuiPanels = new ArrayList<>();
+    protected ScrollBar scrollBar;
+    protected ScrollBar.HorizontalScrollBar horizontalScrollBar;
+    protected LifeKnightTextField searchField;
+    protected int panelHeight = 0;
+    protected int panelWidth = 0;
+    protected boolean uniformHeight = true;
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
@@ -77,8 +77,8 @@ public class BaseGui extends GuiScreen {
                     }
                 }
             }
-            this.scrollBar.yPosition = (int) (((-(visibleGuiPanels.get(0).yPosition - 65)) / (this.panelHeight - (double) (this.height - 56))) * (this.height - 56 - this.scrollBar.height) + 56);
-            this.horizontalScrollBar.xPosition = (int) ((-visibleGuiPanels.get(0).xPosition / (this.panelWidth - (double) this.width)) * (this.width - this.horizontalScrollBar.width));
+            this.scrollBar.yPosition = (int) (((-(this.visibleGuiPanels.get(0).yPosition - 65)) / (this.panelHeight - (double) (this.height - 56))) * (this.height - 56 - this.scrollBar.height) + 56);
+            this.horizontalScrollBar.xPosition = (int) ((-this.visibleGuiPanels.get(0).xPosition / (this.panelWidth - (double) this.width)) * (this.width - this.horizontalScrollBar.width));
         }
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
@@ -104,7 +104,7 @@ public class BaseGui extends GuiScreen {
         this.searchField = new LifeKnightTextField(0, this.width - 110, 25, 100, 17, "Search") {
             @Override
             public void handleInput() {
-                BaseGui.this.loadGuiPanels();
+                PanelGui.this.loadGuiPanels();
             }
 
             @Override
@@ -120,7 +120,7 @@ public class BaseGui extends GuiScreen {
     }
 
     protected void loadGuiPanels() {
-        super.buttonList.removeIf(guiButton -> guiButton instanceof ScrollBar || guiButton instanceof ScrollBar.HorizontalScrollBar);
+        this.buttonList.removeIf(guiButton -> guiButton instanceof ScrollBar || guiButton instanceof ScrollBar.HorizontalScrollBar);
         this.visibleGuiPanels.clear();
         this.panelHeight = 0;
         this.panelWidth = 0;
@@ -168,11 +168,7 @@ public class BaseGui extends GuiScreen {
         }
 
         for (GuiPanel current : this.visibleGuiPanels) {
-            ScrollBar scrollBar;
-            if ((scrollBar = current.getScrollBar()) != null) super.buttonList.add(scrollBar);
-            ScrollBar.HorizontalScrollBar horizontalScrollBar;
-            if ((horizontalScrollBar = current.getHorizontalScrollBar()) != null)
-                super.buttonList.add(horizontalScrollBar);
+            this.buttonList.addAll(current.getGuiButtons());
 
             if (current.versatile) {
                 current.xPosition = nextXPosition;
@@ -186,14 +182,14 @@ public class BaseGui extends GuiScreen {
                 }
                 current.updateOriginals();
             }
-            this.panelHeight = Math.max(panelHeight, current.yPosition + current.height - 45);
-            this.panelWidth = Math.max(panelWidth, current.xPosition + current.width);
+            this.panelHeight = Math.max(this.panelHeight, current.yPosition + current.height - 45);
+            this.panelWidth = Math.max(this.panelWidth, current.xPosition + current.width);
         }
 
         this.scrollBar = new ScrollBar() {
             @Override
             protected void onMousePress() {
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                for (GuiPanel guiPanel : PanelGui.this.visibleGuiPanels) {
                     guiPanel.updateOriginals();
                 }
             }
@@ -201,21 +197,21 @@ public class BaseGui extends GuiScreen {
             @Override
             public void onDrag(int scroll) {
                 scroll = -scroll;
-                int scaledScroll = (int) (scroll * BaseGui.this.panelHeight / (double) BaseGui.this.height);
-                while (scaledScroll > 0 && BaseGui.this.visibleGuiPanels.get(0).originalYPosition + 5 + scaledScroll > 65) {
+                int scaledScroll = (int) (scroll * PanelGui.this.panelHeight / (double) PanelGui.this.height);
+                while (scaledScroll > 0 && PanelGui.this.visibleGuiPanels.get(0).originalYPosition + 5 + scaledScroll > 65) {
                     scaledScroll--;
                 }
-                while (scaledScroll < 0 && this.getLastPanelEndY() + 5 + scaledScroll < BaseGui.this.height) {
+                while (scaledScroll < 0 && this.getLastPanelEndY() + 5 + scaledScroll < PanelGui.this.height) {
                     scaledScroll++;
                 }
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                for (GuiPanel guiPanel : PanelGui.this.visibleGuiPanels) {
                     guiPanel.yPosition = guiPanel.originalYPosition + scaledScroll;
                 }
             }
 
             private int getLastPanelEndY() {
                 int lastPanelEndY = 0;
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                for (GuiPanel guiPanel : PanelGui.this.visibleGuiPanels) {
                     if (guiPanel.originalYPosition + guiPanel.height > lastPanelEndY) {
                         lastPanelEndY = guiPanel.originalYPosition + guiPanel.height;
                     }
@@ -226,12 +222,12 @@ public class BaseGui extends GuiScreen {
         this.scrollBar.height = (int) ((this.height - 56) * ((this.height - 56) / (double) this.panelHeight));
         this.scrollBar.visible = this.scrollBar.height < this.height - 55 - 5;
 
-        super.buttonList.add(this.scrollBar);
+        this.buttonList.add(this.scrollBar);
 
         this.horizontalScrollBar = new ScrollBar.HorizontalScrollBar() {
             @Override
             protected void onMousePress() {
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                for (GuiPanel guiPanel : PanelGui.this.visibleGuiPanels) {
                     guiPanel.updateOriginals();
                 }
             }
@@ -239,21 +235,21 @@ public class BaseGui extends GuiScreen {
             @Override
             public void onDrag(int scroll) {
                 scroll = -scroll;
-                int scaledScroll = (int) (scroll * BaseGui.this.panelWidth / (double) BaseGui.this.width);
-                while (scaledScroll > 0 && BaseGui.this.visibleGuiPanels.get(0).originalXPosition + scaledScroll > 5) {
+                int scaledScroll = (int) (scroll * PanelGui.this.panelWidth / (double) PanelGui.this.width);
+                while (scaledScroll > 0 && PanelGui.this.visibleGuiPanels.get(0).originalXPosition + scaledScroll > 5) {
                     scaledScroll--;
                 }
-                while (scaledScroll < 0 && getRightMostPanelEndX() + 5 + scaledScroll < BaseGui.this.width - 5) {
+                while (scaledScroll < 0 && getRightMostPanelEndX() + 5 + scaledScroll < PanelGui.this.width - 5) {
                     scaledScroll++;
                 }
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                for (GuiPanel guiPanel : PanelGui.this.visibleGuiPanels) {
                     guiPanel.xPosition = guiPanel.originalXPosition + scaledScroll;
                 }
             }
 
             protected int getRightMostPanelEndX() {
                 int lastPanelEndX = 0;
-                for (GuiPanel guiPanel : BaseGui.this.visibleGuiPanels) {
+                for (GuiPanel guiPanel : PanelGui.this.visibleGuiPanels) {
                     if (guiPanel.originalXPosition + guiPanel.width > lastPanelEndX) {
                         lastPanelEndX = guiPanel.originalXPosition + guiPanel.width;
                     }
@@ -264,7 +260,7 @@ public class BaseGui extends GuiScreen {
         this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.panelWidth));
         this.horizontalScrollBar.visible = this.horizontalScrollBar.width < this.width - 5;
 
-        super.buttonList.add(this.horizontalScrollBar);
+        this.buttonList.add(this.horizontalScrollBar);
     }
 
     @Override
@@ -295,20 +291,21 @@ public class BaseGui extends GuiScreen {
         private Color color = WHITE;
         private ScrollBar scrollBar = null;
         private ScrollBar.HorizontalScrollBar horizontalScrollBar = null;
-        int xPosition;
-        int yPosition;
-        int width;
-        int height;
-        int originalXPosition;
-        int originalYPosition;
-        int originalWidth;
-        int originalHeight;
+        protected final List<GuiButton> guiButtons = new ArrayList<>();
+        protected int xPosition;
+        protected int yPosition;
+        protected int width;
+        protected int height;
+        protected int originalXPosition;
+        protected int originalYPosition;
+        protected int originalWidth;
+        protected int originalHeight;
 
-        int xOffsetPosition = 0;
-        int yOffsetPosition = 0;
-        int originalYOffsetPosition = 0;
-        int originalXOffsetPosition = 0;
-        String name;
+        protected int xOffsetPosition = 0;
+        protected int yOffsetPosition = 0;
+        protected int originalYOffsetPosition = 0;
+        protected int originalXOffsetPosition = 0;
+        protected String name;
 
         public GuiPanel(int xPosition, int yPosition, int width, int height, String name) {
             this.xPosition = xPosition;
@@ -339,8 +336,7 @@ public class BaseGui extends GuiScreen {
         }
 
         public void resetDimensions() {
-            this.width = this.originalWidth;
-            this.height = this.originalHeight;
+            this.updateDimensions();
 
             if (this.height > 150) {
                 this.height = 150;
@@ -377,6 +373,7 @@ public class BaseGui extends GuiScreen {
                     };
                     this.scrollBar.height = (int) (modifiedHeight * (modifiedHeight / (double) this.getPanelHeight()));
                     this.scrollBar.visible = true;
+                    this.guiButtons.add(this.scrollBar);
                 }
             }
             if (this.width > 250) {
@@ -413,6 +410,7 @@ public class BaseGui extends GuiScreen {
                     };
                     this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.getPanelWidth()));
                     this.horizontalScrollBar.visible = true;
+                    this.guiButtons.add(this.horizontalScrollBar);
                 }
             }
         }
@@ -448,12 +446,8 @@ public class BaseGui extends GuiScreen {
             return this.xPosition - 5 + this.getPanelWidth() + this.originalXOffsetPosition;
         }
 
-        public ScrollBar getScrollBar() {
-            return this.scrollBar;
-        }
-
-        public ScrollBar.HorizontalScrollBar getHorizontalScrollBar() {
-            return this.horizontalScrollBar;
+        public List<GuiButton> getGuiButtons() {
+            return this.guiButtons;
         }
 
         public void setColor(Color newColor) {
@@ -472,13 +466,13 @@ public class BaseGui extends GuiScreen {
                     this.horizontalScrollBar.yPosition = this.yPosition + this.height - 5;
                 }
                 GlStateManager.pushMatrix();
-                int theHeight = this.yPosition < 55 ? this.yPosition + this.height - 55 : this.height;
+                int theHeight = this.yPosition < 57 ? this.yPosition + this.height - 57 : this.height;
                 Render.glScissor(this.xPosition, Math.max(57, this.yPosition), this.width, theHeight);
                 GL11.glEnable(GL11.GL_SCISSOR_TEST);
                 FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
                 Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + this.width, this.yPosition + 13, this.color, 170F);
                 fontRenderer.drawString(this.name, this.xPosition + this.width / 2 - fontRenderer.getStringWidth(this.name) / 2, this.yPosition + 3, 0xffffffff);
-                Render.drawRectangle(this.xPosition, this.yPosition + 14, xPosition + this.width + 1, this.yPosition + this.height, Color.BLACK, 62F);
+                Render.drawRectangle(this.xPosition, this.yPosition + 14, this.xPosition + this.width + 1, this.yPosition + this.height, Color.BLACK, 62F);
                 Render.drawEmptyBox(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + 13, Color.BLACK, 150F, 1);
                 GL11.glDisable(GL11.GL_SCISSOR_TEST);
                 GlStateManager.popMatrix();
@@ -486,8 +480,8 @@ public class BaseGui extends GuiScreen {
         }
 
         protected void scissor() {
-            int theHeight = this.yPosition < 56 ? this.yPosition + this.height - 56 : this.height - 14;
-            Render.glScissor(this.xPosition, Math.max(56, this.yPosition + 14) + 1, this.width, theHeight - 1);
+            int theHeight = this.yPosition < 57 ? this.yPosition + this.height - 57 : this.height - 14;
+            Render.glScissor(this.xPosition, Math.max(57, this.yPosition + 14), this.width, theHeight);
         }
     }
 
@@ -509,33 +503,15 @@ public class BaseGui extends GuiScreen {
         public ListPanel(int xPosition, int yPosition, int width, int height, String name, List<?> contents) {
             super(xPosition, yPosition, width, height, name);
             this.contents = contents;
-            this.updateWidth();
-            this.updateHeight();
             this.updateOriginals();
         }
 
         public ListPanel(String name, List<?> contents) {
             super(0, 0, name);
             this.contents = contents;
-            this.updateWidth();
-            this.updateHeight();
             this.updateOriginals();
         }
 
-        public void updateWidth() {
-            int longestWidth = 0;
-            for (Object object : this.contents) {
-                int width;
-                if ((width = Minecraft.getMinecraft().fontRendererObj.getStringWidth(object.toString())) > longestWidth) {
-                    longestWidth = width;
-                }
-            }
-            this.width = Math.max(Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.name) + 15, longestWidth + 15);
-        }
-
-        public void updateHeight() {
-            this.height = 14 + this.getPanelHeight();
-        }
 
         @Override
         protected int getPanelHeight() {
@@ -551,7 +527,7 @@ public class BaseGui extends GuiScreen {
                     longestWidth = width;
                 }
             }
-            return longestWidth + 10;
+            return Math.max(Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.name) + 15, longestWidth + 15);
         }
 
         @Override
@@ -575,5 +551,83 @@ public class BaseGui extends GuiScreen {
         ListPanel listPanel = new ListPanel(name, contents);
         this.guiPanels.add(listPanel);
         return listPanel;
+    }
+
+    protected static class ButtonPanel extends GuiPanel {
+        private final List<LifeKnightButton.VersatileLifeKnightButton> versatileLifeKnightButtons = new ArrayList<>();
+
+        public ButtonPanel(String name, List<LifeKnightButton.VersatileLifeKnightButton> versatileLifeKnightButtons) {
+            super(0, 0, name);
+
+            for (LifeKnightButton.VersatileLifeKnightButton versatileLifeKnightButton : versatileLifeKnightButtons) {
+                this.versatileLifeKnightButtons.add(new LifeKnightButton.VersatileLifeKnightButton(versatileLifeKnightButton.displayString, versatileLifeKnightButton.iAction) {
+                    @Override
+                    public boolean mousePressed(Minecraft minecraft, int mouseX, int mouseY) {
+                        return super.mousePressed(minecraft, mouseX, mouseY) &&
+                                mouseX >= ButtonPanel.this.xPosition && mouseX <= ButtonPanel.this.xPosition + ButtonPanel.this.width &&
+                                mouseY >= ButtonPanel.this.yPosition && mouseY <= ButtonPanel.this.yPosition + ButtonPanel.this.height;
+                    }
+
+                    @Override
+                    public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
+                        if (this.visible) {
+                            GlStateManager.pushMatrix();
+                            ButtonPanel.this.scissor();
+                            GL11.glEnable(GL11.GL_SCISSOR_TEST);
+                            int o = ButtonPanel.this.versatileLifeKnightButtons.indexOf(this);
+                            this.xPosition = ButtonPanel.this.xPosition + 5 + ButtonPanel.this.xOffsetPosition;
+                            this.yPosition = ButtonPanel.this.yPosition + 14 + o * 25 + 2 + ButtonPanel.this.yOffsetPosition;
+
+                            FontRenderer fontRenderer = minecraft.fontRendererObj;
+                            minecraft.getTextureManager().bindTexture(buttonTextures);
+                            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                            this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height &&
+                                    mouseX >= ButtonPanel.this.xPosition && mouseX <= ButtonPanel.this.xPosition + ButtonPanel.this.width &&
+                                    mouseY >= ButtonPanel.this.yPosition && mouseY <= ButtonPanel.this.yPosition + ButtonPanel.this.height;
+                            int i = this.getHoverState(this.hovered);
+                            GlStateManager.enableBlend();
+                            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+                            GlStateManager.blendFunc(770, 771);
+                            this.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 46 + i * 20, this.width / 2, this.height);
+                            this.drawTexturedModalRect(this.xPosition + this.width / 2, this.yPosition, 200 - this.width / 2, 46 + i * 20, this.width / 2, this.height);
+                            this.mouseDragged(minecraft, mouseX, mouseY);
+                            int j = 14737632;
+
+                            if (this.packedFGColour != 0) {
+                                j = this.packedFGColour;
+                            } else if (!this.enabled) {
+                                j = 10526880;
+                            } else if (this.hovered) {
+                                j = 16777120;
+                            }
+                            this.drawCenteredString(fontRenderer, this.displayString, this.xPosition + this.width / 2, this.yPosition + (this.height - 8) / 2, j);
+                            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+                            GlStateManager.popMatrix();
+                        }
+                    }
+                });
+            }
+            this.guiButtons.addAll(this.versatileLifeKnightButtons);
+        }
+
+        @Override
+        protected int getPanelHeight() {
+            return 5 + this.versatileLifeKnightButtons.size() * 25 + 5;
+        }
+
+        @Override
+        protected int getPanelWidth() {
+            int longestWidth = 0;
+            for (LifeKnightButton.VersatileLifeKnightButton versatileLifeKnightButton : this.versatileLifeKnightButtons) {
+                longestWidth = Math.max(longestWidth, versatileLifeKnightButton.width);
+            }
+            return 5 + longestWidth + 5;
+        }
+    }
+
+    public ButtonPanel createButtonPanel(String name, List<LifeKnightButton.VersatileLifeKnightButton> versatileLifeKnightButtons) {
+        ButtonPanel buttonPanel = new ButtonPanel(name, versatileLifeKnightButtons);
+        this.guiPanels.add(buttonPanel);
+        return buttonPanel;
     }
 }

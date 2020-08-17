@@ -83,7 +83,7 @@ public class LifeKnightObjectListGui extends GuiScreen {
             }
         };
 
-        super.buttonList.add(this.addButton = new LifeKnightButton("Add", 2, Video.getScaledWidth(75), Video.getScaledHeight(165), Video.getScaledWidth(150)) {
+        this.buttonList.add(this.addButton = new LifeKnightButton("Add", 2, Video.getScaledWidth(75), Video.getScaledHeight(165), Video.getScaledWidth(150)) {
             @Override
             public void work() {
                 try {
@@ -94,7 +94,7 @@ public class LifeKnightObjectListGui extends GuiScreen {
             }
         });
 
-        super.buttonList.add(this.removeButton = new LifeKnightButton("Remove", 3, Video.getScaledWidth(75), Video.getScaledHeight(230), Video.getScaledWidth(150)) {
+        this.buttonList.add(this.removeButton = new LifeKnightButton("Remove", 3, Video.getScaledWidth(75), Video.getScaledHeight(230), Video.getScaledWidth(150)) {
             @Override
             public void work() {
                 LifeKnightObjectListGui.this.removeSelectedButton();
@@ -102,7 +102,7 @@ public class LifeKnightObjectListGui extends GuiScreen {
         });
         this.removeButton.visible = false;
 
-        super.buttonList.add(this.clearButton = new ConfirmButton(4, Video.getScaledWidth(75), Video.getScaledHeight(295), Video.getScaledWidth(150), "Clear", RED + "Confirm") {
+        this.buttonList.add(this.clearButton = new ConfirmButton(4, Video.getScaledWidth(75), Video.getScaledHeight(295), Video.getScaledWidth(150), "Clear", RED + "Confirm") {
             @Override
             public void onConfirm() {
                 LifeKnightObjectListGui.this.lifeKnightObjectList.clear();
@@ -111,7 +111,7 @@ public class LifeKnightObjectListGui extends GuiScreen {
         });
         this.clearButton.visible = false;
 
-        super.buttonList.add(this.scrollBar = new ScrollBar() {
+        this.buttonList.add(this.scrollBar = new ScrollBar() {
             @Override
             public void onDrag(int scroll) {
                 scroll = -scroll;
@@ -140,7 +140,7 @@ public class LifeKnightObjectListGui extends GuiScreen {
         this.scrollBar.visible = this.scrollBar.height < this.height;
 
         if (this.lastGui != null) {
-            super.buttonList.add(new LifeKnightButton("Back", 5, 5, 5, 50) {
+            this.buttonList.add(new LifeKnightButton("Back", 5, 5, 5, 50) {
                 @Override
                 public void work() {
                     Core.openGui(LifeKnightObjectListGui.this.lastGui);

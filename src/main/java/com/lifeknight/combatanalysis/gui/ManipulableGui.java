@@ -20,20 +20,20 @@ public class ManipulableGui extends GuiScreen {
         for (Manipulable manipulable : manipulableComponents) {
             manipulableButtons.add(new ManipulableButton(manipulable));
         }
-        super.buttonList.addAll(manipulableButtons);
+        this.buttonList.addAll(manipulableButtons);
 
         for (Manipulable manipulable : manipulableComponents) {
             for (Object component : manipulable.connectedComponents) {
                 if (component instanceof GuiButton) {
-                    super.buttonList.add((GuiButton) component);
+                    this.buttonList.add((GuiButton) component);
                 }
             }
         }
 
-        super.buttonList.add(new LifeKnightButton(super.buttonList.size(), this.width / 2 - 50, this.height - 30, 100, 20, "Reset") {
+        this.buttonList.add(new LifeKnightButton(this.buttonList.size(), this.width / 2 - 50, this.height - 30, 100, 20, "Reset") {
             @Override
             public void work() {
-                for (GuiButton guiButton : ManipulableGui.super.buttonList) {
+                for (GuiButton guiButton : ManipulableGui.this.buttonList) {
                     if (guiButton instanceof ManipulableButton) {
                         ((ManipulableButton) guiButton).reset();
                     }

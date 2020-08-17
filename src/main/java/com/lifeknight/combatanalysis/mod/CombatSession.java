@@ -1,6 +1,7 @@
 package com.lifeknight.combatanalysis.mod;
 
 import com.google.gson.*;
+import com.lifeknight.combatanalysis.gui.CombatSessionGui;
 import com.lifeknight.combatanalysis.utilities.Logic;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
@@ -179,11 +180,15 @@ public class CombatSession {
     }
 
     public static void onKeyTyped(int keyCode, boolean state) {
-        if (keyCode == Core.toggleCombatSessionKeyBinding.getKeyCode() && state) {
-            if (sessionIsRunning) {
-                getLatestAnalysis().end();
-            } else {
-                createAndActivate();
+        if (state) {
+            if (keyCode == Core.toggleCombatSessionKeyBinding.getKeyCode()) {
+                if (sessionIsRunning) {
+                    getLatestAnalysis().end();
+                } else {
+                    createAndActivate();
+                }
+            } else if (keyCode == Core.openLatestCombatSessionKeyBinding.getKeyCode()) {
+                Core.openGui(new CombatSessionGui(getLatestAnalysisForGui()));
             }
         }
         if (sessionIsRunning) getLatestAnalysis().keyTyped(keyCode, state);
@@ -421,12 +426,13 @@ public class CombatSession {
                     this.hitByArrow = true;
                 }
             }
+            Entity thrower;
             if (entity instanceof EntityEgg) {
-                if (((EntityEgg) entity).getThrower().getUniqueID() != thePlayer.getUniqueID()) {
+                if ((thrower = ((EntityEgg) entity).getThrower()) != null && thrower.getUniqueID() != thePlayer.getUniqueID()) {
                     this.hitByProjectile = true;
                 }
             } else if (entity instanceof EntitySnowball) {
-                if (((EntitySnowball) entity).getThrower().getUniqueID() != thePlayer.getUniqueID()) {
+                if ((thrower = ((EntitySnowball) entity).getThrower()) != null && thrower.getUniqueID() != thePlayer.getUniqueID()) {
                     this.hitByProjectile = true;
                 }
             }
@@ -768,7 +774,7 @@ public class CombatSession {
             Miscellaneous.logError("Tried to add combat session id to won-id list, action denied: %s", ioException.getMessage());
         }
 
-        if (this.opponentTrackerMap.size() > 0 && (this.attacksLanded > 5 || this.hitsTaken > 1) && this.getTime() > 5000L) {
+        if (this.opponentTrackerMap.size() > 0 && (this.attacksLanded > 5 || this.hitsTaken > 1) && this.getTime() > 1000L) {
             combatSessions.add(this);
             if (Core.logSessions.getValue()) this.log();
         } else {
@@ -861,7 +867,7 @@ public class CombatSession {
     }
 
     public String getMeleeAccuracy() {
-        return this.attacksSent == 0 ? "N/A" : Text.shortenDouble(this.attacksLanded / (double) this.attacksSent * 100, 1) + "%" + ("(" + this.attacksLanded + " : " + this.attacksSent + ")");
+        return this.attacksSent == 0 ? "N/A" : Text.shortenDouble(this.attacksLanded / (double) this.attacksSent * 100, 1) + "%";
     }
 
     public String getProjectileAccuracy() {
@@ -1256,12 +1262,13 @@ public class CombatSession {
                             this.opponent,
                             this.opponent.getEntityBoundingBox().addCoord(this.opponent.motionX, this.opponent.motionY, this.opponent.motionZ).expand(1.5, 1.5, 1.5));
             for (Entity entity : closestOpponentEntities) {
+                Entity thrower;
                 if (entity instanceof EntityEgg) {
-                    if (((EntityEgg) entity).getThrower().getUniqueID() == thePlayer.getUniqueID()) {
+                    if ((thrower = ((EntityEgg) entity).getThrower()) != null && thrower.getUniqueID() == thePlayer.getUniqueID()) {
                         this.hitByProjectile = true;
                     }
                 } else if (entity instanceof EntitySnowball) {
-                    if (((EntitySnowball) entity).getThrower().getUniqueID() == thePlayer.getUniqueID()) {
+                    if ((thrower = ((EntitySnowball) entity).getThrower()) != null && thrower.getUniqueID() == thePlayer.getUniqueID()) {
                         this.hitByProjectile = true;
                     }
                 }

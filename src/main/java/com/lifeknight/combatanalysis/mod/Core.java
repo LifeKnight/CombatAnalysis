@@ -26,6 +26,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.ArrowLooseEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.WorldEvent;
+import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -49,7 +50,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2",
+            MOD_VERSION = "0.2.0.10",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -63,6 +64,7 @@ public class Core {
     public static final LifeKnightBoolean logSessions = new LifeKnightBoolean("Log Sessions", "Settings", true);
     public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main HotBar Slot", "Settings", 1, 1, 9);
     public static final KeyBinding toggleCombatSessionKeyBinding = new KeyBinding("Toggle combat session", 0x1B, MOD_NAME);
+    public static final KeyBinding openLatestCombatSessionKeyBinding = new KeyBinding("Open latest combat session", 0x1C, MOD_NAME);
     public static final LifeKnightList.LifeKnightIntegerList deletedSessionIds = new LifeKnightList.LifeKnightIntegerList("Deleted Session IDs", "Extra");
     public static final LifeKnightList.LifeKnightIntegerList wonSessionIds = new LifeKnightList.LifeKnightIntegerList("Won Session IDs", "Extra");
     public static final LifeKnightList.LifeKnightIntegerList loggedSessionIds = new LifeKnightList.LifeKnightIntegerList("Logged Session IDs", "Extra");
@@ -70,10 +72,17 @@ public class Core {
     private static final List<Long> leftClicks = new ArrayList<>();
     public static Configuration configuration;
 
+    /*
+    (1) Fix GuiPanel height when y < 57
+    Reset all button in FilterGui
+     */
+
     @EventHandler
     public void init(FMLInitializationEvent initEvent) {
         MinecraftForge.EVENT_BUS.register(this);
         ClientCommandHandler.instance.registerCommand(new ModCommand());
+        ClientRegistry.registerKeyBinding(toggleCombatSessionKeyBinding);
+        ClientRegistry.registerKeyBinding(openLatestCombatSessionKeyBinding);
 
         deletedSessionIds.setShowInLifeKnightGui(false);
         wonSessionIds.setShowInLifeKnightGui(false);
@@ -185,10 +194,10 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("CPS", 0, 700, "CPS") {
+        new EnhancedHudText("CPS", 0, 800, "CPS") {
             @Override
             public String getTextToDisplay() {
-                leftClicks.removeIf( time -> time < System.currentTimeMillis() - 1000L);
+                leftClicks.removeIf(time -> time < System.currentTimeMillis() - 1000L);
                 return String.valueOf(leftClicks.size());
             }
 
@@ -208,11 +217,6 @@ public class Core {
                 onHypixel = !Minecraft.getMinecraft().isSingleplayer() && Minecraft.getMinecraft().getCurrentServerData().serverIP.toLowerCase().contains("hypixel.net");
             }
         }, 1000);
-    }
-
-    @SubscribeEvent
-    public void onChatMessageReceived(ClientChatReceivedEvent event) {
-
     }
 
     @SubscribeEvent
@@ -266,7 +270,7 @@ public class Core {
 
     @SubscribeEvent
     public void onArrowShot(ArrowLooseEvent event) {
-        if (runMod.getValue() && event.charge > 2) {
+        if (runMod.getValue() && event.charge >= 3) {
             CombatSession.onArrowShot();
         }
     }

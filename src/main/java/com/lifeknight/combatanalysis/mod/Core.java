@@ -50,21 +50,26 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2.0.10",
+            MOD_VERSION = "0.2.1.51",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
     public static boolean onHypixel = false;
     public static GuiScreen guiToOpen = null;
-    public static final LifeKnightBoolean runMod = new LifeKnightBoolean("Core", "Main", true);
+    public static final LifeKnightBoolean runMod = new LifeKnightBoolean("Core", "Main", true) {
+        @Override
+        public void onSetValue() {
+            CombatSession.onWorldLoad();
+        }
+    };
     public static final LifeKnightBoolean gridSnapping = new LifeKnightBoolean("Grid Snapping", "HUD", true);
     public static final LifeKnightBoolean hudTextShadow = new LifeKnightBoolean("HUD Text Shadow", "HUD", true);
     public static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
     public static final LifeKnightBoolean logSessions = new LifeKnightBoolean("Log Sessions", "Settings", true);
-    public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main HotBar Slot", "Settings", 1, 1, 9);
+    public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main Hotbar Slot", "Settings", 1, 1, 9);
     public static final KeyBinding toggleCombatSessionKeyBinding = new KeyBinding("Toggle combat session", 0x1B, MOD_NAME);
-    public static final KeyBinding openLatestCombatSessionKeyBinding = new KeyBinding("Open latest combat session", 0x1C, MOD_NAME);
+    public static final KeyBinding openLatestCombatSessionKeyBinding = new KeyBinding("Open latest combat session", 0x26, MOD_NAME);
     public static final LifeKnightList.LifeKnightIntegerList deletedSessionIds = new LifeKnightList.LifeKnightIntegerList("Deleted Session IDs", "Extra");
     public static final LifeKnightList.LifeKnightIntegerList wonSessionIds = new LifeKnightList.LifeKnightIntegerList("Won Session IDs", "Extra");
     public static final LifeKnightList.LifeKnightIntegerList loggedSessionIds = new LifeKnightList.LifeKnightIntegerList("Logged Session IDs", "Extra");
@@ -73,9 +78,9 @@ public class Core {
     public static Configuration configuration;
 
     /*
-    (1) Fix GuiPanel height when y < 57
-    Reset all button in FilterGui
-     */
+    How did Willerhide get 600% accuracy???
+    Stop random people from getting added to the opponent list
+    */
 
     @EventHandler
     public void init(FMLInitializationEvent initEvent) {
@@ -236,31 +241,18 @@ public class Core {
                 case "player":
                     CombatSession.onAttack(entityOtherPlayerMP);
                     break;
-                case "arrow":
-                    CombatSession.onArrowHit(entityOtherPlayerMP);
-                    break;
-                case "thrown":
-                    CombatSession.onProjectileHit(entityOtherPlayerMP);
-                    break;
             }
-        }
-    }
-    // Injected
-    public static void onAttackEntityPlayerSPFrom(DamageSource damageSource) {
-        if (!(damageSource.getEntity() instanceof EntityPlayer) || !runMod.getValue()) return;
-        switch (damageSource.getDamageType()) {
-            case "player":
-                CombatSession.onHurt((EntityPlayer) damageSource.getEntity());
-                break;
-            case "arrow":
-                CombatSession.onHitByArrow((EntityPlayer) damageSource.getEntity());
-                break;
         }
     }
 
     // Injected
+    public static void onAttackEntityPlayerSPFrom(DamageSource damageSource) {
+
+    }
+
+    // Injected
     public static void onLivingHurt(EntityLivingBase entityLivingBase) {
-        if (!(entityLivingBase instanceof EntityPlayer)) return;
+        if (!(entityLivingBase instanceof EntityPlayer) || !runMod.getValue()) return;
         if (entityLivingBase.getUniqueID() == Minecraft.getMinecraft().thePlayer.getUniqueID()) {
             CombatSession.onHurt(null);
         } else {
@@ -292,12 +284,14 @@ public class Core {
 
     @SubscribeEvent
     public void onMousePressed(InputEvent.MouseInputEvent event) {
-        if (runMod.getValue() && Mouse.getEventButtonState()) {
-            if (Mouse.getEventButton() == 0) {
-                CombatSession.onLeftClick();
-                leftClicks.add(System.currentTimeMillis());
-            } else if (Mouse.getEventButton() == 1) {
-                CombatSession.onRightClick();
+        if (runMod.getValue()) {
+            if (Mouse.getEventButtonState()) {
+                if (Mouse.getEventButton() == 0) {
+                    CombatSession.onLeftClick();
+                    leftClicks.add(System.currentTimeMillis());
+                } else if (Mouse.getEventButton() == 1) {
+                    CombatSession.onRightClick();
+                }
             }
         }
     }

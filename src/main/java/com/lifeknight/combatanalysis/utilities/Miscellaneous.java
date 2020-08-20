@@ -175,7 +175,7 @@ public class Miscellaneous {
 	}
 
 	public static String toCSV(List<?> elements) {
-		if (elements.size() == 0) return "";
+		if (elements.isEmpty()) return "";
 		StringBuilder result = new StringBuilder();
 
 		for (Object element : elements) {

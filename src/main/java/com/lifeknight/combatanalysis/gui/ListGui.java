@@ -234,7 +234,7 @@ public class ListGui extends GuiScreen {
                 listItemButtons.add(listItemButton);
             }
         }
-        this.listMessage = listItemButtons.size() == 0 ? GRAY + "No items found" : "";
+        this.listMessage = listItemButtons.isEmpty() ? GRAY + "No items found" : "";
 
         this.clearButton.visible = listItemButtons.size() > 1;
 

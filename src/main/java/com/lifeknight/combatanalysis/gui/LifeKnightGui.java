@@ -375,9 +375,9 @@ public class LifeKnightGui extends GuiScreen {
                 Object lastComponent = null;
                 int highestComponentId;
 
-                if (LifeKnightGui.this.displayedButtons.size() == 0) {
+                if (LifeKnightGui.this.displayedButtons.isEmpty()) {
                     highestComponentId = Math.max(0, LifeKnightGui.this.textFields.size() - 1);
-                } else if (LifeKnightGui.this.textFields.size() == 0) {
+                } else if (LifeKnightGui.this.textFields.isEmpty()) {
                     highestComponentId = Math.max(0, LifeKnightGui.this.displayedButtons.size() - 1);
                 } else {
                     highestComponentId = LifeKnightGui.this.displayedButtons.size() + LifeKnightGui.this.textFields.size() - 2;

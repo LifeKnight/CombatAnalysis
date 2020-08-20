@@ -88,7 +88,7 @@ public abstract class LifeKnightObjectList extends LifeKnightVariable {
                         EnumChatFormatting.YELLOW + "\"" + element + ".\"" + EnumChatFormatting.RED + " It will not be added to " + name + ".");
             }
 
-            if (values.size() == 0) {
+            if (values.isEmpty()) {
                 values = defaultValues;
             }
         }

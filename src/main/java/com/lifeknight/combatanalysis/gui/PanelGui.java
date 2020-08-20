@@ -480,7 +480,7 @@ public class PanelGui extends GuiScreen {
         }
 
         protected void scissor() {
-            int theHeight = this.yPosition + 14 < 57 ? this.yPosition + this.height - 57 - 14 : this.height - 14;
+            int theHeight = this.yPosition + 14 < 57 ? this.yPosition + this.height - 57 : this.height - 14;
             Render.glScissor(this.xPosition, Math.max(57, this.yPosition + 14), this.width, theHeight);
         }
     }

@@ -2,6 +2,7 @@ package com.lifeknight.combatanalysis.mod;
 
 import com.google.gson.*;
 import com.lifeknight.combatanalysis.gui.CombatSessionGui;
+import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Logic;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
@@ -9,10 +10,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.projectile.EntityArrow;
-import net.minecraft.entity.projectile.EntityEgg;
-import net.minecraft.entity.projectile.EntityFishHook;
-import net.minecraft.entity.projectile.EntitySnowball;
+import net.minecraft.entity.projectile.*;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.NBTException;
@@ -73,10 +71,10 @@ public class CombatSession {
     private static boolean canStartCombatSession() {
         if (Minecraft.getMinecraft().playerController.getCurrentGameType() != WorldSettings.GameType.SURVIVAL)
             return false;
-
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
-            if (entityPlayer != null && entityPlayer.getUniqueID() != Minecraft.getMinecraft().thePlayer.getUniqueID() &&
-                    !entityPlayer.isInvisible() && !entityPlayer.isEntityInvulnerable(DamageSource.causePlayerDamage(Minecraft.getMinecraft().thePlayer))) {
+            if (entityPlayer.getUniqueID() != thePlayer.getUniqueID() && !entityPlayer.capabilities.isFlying &&
+                    !entityPlayer.isInvisible() && !thePlayer.isOnSameTeam(entityPlayer) && thePlayer.getDistanceToEntity(entityPlayer) <= 40) {
                 return true;
             }
         }
@@ -104,7 +102,7 @@ public class CombatSession {
 
     public static CombatSession getLatestAnalysisForGui() {
         List<CombatSession> combatSessions = getCombatSessionsForGui();
-        return combatSessions.size() == 0 ? null : combatSessions.get(combatSessions.size() - 1);
+        return combatSessions.isEmpty() ? null : combatSessions.get(combatSessions.size() - 1);
     }
 
     public static List<CombatSession> getCombatSessionsForGui() {
@@ -115,9 +113,9 @@ public class CombatSession {
                     (wonFilterType == 0 || ((wonFilterType == 1 && combatSession.isWon()) || (wonFilterType == 2 && !combatSession.isWon()))) &&
                     ((dateFilterType && ((firstDate.getTime() == 0 || secondDate.getTime() == 0) || (combatSession.getStartTime() >= firstDate.getTime() && combatSession.getStartTime() <= secondDate.getTime() + 86400000L))) ||
                             (!dateFilterType && (firstDate.getTime() == 0 || (combatSession.getStartTime() >= firstDate.getTime() && combatSession.getStartTime() <= firstDate.getTime() + 86400000L)))) &&
-                    (typeFilter.size() == 0 || Text.containsAny(combatSession.detectType(), typeFilter, true)) &&
-                    (serverFilter.size() == 0 || Text.containsAny(combatSession.getServerIp(), serverFilter, true)) &&
-                    (opponentFilter.size() == 0 || Text.containsAny(opponentFilter, combatSession.getOpponentNames(), true)
+                    (typeFilter.isEmpty() || Text.containsAny(combatSession.detectType(), typeFilter, true)) &&
+                    (serverFilter.isEmpty() || Text.containsAny(combatSession.getServerIp(), serverFilter, true)) &&
+                    (opponentFilter.isEmpty() || Text.containsAny(opponentFilter, combatSession.getOpponentNames(), true)
                     )) combatSessions.add(combatSession);
         }
 
@@ -184,7 +182,7 @@ public class CombatSession {
             if (keyCode == Core.toggleCombatSessionKeyBinding.getKeyCode()) {
                 if (sessionIsRunning) {
                     getLatestAnalysis().end();
-                } else {
+                } else if (Core.runMod.getValue()) {
                     createAndActivate();
                 }
             } else if (keyCode == Core.openLatestCombatSessionKeyBinding.getKeyCode()) {
@@ -271,6 +269,7 @@ public class CombatSession {
 
     private int projectilesThrown = 0;
     private int projectilesHit = 0;
+    private final Map<UUID, EntityThrowable> thrownProjectiles = new HashMap<>();
 
     private int arrowsShot = 0;
     private int arrowsHit = 0;
@@ -311,7 +310,7 @@ public class CombatSession {
 
     public CombatSession() {
         this.id = highestId++;
-        this.serverIp = Minecraft.getMinecraft().getCurrentServerData().serverIP;
+        this.serverIp = Minecraft.getMinecraft().isSingleplayer() ? "Singleplayer" : Minecraft.getMinecraft().getCurrentServerData().serverIP;
         this.opponentTrackerMap = new HashMap<>();
         this.potionEffects = new ArrayList<>();
         this.strafes = new ArrayList<>();
@@ -384,22 +383,23 @@ public class CombatSession {
         } else {
             this.lastAttackType = Integer.MIN_VALUE;
         }
-
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
-        if (thePlayer == null || thePlayer.getDistance(thePlayer.prevPosX, thePlayer.prevPosY, thePlayer.prevPosZ) > 50) {
-            this.end();
-            return;
-        } else if (thePlayer.capabilities.allowFlying || thePlayer.isInvisible()) {
-            this.end();
-            return;
-        } else if (this.allOpponentsAreGone()) {
-            this.end();
-            return;
+        if (Core.automaticSessions.getValue()) {
+            if (thePlayer == null || thePlayer.getDistance(thePlayer.prevPosX, thePlayer.prevPosY, thePlayer.prevPosZ) > 50) {
+                this.end();
+                return;
+            } else if (thePlayer.capabilities.allowFlying || thePlayer.isInvisible()) {
+                this.end();
+                return;
+            } else if (this.allOpponentsAreGone()) {
+                this.end();
+                return;
+            }
         }
 
-        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingArmor), this.getNonNullElementCount(thePlayer.inventory.armorInventory), 1)) {
+        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingArmor), this.getNonNullElementCount(thePlayer.inventory.armorInventory), 2)) {
             this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
-        } else {
+        } else if (Core.automaticSessions.getValue()) {
             this.end();
             return;
         }
@@ -411,29 +411,38 @@ public class CombatSession {
             return;
         }
 
-        for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
-            opponentTracker.tick();
+        for (UUID uuid : this.thrownProjectiles.keySet()) {
+            if (!Minecraft.getMinecraft().theWorld.loadedEntityList.contains(this.thrownProjectiles.get(uuid))) this.thrownProjectiles.remove(uuid);
         }
+
+        for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
+            opponentTracker.tick(this.thrownProjectiles);
+        }
+
 
         List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
                 getEntitiesWithinAABBExcludingEntity(
                         thePlayer,
-                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(1.0D, 1.0D, 1.0D));
+                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(1.5, 1.5, 1.5));
 
         for (Entity entity : closestEntities) {
             if (!this.hitByArrow) {
-                if (entity instanceof EntityArrow && ((EntityArrow) entity).shootingEntity.getUniqueID() != thePlayer.getUniqueID()) {
+                if (entity instanceof EntityArrow && ((EntityArrow) entity).shootingEntity.getUniqueID() != thePlayer.getUniqueID() && entity.ticksExisted >= 5) {
                     this.hitByArrow = true;
                 }
             }
             Entity thrower;
             if (entity instanceof EntityEgg) {
-                if ((thrower = ((EntityEgg) entity).getThrower()) != null && thrower.getUniqueID() != thePlayer.getUniqueID()) {
+                if (entity.ticksExisted >= 5) {
                     this.hitByProjectile = true;
+                } else {
+                    this.thrownProjectiles.putIfAbsent(entity.getUniqueID(), (EntityThrowable) entity);
                 }
             } else if (entity instanceof EntitySnowball) {
-                if ((thrower = ((EntitySnowball) entity).getThrower()) != null && thrower.getUniqueID() != thePlayer.getUniqueID()) {
+                if (entity.ticksExisted >= 5) {
                     this.hitByProjectile = true;
+                } else {
+                    this.thrownProjectiles.putIfAbsent(entity.getUniqueID(), (EntityThrowable) entity);
                 }
             }
         }
@@ -489,13 +498,13 @@ public class CombatSession {
     private void heldItemChange() {
         int currentItem = Minecraft.getMinecraft().thePlayer.inventory.currentItem;
         HotKeyTracker hotKeyTracker;
-        if (this.hotKeys.size() == 0) {
+        if (this.hotKeys.isEmpty()) {
             if (currentItem != Core.mainHotBarSlot.getValue() - 1) {
                 this.hotKeys.add(new HotKeyTracker());
             }
         }
         if (this.hotKeys.size() != 0) {
-            if (!(hotKeyTracker = this.getLatestHotKeyTracker()).hasEnded() && currentItem == Core.mainHotBarSlot.getValue() - 1) {
+            if (!(hotKeyTracker = this.getLatestHotKeyTracker()).hasEnded()) {
                 hotKeyTracker.end();
             }
             if (this.getLatestHotKeyTracker().hasEnded() && currentItem != Core.mainHotBarSlot.getValue() - 1) {
@@ -546,8 +555,10 @@ public class CombatSession {
 
     private OpponentTracker getOpponent(EntityPlayer opponent) {
         if (opponent == null) opponent = this.getClosestPlayer();
+        if (opponent == null) return null;
         OpponentTracker theOpponentTracker;
-        if ((theOpponentTracker = this.opponentTrackerMap.get(opponent.getUniqueID())) != null) return theOpponentTracker;
+        if ((theOpponentTracker = this.opponentTrackerMap.get(opponent.getUniqueID())) != null)
+            return theOpponentTracker;
 
         this.opponentTrackerMap.put(opponent.getUniqueID(), (theOpponentTracker = new OpponentTracker(opponent)));
         return theOpponentTracker;
@@ -566,11 +577,12 @@ public class CombatSession {
     }
 
     public void hitByArrow(EntityPlayer shooter) {
-        if (shooter == null) return;
         this.updateTicksSinceAction();
         this.hitByArrow = false;
+        OpponentTracker opponentTracker = this.getOpponent(shooter);
+        if (opponentTracker == null) return;
+        opponentTracker.arrowsTaken++;
         this.arrowsTaken++;
-        this.getOpponent(shooter).arrowsTaken++;
     }
 
     public void projectileThrown(int type) {
@@ -595,23 +607,25 @@ public class CombatSession {
 
     public void attack(EntityPlayer target) {
         this.updateTicksSinceAction();
-        OpponentTracker opponent = this.getOpponent(target);
+        OpponentTracker opponentTracker = this.getOpponent(target);
+        if (opponentTracker == null) return;
         if (this.attacksSent == 0) {
             this.attacksSent = 1;
             this.leftClicks = 1;
-            opponent.attacksSent++;
+            opponentTracker.attacksSent++;
         }
         this.lastAttackType = 0;
         this.lastAttackTimer = 5;
-        opponent.attacksLanded++;
+        opponentTracker.attacksLanded++;
         this.attacksLanded++;
     }
 
     public void playerHurt(EntityPlayer player) {
         this.updateTicksSinceAction();
-        OpponentTracker opponent = this.getOpponent(player);
-        if (opponent.hitByProjectile || opponent.hitByFishingRodHook()) {
-            opponent.projectilesHit++;
+        OpponentTracker opponentTracker = this.getOpponent(player);
+        if (opponentTracker == null) return;
+        if (opponentTracker.hitByProjectile || opponentTracker.hitByFishingRodHook()) {
+            opponentTracker.projectilesHit++;
             this.projectilesHit++;
             return;
         }
@@ -619,14 +633,14 @@ public class CombatSession {
         if (this.lastAttackTimer > 0) {
             switch (this.lastAttackType) {
                 case 0:
-                    this.getOpponent(player).onOpponentHit();
+                    opponentTracker.onOpponentHit();
                     break;
                 case 1:
-                    this.getOpponent(player).arrowsHit++;
+                    opponentTracker.arrowsHit++;
                     this.arrowsHit++;
                     break;
                 case 2:
-                    this.getOpponent(player).projectilesHit++;
+                    opponentTracker.projectilesHit++;
                     this.projectilesHit++;
                     break;
             }
@@ -641,8 +655,10 @@ public class CombatSession {
         } else if (entityPlayer != null || this.hitByProjectile) {
             this.hitByProjectile(entityPlayer);
         } else {
+            OpponentTracker opponentTracker = this.getOpponent(attacker);
+            if (opponentTracker == null) return;
             this.hitsTaken++;
-            this.getOpponent(attacker).onDamage();
+            opponentTracker.onDamage();
         }
     }
 
@@ -672,8 +688,10 @@ public class CombatSession {
                 this.ticksSinceLeftClick = 0;
                 this.getLatestClicksPerSecondCounter().incrementClicks();
                 if (closestPlayer.getEntityBoundingBox().expand(3, 3, 3).isVecInside(positionEyes)) {
+                    OpponentTracker opponentTracker = this.getOpponent(closestPlayer);
+                    if (opponentTracker == null) return;
                     this.attacksSent++;
-                    this.getOpponent(closestPlayer).attacksSent++;
+                    opponentTracker.attacksSent++;
                 }
             } else {
                 ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
@@ -695,9 +713,8 @@ public class CombatSession {
         EntityPlayer closestPlayer = null;
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
-            if (thePlayer.getUniqueID() != entityPlayer.getUniqueID() && (closestPlayer == null ||
-                    (thePlayer.getDistanceToEntity(entityPlayer) < thePlayer.getDistanceToEntity(closestPlayer)
-                            && !entityPlayer.isInvisible()))) {
+            if (thePlayer.getUniqueID() != entityPlayer.getUniqueID() && (closestPlayer == null || thePlayer.getDistanceToEntity(entityPlayer) < thePlayer.getDistanceToEntity(closestPlayer)) &&
+                    !(entityPlayer.capabilities.isFlying || entityPlayer.isInvisible() || thePlayer.isOnSameTeam(entityPlayer))) {
                 closestPlayer = entityPlayer;
             }
         }
@@ -764,7 +781,7 @@ public class CombatSession {
         }
 
         ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
-        if ((clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) || this.clicksPerSecondTrackers.size() == 0) {
+        if ((clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) || this.clicksPerSecondTrackers.isEmpty()) {
             clicksPerSecondTracker.end();
         }
         try {
@@ -798,7 +815,7 @@ public class CombatSession {
     }
 
     private boolean mostHitsOnOpponent() {
-        if (this.opponentTrackerMap.size() == 0) return false;
+        if (this.opponentTrackerMap.isEmpty()) return false;
         List<OpponentTracker> opponentTrackers = new ArrayList<>(this.opponentTrackerMap.values());
         OpponentTracker opponentTracker = opponentTrackers.get(opponentTrackers.size() - 1);
         return opponentTracker.hitsTaken <= opponentTracker.opponentHitsTaken || opponentTracker.hitsTaken <= 3 && opponentTracker.arrowsTaken <= opponentTracker.arrowsHit;
@@ -850,7 +867,7 @@ public class CombatSession {
     }
 
     public String getAverageClicksPerSecond() {
-        if (this.clicksPerSecondTrackers.size() == 0 || (this.clicksPerSecondTrackers.size() == 1 && !this.getLatestClicksPerSecondCounter().hasEnded()))
+        if (this.clicksPerSecondTrackers.isEmpty() || (this.clicksPerSecondTrackers.size() == 1 && !this.getLatestClicksPerSecondCounter().hasEnded()))
             return "0";
 
         double totalAverage = 0;
@@ -1024,7 +1041,8 @@ public class CombatSession {
     public String detectType() {
         if (this.detectedType != null) return this.detectedType;
 
-        if (this.startingInventory.size() <= 2 && this.startingArmor.size() <= 2) this.detectedType = "Sumo";
+        if (this.getNonNullElementCount(this.startingInventory) <= 2 && this.getNonNullElementCount(this.startingArmor) <= 2)
+            this.detectedType = "Sumo";
 
         Map<String, Integer> map = new HashMap<>();
 
@@ -1042,14 +1060,15 @@ public class CombatSession {
         Integer stackSize;
         if ((stackSize = map.get("minecraft:potion")) != null && stackSize >= 25) this.detectedType = "Potion";
 
-        if ((stackSize = map.get("minecraft:golden_apple")) != null && stackSize >= 3 && stackSize <= 10 && (stackSize = map.get("minecraft:lava_bucket")) != null && stackSize >= 2) this.detectedType = "UHC";
+        if ((stackSize = map.get("minecraft:golden_apple")) != null && stackSize >= 3 && stackSize <= 10 && (stackSize = map.get("minecraft:lava_bucket")) != null && stackSize >= 2)
+            this.detectedType = "UHC";
 
         if ((stackSize = map.get("minecraft:golden_apple")) != null && stackSize >= 32) {
             if (this.hitsTaken >= 50 || this.highestHitsOnOpponent() >= 50) return "Combo";
             return "Gapple";
         }
 
-        this.detectedType = "Unknown";
+        if (this.detectedType == null) this.detectedType = "Unknown";
 
         return this.detectedType;
     }
@@ -1255,22 +1274,15 @@ public class CombatSession {
             this.projectilesHit = projectilesHit;
         }
 
-        public void tick() {
-            EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+        public void tick(Map<UUID, EntityThrowable> projectilesThrown) {
             List<Entity> closestOpponentEntities = Minecraft.getMinecraft().theWorld.
                     getEntitiesWithinAABBExcludingEntity(
                             this.opponent,
                             this.opponent.getEntityBoundingBox().addCoord(this.opponent.motionX, this.opponent.motionY, this.opponent.motionZ).expand(1.5, 1.5, 1.5));
             for (Entity entity : closestOpponentEntities) {
-                Entity thrower;
-                if (entity instanceof EntityEgg) {
-                    if ((thrower = ((EntityEgg) entity).getThrower()) != null && thrower.getUniqueID() == thePlayer.getUniqueID()) {
-                        this.hitByProjectile = true;
-                    }
-                } else if (entity instanceof EntitySnowball) {
-                    if ((thrower = ((EntitySnowball) entity).getThrower()) != null && thrower.getUniqueID() == thePlayer.getUniqueID()) {
-                        this.hitByProjectile = true;
-                    }
+                if (projectilesThrown.containsKey(entity.getUniqueID())) {
+                    this.hitByProjectile = true;
+                    return;
                 }
             }
         }

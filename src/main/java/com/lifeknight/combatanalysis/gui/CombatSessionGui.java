@@ -146,25 +146,18 @@ public class CombatSessionGui extends PanelGui {
             potionEffectPanel.setColor(Color.ORANGE);
             super.guiPanels.add(potionEffectPanel);
 
-            HotKeyPanel hotKeyPanel = new HotKeyPanel("HotKeys", this.combatSession.getHotKeys());
+            HotKeyPanel hotKeyPanel = new HotKeyPanel("Hot Keys", this.combatSession.getHotKeys());
             hotKeyPanel.setColor(Color.MAGENTA);
             super.guiPanels.add(hotKeyPanel);
 
-            InventoryPanel startingArmor = new InventoryPanel("Starting Armor", this.combatSession.getStartingArmor());
-            startingArmor.setColor(Color.GREEN);
-            super.guiPanels.add(startingArmor);
+            InventoryComparisonPanel armor = new InventoryComparisonPanel("Armor", this.combatSession.getStartingArmor(), this.combatSession.getEndingArmor(), false);
+            armor.setColor(Color.GREEN);
+            super.guiPanels.add(armor);
 
-            InventoryPanel startingInventory = new InventoryPanel("Starting Inventory", this.combatSession.getStartingInventory());
-            startingInventory.setColor(Color.GREEN);
-            super.guiPanels.add(startingInventory);
+            InventoryComparisonPanel inventory = new InventoryComparisonPanel("Inventory", this.combatSession.getStartingInventory(), this.combatSession.getEndingInventory(), true);
+            inventory.setColor(Color.GREEN);
+            super.guiPanels.add(inventory);
 
-            InventoryPanel endingArmor = new InventoryPanel("Ending Armor", this.combatSession.getEndingArmor());
-            endingArmor.setColor(Color.GREEN);
-            super.guiPanels.add(endingArmor);
-
-            InventoryPanel endingInventory = new InventoryPanel("Ending Inventory", this.combatSession.getEndingInventory());
-            endingInventory.setColor(Color.GREEN);
-            super.guiPanels.add(endingInventory);
 
             for (CombatSession.OpponentTracker opponentTracker : this.combatSession.getOpponentTrackerMap()) {
                 List<String> data = new ArrayList<>();
@@ -181,7 +174,7 @@ public class CombatSessionGui extends PanelGui {
                 data.add("Projectiles Taken: " + opponentTracker.getProjectilesTaken());
                 super.createListPanel(opponentTracker.getName(), data).setColor(Color.YELLOW);
 
-                InventoryPanel opponentStartingArmor = new InventoryPanel(opponentTracker.getName() + " - Armor", opponentTracker.getOpponentStartingArmor());
+                InventoryPanel opponentStartingArmor = new InventoryPanel(opponentTracker.getName() + " - Armor", opponentTracker.getOpponentStartingArmor(), false);
                 opponentStartingArmor.setColor(Color.BLACK);
                 super.guiPanels.add(opponentStartingArmor);
 
@@ -189,7 +182,7 @@ public class CombatSessionGui extends PanelGui {
                 for (CombatSession.ComboTracker comboTracker : opponentTracker.getComboTrackers()) {
                     combos.add(Text.formatTimeFromMilliseconds(comboTracker.getTime(), 2) + " - " + comboTracker.getComboCount());
                 }
-                super.createListPanel("Combos - " + opponentTracker.getName(), combos.size() == 0 ? Collections.singletonList("No combos to display.") : combos).setColor(Color.CYAN);
+                super.createListPanel("Combos - " + opponentTracker.getName(), combos.isEmpty() ? Collections.singletonList("No combos to display.") : combos).setColor(Color.CYAN);
             }
         }
         super.initGui();
@@ -228,7 +221,7 @@ public class CombatSessionGui extends PanelGui {
             int longestWidth = 0;
             FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
 
-            if (this.hotKeyTrackers.size() == 0) {
+            if (this.hotKeyTrackers.isEmpty()) {
                 return Math.max(fontRenderer.getStringWidth(this.name) + 15, fontRenderer.getStringWidth("No hot keys to display.") + 10);
             }
 
@@ -248,7 +241,7 @@ public class CombatSessionGui extends PanelGui {
                 this.scissor();
                 GL11.glEnable(GL11.GL_SCISSOR_TEST);
                 FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
-                if (this.hotKeyTrackers.size() == 0) {
+                if (this.hotKeyTrackers.isEmpty()) {
                     fontRenderer.drawString("No hot keys to display.", this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + 2 + this.yOffsetPosition, 0xffffffff);
                 } else {
                     for (int i = 0; i < this.hotKeyTrackers.size(); i++) {
@@ -268,10 +261,12 @@ public class CombatSessionGui extends PanelGui {
     }
 
     private static class InventoryPanel extends GuiPanel {
+        private final boolean showCount;
         private final Map<ItemStack, Integer> itemStacks;
 
-        public InventoryPanel(String name, Map<ItemStack, Integer> itemStacks) {
+        public InventoryPanel(String name, Map<ItemStack, Integer> itemStacks, boolean showCount) {
             super(0, 0, name);
+            this.showCount = showCount;
             this.itemStacks = itemStacks;
             this.updateDimensions();
             this.updateOriginals();
@@ -282,13 +277,13 @@ public class CombatSessionGui extends PanelGui {
             int longestWidth = 0;
             FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
 
-            if (this.itemStacks.size() == 0) {
+            if (this.itemStacks.isEmpty()) {
                 return Math.max(fontRenderer.getStringWidth(this.name) + 15, fontRenderer.getStringWidth("No items to display.") + 10);
             }
 
             for (ItemStack itemStack : this.itemStacks.keySet()) {
                 int stackSize = this.itemStacks.get(itemStack);
-                String description = " - " + stackSize + "x " + (itemStack.getMaxDamage() == 0 ? "" : (itemStack.getMaxDamage() - itemStack.getItemDamage()) + " / " + itemStack.getMaxDamage());
+                String description = " - " + (this.showCount ? stackSize + "x " : "") + (itemStack.getMaxDamage() == 0 ? "" : (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
 
                 int width = 16 +
                         fontRenderer.getStringWidth(description);
@@ -310,7 +305,7 @@ public class CombatSessionGui extends PanelGui {
                 this.scissor();
                 GL11.glEnable(GL11.GL_SCISSOR_TEST);
                 FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
-                if (this.itemStacks.size() == 0) {
+                if (this.itemStacks.isEmpty()) {
                     fontRenderer.drawString("No items to display.", this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + 2 + this.yOffsetPosition, 0xffffffff);
                 } else {
                     List<ItemStack> itemStacks = new ArrayList<>(this.itemStacks.keySet());
@@ -320,9 +315,118 @@ public class CombatSessionGui extends PanelGui {
                                 itemStack, this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 + 2 + this.yOffsetPosition
                         );
                         int stackSize = this.itemStacks.get(itemStack);
-                        String description = " - " + stackSize + "x " + (itemStack.getMaxDamage() == 0 ? "" : (itemStack.getMaxDamage() - itemStack.getItemDamage()) + " / " + itemStack.getMaxDamage());
+                        String description = " - " + (this.showCount ?stackSize + "x " : "") + (itemStack.getMaxDamage() == 0 ? "" : (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
 
                         fontRenderer.drawString(description, this.xPosition + 5 + this.xOffsetPosition + 16, this.yPosition + 14 + i * 20 + 7 + this.yOffsetPosition, 0xffffffff);
+                    }
+                }
+                GL11.glDisable(GL11.GL_SCISSOR_TEST);
+                GlStateManager.popMatrix();
+            }
+        }
+    }
+
+    private static class InventoryComparisonPanel extends GuiPanel {
+        private final boolean showCount;
+        private final Map<ItemStack, Integer> startingItemStacks;
+        private final Map<ItemStack, Integer> endingItemStacks;
+
+        public InventoryComparisonPanel(String name, Map<ItemStack, Integer> startingItemStacks, Map<ItemStack, Integer> endingItemStacks, boolean showCount) {
+            super(0, 0, name);
+            this.startingItemStacks = startingItemStacks;
+            this.endingItemStacks = endingItemStacks;
+            this.showCount = showCount;
+            this.updateDimensions();
+            this.updateOriginals();
+        }
+
+        @Override
+        protected int getPanelWidth() {
+            int longestWidth = 0;
+            FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
+
+            if (this.startingItemStacks.isEmpty() && this.endingItemStacks.isEmpty()) {
+                return Math.max(fontRenderer.getStringWidth(this.name) + 15, fontRenderer.getStringWidth("No items to display.") + 10);
+            }
+
+            for (ItemStack itemStack : this.startingItemStacks.keySet()) {
+                int width = 16 + fontRenderer.getStringWidth(this.getStringForItem(itemStack));
+                longestWidth = Math.max(longestWidth, width);
+            }
+            return Math.max(fontRenderer.getStringWidth(this.name), longestWidth) + 15;
+        }
+        
+        private String getStringForItem(ItemStack itemStack) {
+            StringBuilder result = new StringBuilder();
+            if (this.startingItemStacks.containsKey(itemStack)) {
+                int stackSize = this.startingItemStacks.get(itemStack);
+                if (this.showCount || itemStack.getMaxDamage() != 0) result.append(" -").append(this.showCount ? " " + stackSize + "x" : "").append(itemStack.getMaxDamage() == 0 ? "" : " " + (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
+                ItemStack endingItemStack;
+                if ((endingItemStack = this.getEndingItemStackByName(itemStack.getUnlocalizedName())) != null) {
+                        int secondStackSize = this.endingItemStacks.get(endingItemStack);
+                    if ((this.showCount && stackSize != secondStackSize) || (endingItemStack.getMaxDamage() != 0 && itemStack.getItemDamage() != endingItemStack.getItemDamage())) {
+                        result.append(" ->").append(this.showCount && stackSize != secondStackSize ? " " + secondStackSize + "x" : "").append(endingItemStack.getMaxDamage() == 0 || itemStack.getItemDamage() == endingItemStack.getItemDamage() ? "" : " " + (int) (100 * (endingItemStack.getMaxDamage() - endingItemStack.getItemDamage()) / (double) endingItemStack.getMaxDamage()) + "%");
+                    }
+                }
+            } else {
+                int stackSize = this.endingItemStacks.get(itemStack);
+                result.append(" - ").append("0x").append(" ->").append(this.showCount ? " " +stackSize + "x" : "").append(itemStack.getMaxDamage() == 0 ? "" : " " + (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
+            }
+            return result.toString();
+        }
+        
+        private ItemStack getEndingItemStackByName(String unlocalizedName) {
+            for (ItemStack itemStack : this.endingItemStacks.keySet()) {
+                if (itemStack.getUnlocalizedName().equals(unlocalizedName)) return itemStack;
+            }
+            return null;
+        }
+
+        private boolean onlyExistsInEnding(String unlocalizedName) {
+            for (ItemStack itemStack : this.startingItemStacks.keySet()) {
+                if (itemStack.getUnlocalizedName().equals(unlocalizedName)) return false;
+            }
+            return true;
+        }
+
+        @Override
+        protected int getPanelHeight() {
+            int i = this.startingItemStacks.size();
+            for (ItemStack itemStack : this.endingItemStacks.keySet()) {
+                if (this.onlyExistsInEnding(itemStack.getUnlocalizedName())) i++;
+            }
+            return Math.max(30, i * 20 + 5);
+        }
+
+        @Override
+        public void drawPanel() {
+            super.drawPanel();
+            if (this.visible && this.yPosition + this.height > 56) {
+                GlStateManager.pushMatrix();
+                this.scissor();
+                GL11.glEnable(GL11.GL_SCISSOR_TEST);
+                FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
+                if (this.startingItemStacks.isEmpty() && this.endingItemStacks.isEmpty()) {
+                    fontRenderer.drawString("No items to display.", this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + 2 + this.yOffsetPosition, 0xffffffff);
+                } else {
+                    List<ItemStack> startingItemStacks = new ArrayList<>(this.startingItemStacks.keySet());
+                    int i = 0;
+                    while (i < startingItemStacks.size()) {
+                        ItemStack itemStack = startingItemStacks.get(i);
+                        Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(
+                                itemStack, this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 + 2 + this.yOffsetPosition
+                        );
+                        fontRenderer.drawString(this.getStringForItem(itemStack), this.xPosition + 5 + this.xOffsetPosition + 16, this.yPosition + 14 + i * 20 + 7 + this.yOffsetPosition, 0xffffffff);
+                        i++;
+                    }
+                    for (ItemStack itemStack : this.endingItemStacks.keySet()) {
+                        if (this.onlyExistsInEnding(itemStack.getUnlocalizedName())) {
+                            Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(
+                                    itemStack, this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 + 2 + this.yOffsetPosition
+                            );
+                            fontRenderer.drawString(this.getStringForItem(itemStack), this.xPosition + 5 + this.xOffsetPosition + 16, this.yPosition + 14 + i * 20 + 7 + this.yOffsetPosition, 0xffffffff);
+                            i++; 
+                        }
                     }
                 }
                 GL11.glDisable(GL11.GL_SCISSOR_TEST);
@@ -346,7 +450,7 @@ public class CombatSessionGui extends PanelGui {
         @Override
         protected int getPanelWidth() {
             FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
-            if (this.potionEffectTrackers.size() == 0) {
+            if (this.potionEffectTrackers.isEmpty()) {
                 return Math.max(fontRenderer.getStringWidth(this.name) + 15, fontRenderer.getStringWidth("No potion effects to display.") + 10);
             }
 
@@ -379,7 +483,7 @@ public class CombatSessionGui extends PanelGui {
                 int x = this.xPosition + 5 + this.xOffsetPosition;
                 int y = this.yPosition + 14 + 2 + this.yOffsetPosition;
 
-                if (this.potionEffectTrackers.size() == 0) {
+                if (this.potionEffectTrackers.isEmpty()) {
                     fontRenderer.drawString("No potion effects to display.", x, y, 0xffffffff);
                 } else {
                     for (int i = 0; i < this.potionEffectTrackers.size(); i++) {

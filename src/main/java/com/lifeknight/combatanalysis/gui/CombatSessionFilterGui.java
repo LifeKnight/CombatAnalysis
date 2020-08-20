@@ -85,6 +85,25 @@ public class CombatSessionFilterGui extends GuiScreen {
                 }
             });
         }
+        this.buttonList.add(new LifeKnightButton("Reset", this.buttonList.size(), this.width - 60, 25, 50) {
+            @Override
+            public void work() {
+                CombatSessionFilterGui.this.deletedSessionsOnly = false;
+                CombatSessionFilterGui.this.wonFilterType = 0;
+                CombatSessionFilterGui.this.dateFilterType = false;
+                CombatSessionFilterGui.this.firstDate.setTime(0);
+                CombatSessionFilterGui.this.secondDate.setTime(0);
+
+                CombatSessionFilterGui.this.opponentFilter.clear();
+                CombatSessionFilterGui.this.serverFilter.clear();
+                CombatSessionFilterGui.this.typeFilter.clear();
+
+                for (LifeKnightTextField lifeKnightTextField : CombatSessionFilterGui.this.lifeKnightTextFields) {
+                    lifeKnightTextField.setText("");
+                }
+                CombatSessionFilterGui.this.updateResultCount();
+            }
+        });
         this.buttonList.add(new LifeKnightButton(this.deletedSessionsOnly ? RED + "Deleted" : GREEN + "Available", this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25, 100) {
             @Override
             public void work() {
@@ -105,12 +124,12 @@ public class CombatSessionFilterGui extends GuiScreen {
                 CombatSessionFilterGui.this.updateResultCount();
             }
         });
-        this.buttonList.add(new LifeKnightButton("Date - " + (CombatSessionFilterGui.this.dateFilterType ? "Between" : "During"), this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25 + 30 * 2, 100) {
+        this.buttonList.add(new LifeKnightButton(this.dateFilterType ? "Between" : "During", this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25 + 30 * 2, 100) {
             @Override
             public void work() {
                 CombatSessionFilterGui.this.dateFilterType = !CombatSessionFilterGui.this.dateFilterType;
-                this.displayString = dateFilterType ? "Between" : "During";
-                CombatSessionFilterGui.this.lifeKnightTextFields.get(0).setName(CombatSessionFilterGui.this.dateFilterType ? "Between" : "During");
+                this.displayString = CombatSessionFilterGui.this.dateFilterType ? "Between" : "During";
+                CombatSessionFilterGui.this.lifeKnightTextFields.get(0).setName(CombatSessionFilterGui.this.dateFilterType ? "After" : "During");
                 CombatSessionFilterGui.this.lifeKnightTextFields.get(1).setVisible(CombatSessionFilterGui.this.dateFilterType);
                 CombatSessionFilterGui.this.updateResultCount();
             }
@@ -122,6 +141,7 @@ public class CombatSessionFilterGui extends GuiScreen {
                 String text = this.getText();
                 if (text.isEmpty()) {
                     CombatSessionFilterGui.this.firstDate.setTime(0);
+                    this.setSubDisplayMessage("");
                 } else if (text.equalsIgnoreCase("today")) {
                     CombatSessionFilterGui.this.firstDate.setTime(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
                     this.setSubDisplayMessage("");
@@ -168,6 +188,7 @@ public class CombatSessionFilterGui extends GuiScreen {
                 String text = this.getText();
                 if (text.isEmpty()) {
                     CombatSessionFilterGui.this.secondDate.setTime(0);
+                    this.setSubDisplayMessage("");
                 } else if (text.equalsIgnoreCase("today")) {
                     CombatSessionFilterGui.this.secondDate.setTime(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() + 86400000L);
                     this.setSubDisplayMessage("");
@@ -323,11 +344,11 @@ public class CombatSessionFilterGui extends GuiScreen {
         for (CombatSession combatSession : CombatSession.getCombatSessions()) {
             if ((this.deletedSessionsOnly && combatSession.isDeleted()) || (!this.deletedSessionsOnly && !combatSession.isDeleted()) &&
                     (this.wonFilterType == 0 || ((this.wonFilterType == 1 && combatSession.isWon()) || (this.wonFilterType == 2 && !combatSession.isWon()))) &&
-            ((this.dateFilterType && ((this.firstDate.getTime() == 0 || this.secondDate.getTime() == 0) || (combatSession.getStartTime() >= this.firstDate.getTime() && combatSession.getStartTime() <= this.secondDate.getTime() + 86400000L))) ||
-                    (!this.dateFilterType && (this.firstDate.getTime() == 0 || (combatSession.getStartTime() >= this.firstDate.getTime() && combatSession.getStartTime() <= this.firstDate.getTime() + 86400000L)))) &&
-                    (this.typeFilter.size() == 0 || Text.containsAny(combatSession.detectType(), this.typeFilter, true)) &&
-                    (this.serverFilter.size() == 0 || Text.containsAny(combatSession.getServerIp(), this.serverFilter, true)) &&
-                    (this.opponentFilter.size() == 0 || Text.containsAny(this.opponentFilter, combatSession.getOpponentNames(), true)
+                    ((this.dateFilterType && ((this.firstDate.getTime() == 0 || this.secondDate.getTime() == 0) || (combatSession.getStartTime() >= this.firstDate.getTime() && combatSession.getStartTime() <= this.secondDate.getTime() + 86400000L))) ||
+                            (!this.dateFilterType && (this.firstDate.getTime() == 0 || (combatSession.getStartTime() >= this.firstDate.getTime() && combatSession.getStartTime() <= this.firstDate.getTime() + 86400000L)))) &&
+                    (this.typeFilter.isEmpty() || Text.containsAny(combatSession.detectType(), this.typeFilter, true)) &&
+                    (this.serverFilter.isEmpty() || Text.containsAny(combatSession.getServerIp(), this.serverFilter, true)) &&
+                    (this.opponentFilter.isEmpty() || Text.containsAny(this.opponentFilter, combatSession.getOpponentNames(), true)
                     )) count++;
         }
         return count;

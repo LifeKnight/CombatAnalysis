@@ -224,7 +224,7 @@ public class LifeKnightObjectListGui extends GuiScreen {
                 LifeKnightObjectListGui.this.openButtons.add(lifeKnightButton);
             }
         }
-        this.listMessage = this.listItemButtons.size() == 0 ? GRAY + "No items found" : "";
+        this.listMessage = this.listItemButtons.isEmpty() ? GRAY + "No items found" : "";
 
         this.clearButton.visible = this.listItemButtons.size() > 1;
 

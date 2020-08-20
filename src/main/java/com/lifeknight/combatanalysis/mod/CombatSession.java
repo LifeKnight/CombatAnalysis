@@ -208,6 +208,10 @@ public class CombatSession {
         return sessionIsRunning ? getLatestAnalysis().attacksLanded : 0;
     }
 
+    public static int hitsDealt() {
+        return sessionIsRunning ? getLatestAnalysis().getHitsDealt() : 0;
+    }
+
     public static String meleeAccuracy() {
         return !sessionIsRunning || attacksSent() == 0 ? "N/A" : getLatestAnalysis().getMeleeAccuracy();
     }
@@ -410,9 +414,13 @@ public class CombatSession {
             this.end();
             return;
         }
-
+        List<UUID> uuidsToRemove = new ArrayList<>();
         for (UUID uuid : this.thrownProjectiles.keySet()) {
-            if (!Minecraft.getMinecraft().theWorld.loadedEntityList.contains(this.thrownProjectiles.get(uuid))) this.thrownProjectiles.remove(uuid);
+            if (!Minecraft.getMinecraft().theWorld.loadedEntityList.contains(this.thrownProjectiles.get(uuid))) uuidsToRemove.add(uuid);
+        }
+
+        for (UUID uuid : uuidsToRemove) {
+            this.thrownProjectiles.remove(uuid);
         }
 
         for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
@@ -431,7 +439,6 @@ public class CombatSession {
                     this.hitByArrow = true;
                 }
             }
-            Entity thrower;
             if (entity instanceof EntityEgg) {
                 if (entity.ticksExisted >= 5) {
                     this.hitByProjectile = true;
@@ -472,7 +479,7 @@ public class CombatSession {
 
     private boolean allOpponentsAreGone() {
         for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
-            if (!(opponentTracker.opponent.isInvisible() || opponentTracker.opponent.isDead)) {
+            if (!(opponentTracker.opponent.isInvisible() || opponentTracker.opponent.isDead) || Minecraft.getMinecraft().theWorld.playerEntities.contains(opponentTracker.opponent)) {
                 return false;
             }
         }
@@ -625,25 +632,20 @@ public class CombatSession {
         OpponentTracker opponentTracker = this.getOpponent(player);
         if (opponentTracker == null) return;
         if (opponentTracker.hitByProjectile || opponentTracker.hitByFishingRodHook()) {
+            opponentTracker.hitByProjectile = false;
             opponentTracker.projectilesHit++;
             this.projectilesHit++;
             return;
+        } else if (opponentTracker.hitByArrow) {
+            opponentTracker.hitByArrow = false;
+            opponentTracker.arrowsHit++;
+            this.arrowsHit++;
+            return;
         }
-
-        if (this.lastAttackTimer > 0) {
-            switch (this.lastAttackType) {
-                case 0:
+            if (this.lastAttackTimer > 0) {
+                if (this.lastAttackType == 0) {
                     opponentTracker.onOpponentHit();
-                    break;
-                case 1:
-                    opponentTracker.arrowsHit++;
-                    this.arrowsHit++;
-                    break;
-                case 2:
-                    opponentTracker.projectilesHit++;
-                    this.projectilesHit++;
-                    break;
-            }
+                }
         }
     }
 
@@ -757,9 +759,21 @@ public class CombatSession {
         this.endTime = System.currentTimeMillis();
         sessionIsRunning = false;
 
-        for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
-            opponentTracker.end();
-            opponentTracker.comboTrackers.removeIf(comboTracker -> comboTracker.getComboCount() < 3);
+        List<UUID> opponentUuidsToRemove = new ArrayList<>();
+        for (UUID uuid : this.opponentTrackerMap.keySet()) {
+            OpponentTracker opponentTracker = this.opponentTrackerMap.get(uuid);
+            if (opponentTracker.arrowsHit == 0 &&
+            opponentTracker.arrowsTaken == 0 &&
+            opponentTracker.attacksLanded == 0 &&
+            opponentTracker.attacksSent == 0) {
+                opponentUuidsToRemove.add(uuid);
+            } else {
+                opponentTracker.comboTrackers.removeIf(comboTracker -> comboTracker.getComboCount() < 3);
+            }
+        }
+
+        for (UUID uuid : opponentUuidsToRemove) {
+            this.opponentTrackerMap.remove(uuid);
         }
 
         this.hotKeys.removeIf(hotKeyTracker -> hotKeyTracker.getTime() == 0);
@@ -832,6 +846,14 @@ public class CombatSession {
 
     public int getRightClicks() {
         return this.rightClicks;
+    }
+
+    public int getHitsDealt() {
+        int hitsDealt = 0;
+        for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
+            hitsDealt += opponentTracker.opponentHitsTaken;
+        }
+        return hitsDealt;
     }
 
     public int getAttacksSent() {
@@ -1247,6 +1269,7 @@ public class CombatSession {
         private int arrowsHit = 0;
         private int projectilesHit = 0;
 
+        private boolean hitByArrow = false;
         private boolean hitByProjectile = false;
 
         public OpponentTracker(EntityPlayer opponent) {
@@ -1280,6 +1303,11 @@ public class CombatSession {
                             this.opponent,
                             this.opponent.getEntityBoundingBox().addCoord(this.opponent.motionX, this.opponent.motionY, this.opponent.motionZ).expand(1.5, 1.5, 1.5));
             for (Entity entity : closestOpponentEntities) {
+                if (!this.hitByArrow) {
+                    if (entity instanceof EntityArrow && ((EntityArrow) entity).shootingEntity.getUniqueID() == Minecraft.getMinecraft().thePlayer.getUniqueID()) {
+                        this.hitByArrow = true;
+                    }
+                }
                 if (projectilesThrown.containsKey(entity.getUniqueID())) {
                     this.hitByProjectile = true;
                     return;
@@ -1432,8 +1460,8 @@ public class CombatSession {
             EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
             List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
                     getEntitiesWithinAABBExcludingEntity(
-                            thePlayer,
-                            thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(1.0D, 1.0D, 1.0D));
+                            this.opponent,
+                            this.opponent.getEntityBoundingBox().addCoord(this.opponent.motionX, this.opponent.motionY, this.opponent.motionZ).expand(1.5, 1.5, 1.5));
 
             for (Entity entity : closestEntities) {
                 if (entity instanceof EntityFishHook) {

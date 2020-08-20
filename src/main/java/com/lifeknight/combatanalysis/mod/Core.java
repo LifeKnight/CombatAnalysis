@@ -12,8 +12,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemEgg;
 import net.minecraft.item.ItemFishingRod;
@@ -24,6 +26,7 @@ import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.ArrowLooseEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -50,13 +53,13 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2.1.51",
+            MOD_VERSION = "0.2.1.65",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
     public static boolean onHypixel = false;
     public static GuiScreen guiToOpen = null;
-    public static final LifeKnightBoolean runMod = new LifeKnightBoolean("Core", "Main", true) {
+    public static final LifeKnightBoolean runMod = new LifeKnightBoolean("Mod", "Main", true) {
         @Override
         public void onSetValue() {
             CombatSession.onWorldLoad();
@@ -64,7 +67,7 @@ public class Core {
     };
     public static final LifeKnightBoolean gridSnapping = new LifeKnightBoolean("Grid Snapping", "HUD", true);
     public static final LifeKnightBoolean hudTextShadow = new LifeKnightBoolean("HUD Text Shadow", "HUD", true);
-    public static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
+    private static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
     public static final LifeKnightBoolean logSessions = new LifeKnightBoolean("Log Sessions", "Settings", true);
     public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main Hotbar Slot", "Settings", 1, 1, 9);
@@ -79,7 +82,6 @@ public class Core {
 
     /*
     How did Willerhide get 600% accuracy???
-    Stop random people from getting added to the opponent list
     */
 
     @EventHandler
@@ -103,31 +105,7 @@ public class Core {
     }
 
     private void createEnhancedHudTexts() {
-        new EnhancedHudText("Left Clicks", 0, 0, "Left Clicks") {
-            @Override
-            public String getTextToDisplay() {
-                return String.valueOf(CombatSession.leftClicks());
-            }
-
-            @Override
-            public boolean isVisible() {
-                return showStatus.getValue() && CombatSession.sessionIsRunning();
-            }
-        };
-
-        new EnhancedHudText("Right Clicks", 0, 100, "Right Clicks") {
-            @Override
-            public String getTextToDisplay() {
-                return String.valueOf(CombatSession.rightClicks());
-            }
-
-            @Override
-            public boolean isVisible() {
-                return showStatus.getValue() && CombatSession.sessionIsRunning();
-            }
-        };
-
-        new EnhancedHudText("Melee Accuracy", 0, 200, "Melee Accuracy") {
+        new EnhancedHudText("Melee Accuracy", 0, 0, "Melee Accuracy") {
             @Override
             public String getTextToDisplay() {
                 return CombatSession.meleeAccuracy();
@@ -139,7 +117,7 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Bow Accuracy", 0, 300, "Bow Accuracy") {
+        new EnhancedHudText("Bow Accuracy", 0, 100, "Bow Accuracy") {
             @Override
             public String getTextToDisplay() {
                 return CombatSession.arrowAccuracy();
@@ -151,7 +129,7 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Projectile Accuracy", 0, 400, "Projectile Accuracy") {
+        new EnhancedHudText("Projectile Accuracy", 0, 200, "Projectile Accuracy") {
             @Override
             public String getTextToDisplay() {
                 return CombatSession.projectileAccuracy();
@@ -163,10 +141,34 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Hits Taken", 0, 500, "Hits Taken") {
+        new EnhancedHudText("Hits Dealt", 0, 300, "Hits Dealt") {
+            @Override
+            public String getTextToDisplay() {
+                return String.valueOf(CombatSession.hitsDealt());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Hits Taken", 0, 400, "Hits Taken") {
             @Override
             public String getTextToDisplay() {
                 return String.valueOf(CombatSession.hitsTaken());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Arrows Hit", 0, 500, "Arrows Hit") {
+            @Override
+            public String getTextToDisplay() {
+                return String.valueOf(CombatSession.arrowsHit());
             }
 
             @Override
@@ -187,19 +189,7 @@ public class Core {
             }
         };
 
-        new EnhancedHudText("Projectiles Taken", 0, 700, "Projectiles Taken") {
-            @Override
-            public String getTextToDisplay() {
-                return String.valueOf(CombatSession.projectilesTaken());
-            }
-
-            @Override
-            public boolean isVisible() {
-                return showStatus.getValue() && CombatSession.sessionIsRunning();
-            }
-        };
-
-        new EnhancedHudText("CPS", 0, 800, "CPS") {
+        new EnhancedHudText("CPS", 0, 700, "CPS") {
             @Override
             public String getTextToDisplay() {
                 leftClicks.removeIf(time -> time < System.currentTimeMillis() - 1000L);
@@ -233,21 +223,11 @@ public class Core {
         CombatSession.onHurt(attacker);
     }
 
-    // Injected
-    public static void onAttackEntityOtherPlayerMPFrom(EntityOtherPlayerMP entityOtherPlayerMP, DamageSource damageSource) {
-        if (damageSource.getEntity() == null || Minecraft.getMinecraft().thePlayer == null) return;
-        if (damageSource.getEntity().getUniqueID() == Minecraft.getMinecraft().thePlayer.getUniqueID()) {
-            switch (damageSource.getDamageType()) {
-                case "player":
-                    CombatSession.onAttack(entityOtherPlayerMP);
-                    break;
-            }
+    @SubscribeEvent
+    public void onAttack(AttackEntityEvent event) {
+        if (event.entityPlayer.getUniqueID() == Minecraft.getMinecraft().thePlayer.getUniqueID() && runMod.getValue() && event.target instanceof EntityPlayer) {
+            CombatSession.onAttack((EntityPlayer) event.target);
         }
-    }
-
-    // Injected
-    public static void onAttackEntityPlayerSPFrom(DamageSource damageSource) {
-
     }
 
     // Injected

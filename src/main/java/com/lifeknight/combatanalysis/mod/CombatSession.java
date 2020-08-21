@@ -648,12 +648,7 @@ public class CombatSession {
     public void playerHurt(EntityPlayer player) {
         this.updateTicksSinceAction();
         OpponentTracker opponentTracker = this.getOpponent(player);
-        if (opponentTracker == null) {
-            Chat.addChatMessage("null");
-            return;
-        } else {
-            Chat.addChatMessage("going through");
-        }
+        if (opponentTracker == null) return;
         if (opponentTracker.hitByProjectile || opponentTracker.hitByFishingRodHook()) {
             opponentTracker.hitByProjectile = false;
             opponentTracker.projectilesHit++;
@@ -714,10 +709,7 @@ public class CombatSession {
                 this.getLatestClicksPerSecondCounter().incrementClicks();
                 if (closestPlayer.getEntityBoundingBox().expand(3, 3, 3).isVecInside(positionEyes)) {
                     OpponentTracker opponentTracker = this.getOpponent(closestPlayer);
-                    if (opponentTracker == null) {
-                        Chat.addChatMessage("null");
-                        return;
-                    }
+                    if (opponentTracker == null) return;
                     this.attacksSent++;
                     opponentTracker.attacksSent++;
                 }
@@ -1339,7 +1331,6 @@ public class CombatSession {
                     EntityArrow entityArrow = (EntityArrow) entity;
                     if (theWorld.getEntitiesWithinAABBExcludingEntity(entityArrow,
                             entityArrow.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(this.opponent)) {
-                        Chat.addChatMessage("arrow");
                         this.ticksSinceArrow = 0;
                         this.hitByArrow = true;
                         break;
@@ -1354,7 +1345,6 @@ public class CombatSession {
                 })) {
                     if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
                             entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(this.opponent)) {
-                        Chat.addChatMessage("projectile");
                         this.ticksSinceProjectile = 0;
                         this.hitByProjectile = true;
                         break;
@@ -1367,7 +1357,6 @@ public class CombatSession {
                 })) {
                     if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
                             entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(this.opponent)) {
-                        Chat.addChatMessage("projectile");
                         this.ticksSinceProjectile = 0;
                         this.hitByProjectile = true;
                         break;

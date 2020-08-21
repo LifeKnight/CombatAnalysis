@@ -786,7 +786,7 @@ public class CombatSession {
                 }
             }
         }
-        if (closestPlayer != null) Chat.addChatMessage(closestPlayer.getName());
+        if (closestPlayer != null)
         return closestPlayer;
     }
 

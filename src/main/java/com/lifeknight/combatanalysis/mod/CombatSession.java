@@ -786,7 +786,6 @@ public class CombatSession {
                 }
             }
         }
-        if (closestPlayer != null)
         return closestPlayer;
     }
 

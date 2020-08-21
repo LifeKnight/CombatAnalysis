@@ -9,21 +9,16 @@ import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
 import com.lifeknight.combatanalysis.variables.LifeKnightList;
 import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemEgg;
 import net.minecraft.item.ItemFishingRod;
 import net.minecraft.item.ItemSnowball;
-import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.ClientCommandHandler;
-import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.ArrowLooseEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
@@ -53,7 +48,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2.1.65",
+            MOD_VERSION = "0.2.2",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -69,6 +64,7 @@ public class Core {
     public static final LifeKnightBoolean hudTextShadow = new LifeKnightBoolean("HUD Text Shadow", "HUD", true);
     private static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
+    public static final LifeKnightBoolean onlyAutomaticEndOnWorldSwitch = new LifeKnightBoolean("Only Auto-End On World Switch", "Settings", true);
     public static final LifeKnightBoolean logSessions = new LifeKnightBoolean("Log Sessions", "Settings", true);
     public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main Hotbar Slot", "Settings", 1, 1, 9);
     public static final KeyBinding toggleCombatSessionKeyBinding = new KeyBinding("Toggle combat session", 0x1B, MOD_NAME);
@@ -81,7 +77,7 @@ public class Core {
     public static Configuration configuration;
 
     /*
-    How did Willerhide get 600% accuracy???
+    How to deal with lava and fire?
     */
 
     @EventHandler
@@ -99,6 +95,7 @@ public class Core {
         
         this.createEnhancedHudTexts();
 
+        configuration = new Configuration();
         configuration = new Configuration();
 
         CombatSession.getLoggedCombatSessions();
@@ -253,11 +250,11 @@ public class Core {
         if (runMod.getValue() && event.action == PlayerInteractEvent.Action.RIGHT_CLICK_AIR) {
             Item item = Minecraft.getMinecraft().thePlayer.getHeldItem().getItem();
             if (item instanceof ItemFishingRod && Minecraft.getMinecraft().thePlayer.fishEntity == null) {
-                CombatSession.onProjectileThrown(0);
+                CombatSession.onProjectileThrown();
             } else if (item instanceof ItemEgg) {
-                CombatSession.onProjectileThrown(1);
+                CombatSession.onProjectileThrown();
             } else if (item instanceof ItemSnowball) {
-                CombatSession.onProjectileThrown(2);
+                CombatSession.onProjectileThrown();
             }
         }
     }

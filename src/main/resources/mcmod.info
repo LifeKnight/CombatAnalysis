@@ -2,13 +2,13 @@
 {
   "modid": "combatanalysis",
   "name": "Combat Analysis",
-  "description": "Analyzes your combat.",
+  "description": "Analyzes/provides statistics on your combat.",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",
   "updateUrl": "",
   "authorList": ["LifeKnight"],
-  "credits": "Idea by Willerhide.",
+  "credits": "Idea by Willerhide.\nBeta Testers: physa, PixelGlory, TheLemoade, and Willerhide.",
   "logoFile": "",
   "screenshots": [],
   "dependencies": []

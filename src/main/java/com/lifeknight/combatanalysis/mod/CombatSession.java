@@ -707,7 +707,7 @@ public class CombatSession {
             if (entity instanceof EntityPlayer) {
                 if (!(((EntityPlayer) entity).capabilities.isFlying || entity.isInvisible() || (entity.lastTickPosX == entity.posX &&
                         entity.lastTickPosY == entity.posY &&
-                        entity.lastTickPosZ == entity.posZ && !this.playerHasAppropriateOpponent(getAttackingEntityPlayer())) || ((EntityPlayer) entity).limbSwingAmount == 0)) {
+                        entity.lastTickPosZ == entity.posZ && !this.playerHasAppropriateOpponent((EntityPlayer) entity)) || ((EntityPlayer) entity).limbSwingAmount == 0)) {
                     closestPlayer = (EntityPlayer) entity;
                 }
             }

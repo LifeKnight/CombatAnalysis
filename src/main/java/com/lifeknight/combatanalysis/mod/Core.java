@@ -48,7 +48,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2.5",
+            MOD_VERSION = "0.2.6",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -79,6 +79,7 @@ public class Core {
     public static Configuration configuration;
     /*
     How to deal with lava and fire
+
     */
 
     @EventHandler

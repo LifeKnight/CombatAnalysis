@@ -80,6 +80,6 @@ public class LifeKnightBoolean extends LifeKnightVariable {
         if (iCustomDisplayString != null) {
             return iCustomDisplayString.customDisplayString();
         }
-        return name + ": " + (value ? EnumChatFormatting.GREEN + "ENABLED" : EnumChatFormatting.RED + "DISABLED");
+        return name + ": " + (this.value ? EnumChatFormatting.GREEN + "ENABLED" : EnumChatFormatting.RED + "DISABLED");
     }
 }

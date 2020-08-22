@@ -48,7 +48,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2.3.1",
+            MOD_VERSION = "0.2.5",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -64,8 +64,10 @@ public class Core {
     public static final LifeKnightBoolean hudTextShadow = new LifeKnightBoolean("HUD Text Shadow", "HUD", true);
     private static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
-    public static final LifeKnightBoolean onlyAutomaticEndOnWorldSwitch = new LifeKnightBoolean("Only Auto-End On World Switch", "Settings", true);
-    public static final LifeKnightBoolean logSessions = new LifeKnightBoolean("Log Sessions", "Settings", true);
+    public static final LifeKnightBoolean allAutoEnd = new LifeKnightBoolean("End For All End Requirements", "Auto End", true);
+    public static final LifeKnightBoolean endOnGameEnd = new LifeKnightBoolean("End On Game End", "Auto End", true);
+    public static final LifeKnightBoolean endOnSpectator = new LifeKnightBoolean("End On Spectator", "Auto End", true);
+    public static final LifeKnightBoolean automaticallyLogSessions = new LifeKnightBoolean("Auto-Log Sessions", "Settings", true);
     public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main Hotbar Slot", "Settings", 1, 1, 9);
     public static final KeyBinding toggleCombatSessionKeyBinding = new KeyBinding("Toggle combat session", 0x1B, MOD_NAME);
     public static final KeyBinding openLatestCombatSessionKeyBinding = new KeyBinding("Open latest combat session", 0x26, MOD_NAME);
@@ -94,7 +96,6 @@ public class Core {
         
         this.createEnhancedHudTexts();
 
-        configuration = new Configuration();
         configuration = new Configuration();
 
         CombatSession.getLoggedCombatSessions();

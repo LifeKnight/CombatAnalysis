@@ -130,7 +130,10 @@ public class PanelGui extends GuiScreen {
 
         for (GuiPanel guiPanel : this.guiPanels) {
             if (searchField.getText().isEmpty() || guiPanel.name.toLowerCase().contains(this.searchField.getText().toLowerCase())) {
+                guiPanel.visible = true;
                 this.visibleGuiPanels.add(guiPanel);
+            } else {
+                guiPanel.visible = false;
             }
         }
 
@@ -570,7 +573,7 @@ public class PanelGui extends GuiScreen {
 
                     @Override
                     public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
-                        if (this.visible) {
+                        if (this.visible && ButtonPanel.this.visible) {
                             GlStateManager.pushMatrix();
                             ButtonPanel.this.scissor();
                             GL11.glEnable(GL11.GL_SCISSOR_TEST);

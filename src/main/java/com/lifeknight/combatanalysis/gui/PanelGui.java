@@ -374,7 +374,7 @@ public class PanelGui extends GuiScreen {
                             GlStateManager.popMatrix();
                         }
                     };
-                    this.scrollBar.height = (int) (modifiedHeight * (modifiedHeight / (double) this.getPanelHeight()));
+                    this.scrollBar.height = (int) Math.max(10, (modifiedHeight * (modifiedHeight / (double) this.getPanelHeight())));
                     this.scrollBar.visible = true;
                     this.guiButtons.add(this.scrollBar);
                 }
@@ -411,7 +411,7 @@ public class PanelGui extends GuiScreen {
                             GlStateManager.popMatrix();
                         }
                     };
-                    this.horizontalScrollBar.width = (int) (this.width * (this.width / (double) this.getPanelWidth()));
+                    this.horizontalScrollBar.width = (int) Math.max(10, (this.width * (this.width / (double) this.getPanelWidth())));
                     this.horizontalScrollBar.visible = true;
                     this.guiButtons.add(this.horizontalScrollBar);
                 }

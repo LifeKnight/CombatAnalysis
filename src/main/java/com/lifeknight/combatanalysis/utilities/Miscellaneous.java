@@ -21,14 +21,6 @@ import static com.lifeknight.combatanalysis.gui.hud.EnhancedHudText.textToRender
 import static net.minecraft.util.EnumChatFormatting.*;
 
 public class Miscellaneous {
-	public static int getRandomIntBetweenRange(int min, int max) {
-		return ThreadLocalRandom.current().nextInt(min, max + 1);
-	}
-
-	public static double getRandomDoubleBetweenRange(double min, double max) {
-		return ThreadLocalRandom.current().nextDouble(min, max);
-	}
-
 	public static String getCurrentDateString() {
 		return new SimpleDateFormat("MM/dd/yyyy").format(System.currentTimeMillis());
 	}

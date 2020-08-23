@@ -5,6 +5,7 @@ import com.lifeknight.combatanalysis.gui.hud.EnhancedHudText;
 import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Logger;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
+import com.lifeknight.combatanalysis.utilities.Text;
 import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
 import com.lifeknight.combatanalysis.variables.LifeKnightList;
 import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
@@ -35,10 +36,7 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -48,7 +46,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2.6",
+            MOD_VERSION = "0.2.7",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -76,10 +74,15 @@ public class Core {
     public static final LifeKnightList.LifeKnightIntegerList loggedSessionIds = new LifeKnightList.LifeKnightIntegerList("Logged Session IDs", "Extra");
     public static final Logger combatSessionLogger = new Logger(new File("logs/lifeknight/combatsessions"));
     private static final List<Long> leftClicks = new ArrayList<>();
+    public static boolean teamedServer = true;
+    private static final String[] teamedServers = {
+            "hypixel.net",
+            "minemen.club",
+            "faithfulmc.com"
+    };
     public static Configuration configuration;
     /*
     How to deal with lava and fire
-
     */
 
     @EventHandler
@@ -94,7 +97,7 @@ public class Core {
         loggedSessionIds.setShowInLifeKnightGui(false);
 
         Miscellaneous.createEnhancedHudTextDefaultPropertyVariables();
-        
+
         this.createEnhancedHudTexts();
 
         configuration = new Configuration();
@@ -207,7 +210,7 @@ public class Core {
             @Override
             public void run() {
                 Chat.sendQueuedChatMessages();
-                onHypixel = !Minecraft.getMinecraft().isSingleplayer() && Minecraft.getMinecraft().getCurrentServerData().serverIP.toLowerCase().contains("hypixel.net");
+                teamedServer = !Minecraft.getMinecraft().isSingleplayer() && Text.containsAny(Minecraft.getMinecraft().getCurrentServerData().serverIP, Arrays.asList(teamedServers), true);
             }
         }, 1000);
     }
@@ -215,10 +218,6 @@ public class Core {
     @SubscribeEvent
     public void onWorldLoad(WorldEvent.Load event) {
         CombatSession.onWorldLoad();
-    }
-
-    public static void onHurt(EntityPlayer attacker) {
-        CombatSession.onHurt(attacker);
     }
 
     @SubscribeEvent
@@ -252,9 +251,7 @@ public class Core {
             Item item = Minecraft.getMinecraft().thePlayer.getHeldItem().getItem();
             if (item instanceof ItemFishingRod && Minecraft.getMinecraft().thePlayer.fishEntity == null) {
                 CombatSession.onProjectileThrown();
-            } else if (item instanceof ItemEgg) {
-                CombatSession.onProjectileThrown();
-            } else if (item instanceof ItemSnowball) {
+            } else if (item instanceof ItemEgg || item instanceof ItemSnowball) {
                 CombatSession.onProjectileThrown();
             }
         }
@@ -262,14 +259,12 @@ public class Core {
 
     @SubscribeEvent
     public void onMousePressed(InputEvent.MouseInputEvent event) {
-        if (runMod.getValue()) {
-            if (Mouse.getEventButtonState()) {
-                if (Mouse.getEventButton() == 0) {
-                    CombatSession.onLeftClick();
-                    leftClicks.add(System.currentTimeMillis());
-                } else if (Mouse.getEventButton() == 1) {
-                    CombatSession.onRightClick();
-                }
+        if (runMod.getValue() && Mouse.getEventButtonState()) {
+            if (Mouse.getEventButton() == 0) {
+                CombatSession.onLeftClick();
+                leftClicks.add(System.currentTimeMillis());
+            } else if (Mouse.getEventButton() == 1) {
+                CombatSession.onRightClick();
             }
         }
     }

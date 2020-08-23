@@ -35,9 +35,6 @@ public class Render {
         drawRectangle(startX, y, endX, y + thickness, colors, alpha);
     }
 
-    /**
-     * Draw a 1 pixel wide vertical line. Args : x, y1, y2, color
-     */
     public static void drawVerticalLine(int x, int startY, int endY, float[] colors, float alpha, int thickness) {
         if (endY < startY) {
             int i = startY;

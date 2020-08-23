@@ -180,7 +180,7 @@ public class CombatSessionGui extends PanelGui {
 
                 List<String> combos = new ArrayList<>();
                 for (CombatSession.ComboTracker comboTracker : opponentTracker.getComboTrackers()) {
-                    combos.add(Text.formatTimeFromMilliseconds(comboTracker.getTime(), 2) + " - " + comboTracker.getComboCount());
+                    combos.add(Text.formatTimeFromMilliseconds(comboTracker.getStartTime(), 2) + " - " + comboTracker.getComboCount());
                 }
                 super.createListPanel("Combos - " + opponentTracker.getName(), combos.isEmpty() ? Collections.singletonList("No combos to display.") : combos).setColor(Color.CYAN);
             }
@@ -352,6 +352,12 @@ public class CombatSessionGui extends PanelGui {
             for (ItemStack itemStack : this.startingItemStacks.keySet()) {
                 int width = 16 + fontRenderer.getStringWidth(this.getStringForItem(itemStack));
                 longestWidth = Math.max(longestWidth, width);
+            }
+            for (ItemStack itemStack : this.endingItemStacks.keySet()) {
+                if (this.onlyExistsInEnding(itemStack.getUnlocalizedName())) {
+                    int width = 16 + fontRenderer.getStringWidth(this.getStringForItem(itemStack));
+                    longestWidth = Math.max(longestWidth, width);
+                }
             }
             return Math.max(fontRenderer.getStringWidth(this.name), longestWidth) + 15;
         }

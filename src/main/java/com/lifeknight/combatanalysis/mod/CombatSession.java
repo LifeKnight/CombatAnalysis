@@ -2,7 +2,6 @@ package com.lifeknight.combatanalysis.mod;
 
 import com.google.gson.*;
 import com.lifeknight.combatanalysis.gui.CombatSessionGui;
-import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Logic;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
@@ -47,7 +46,18 @@ public class CombatSession {
     public static List<String> serverFilter = new ArrayList<>();
     public static List<String> typeFilter = new ArrayList<>();
 
+    private static int ticksSinceLeftClick = 0;
+
     private static EntityPlayer lastAttackedPlayer = null;
+    private static int meleeAttackTimer = 0;
+
+    private static boolean hitByArrow = false;
+    private static int ticksSinceArrow = 0;
+
+    private static boolean hitByProjectile = false;
+    private static int ticksSinceProjectile = 0;
+
+    private static final Map<UUID, EntityThrowable> thrownProjectiles = new HashMap<>();
 
     public static void getLoggedCombatSessions() {
         List<CombatSession> loggedCombatSessions = new ArrayList<>();
@@ -155,6 +165,78 @@ public class CombatSession {
 
     public static void onTick() {
         if (sessionIsRunning) getLatestAnalysis().tick();
+
+        if (ticksSinceArrow == 5) hitByArrow = false;
+
+        if (ticksSinceProjectile == 5) hitByProjectile = false;
+        
+        WorldClient theWorld = Minecraft.getMinecraft().theWorld;
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+        if (!(theWorld == null || thePlayer == null)) {
+            if (!hitByArrow) {
+                for (Entity entity : theWorld.getEntities(EntityArrow.class, input -> {
+                    assert input != null;
+                    return !input.onGround && input.shootingEntity != null && input.shootingEntity.getUniqueID() != thePlayer.getUniqueID();
+                })) {
+                    EntityArrow entityArrow = (EntityArrow) entity;
+                    if (theWorld.getEntitiesWithinAABBExcludingEntity(entityArrow,
+                            entityArrow.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(thePlayer)) {
+                        ticksSinceArrow = 0;
+                        hitByArrow = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hitByProjectile) {
+                for (Entity entity : theWorld.getEntities(EntityEgg.class, input -> {
+                    assert input != null;
+                    return true;
+                })) {
+                    if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
+                            entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(thePlayer)) {
+                        if (entity.ticksExisted <= 5) {
+                            thrownProjectiles.putIfAbsent(entity.getUniqueID(), (EntityThrowable) entity);
+                        } else if (!thrownProjectiles.containsKey(entity.getUniqueID())) {
+                            ticksSinceProjectile = 0;
+                            hitByProjectile = true;
+                            break;
+                        }
+                    }
+                }
+
+                for (Entity entity : theWorld.getEntities(EntitySnowball.class, input -> {
+                    assert input != null;
+                    return true;
+                })) {
+                    if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
+                            entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(thePlayer)) {
+                        if (entity.ticksExisted <= 5) {
+                            thrownProjectiles.putIfAbsent(entity.getUniqueID(), (EntityThrowable) entity);
+                        } else if (!thrownProjectiles.containsKey(entity.getUniqueID())) {
+                            ticksSinceProjectile = 0;
+                            hitByProjectile = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            List<UUID> uuidsToRemove = new ArrayList<>();
+            for (UUID uuid : thrownProjectiles.keySet()) {
+                if (!theWorld.loadedEntityList.contains(thrownProjectiles.get(uuid)))
+                    uuidsToRemove.add(uuid);
+            }
+
+            for (UUID uuid : uuidsToRemove) {
+                thrownProjectiles.remove(uuid);
+            }
+        }
+
+        if (meleeAttackTimer != 0) meleeAttackTimer--;
+        if (ticksSinceArrow != 5) ticksSinceArrow++;
+        if (ticksSinceProjectile != 5) ticksSinceProjectile++;
+        ticksSinceLeftClick++;
     }
 
     public static void onArrowShot() {
@@ -169,18 +251,54 @@ public class CombatSession {
 
     public static void onAttack(EntityPlayer target) {
         lastAttackedPlayer = target;
-        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession()))
+        meleeAttackTimer = 5;
+        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession() && Core.teamedServer))
             getLatestAnalysis().attack(target);
 
     }
 
     public static void onPlayerHurt(EntityPlayer player) {
-        if (sessionIsRunning) getLatestAnalysis().playerHurt(player);
+        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession() && lastAttackedPlayer != null && lastAttackedPlayer.getUniqueID() == player.getUniqueID() && meleeAttackTimer != 0)) getLatestAnalysis().playerHurt(player);
     }
 
     public static void onHurt(EntityPlayer attacker) {
-        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession()))
+        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession() && (hitByFishingHook() || hitByArrow || attackedByPlayer())))
             getLatestAnalysis().hurt(attacker);
+    }
+    
+    private static boolean hitByFishingHook() {
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+        List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
+                getEntitiesWithinAABBExcludingEntity(
+                        thePlayer,
+                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(0.5, 0.5, 0.5));
+
+        for (Entity entity : closestEntities) {
+            if (entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != thePlayer.getUniqueID()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean attackedByPlayer() {
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+        List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
+                getEntitiesWithinAABBExcludingEntity(
+                        thePlayer,
+                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(3.5, 3.5, 3.5));
+
+        for (Entity entity : closestEntities) {
+            if (entity instanceof EntityPlayer) {
+                if (!(((EntityPlayer) entity).capabilities.isFlying || entity.isInvisible() ||
+                        (entity.lastTickPosX == entity.posX &&
+                                entity.lastTickPosY == entity.posY &&
+                                entity.lastTickPosZ == entity.posZ) || ((EntityPlayer) entity).limbSwingAmount == 0)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public static void onLeftClick() {
@@ -256,8 +374,6 @@ public class CombatSession {
     private boolean won = false;
     private BlockPos startingPosition;
 
-    private int lastAttackType;
-    private int lastAttackTimer = 0;
     private final Map<UUID, OpponentTracker> opponentTrackerMap;
 
     private int leftClicks = 0;
@@ -268,16 +384,9 @@ public class CombatSession {
 
     private int projectilesThrown = 0;
     private int projectilesHit = 0;
-    private final Map<UUID, EntityThrowable> thrownProjectiles = new HashMap<>();
 
     private int arrowsShot = 0;
     private int arrowsHit = 0;
-
-    private boolean hitByArrow = false;
-    private int ticksSinceArrow = 0;
-
-    private boolean hitByProjectile = false;
-    private int ticksSinceProjectile = 0;
 
     private int hitsTaken = 0;
     private int arrowsTaken = 0;
@@ -296,15 +405,14 @@ public class CombatSession {
     private final List<PotionEffectTracker> potionEffects;
 
     // Strafing data
-    private final List<StrafingTracker> strafes;
+    private final List<StrafingTracker> strafingTrackers;
 
     // Hotkey time
     private int lastHeldItemIndex;
-    private final List<HotKeyTracker> hotKeys;
+    private final List<HotKeyTracker> hotKeyTrackers;
 
     // Left Clicks Per Second
     private final List<ClicksPerSecondTracker> clicksPerSecondTrackers;
-    private int ticksSinceLeftClick = 0;
 
     private String detectedType = null;
 
@@ -313,8 +421,8 @@ public class CombatSession {
         this.serverIp = Minecraft.getMinecraft().isSingleplayer() ? "Singleplayer" : Minecraft.getMinecraft().getCurrentServerData().serverIP;
         this.opponentTrackerMap = new HashMap<>();
         this.potionEffects = new ArrayList<>();
-        this.strafes = new ArrayList<>();
-        this.hotKeys = new ArrayList<>();
+        this.strafingTrackers = new ArrayList<>();
+        this.hotKeyTrackers = new ArrayList<>();
         this.clicksPerSecondTrackers = new ArrayList<>();
     }
 
@@ -346,8 +454,8 @@ public class CombatSession {
         this.endingInventory = endingInventory;
         this.endingArmor = endingArmor;
         this.potionEffects = potionEffects;
-        this.strafes = strafes;
-        this.hotKeys = hotKeys;
+        this.strafingTrackers = strafes;
+        this.hotKeyTrackers = hotKeys;
         this.clicksPerSecondTrackers = clicksPerSecondTrackers;
         this.deleted = Core.deletedSessionIds.getValue().contains(this.id);
         this.won = Core.wonSessionIds.getValue().contains(this.id);
@@ -356,7 +464,7 @@ public class CombatSession {
 
     public void activate() {
         this.startTime = System.currentTimeMillis();
-        sessionIsRunning = true;
+        thrownProjectiles.clear();
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
 
         EntityPlayer closestPlayer;
@@ -377,14 +485,11 @@ public class CombatSession {
 
         this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
         this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
+
+        sessionIsRunning = true;
     }
 
     public void tick() {
-        if (this.lastAttackTimer > 0) {
-            this.lastAttackTimer--;
-        } else {
-            this.lastAttackType = Integer.MIN_VALUE;
-        }
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
         WorldClient theWorld = Minecraft.getMinecraft().theWorld;
 
@@ -406,7 +511,7 @@ public class CombatSession {
         }
 
         if (Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnGameEnd.getValue())) {
-            if (thePlayer.getDistance(this.startingPosition.getX(), this.startingPosition.getY(), this.startingPosition.getZ()) >= 1500) {
+            if (this.startingPosition != null && thePlayer.getDistance(this.startingPosition.getX(), this.startingPosition.getY(), this.startingPosition.getZ()) >= 1500) {
                 this.end();
             }
         }
@@ -425,80 +530,14 @@ public class CombatSession {
             return;
         }
 
-        if (this.ticksSinceArrow >= 5) {
-            this.hitByArrow = false;
-        }
-        if (this.ticksSinceProjectile >= 5) {
-            this.hitByProjectile = false;
-        }
-
         for (EntityPlayer entityPlayer : theWorld.playerEntities) {
             if (entityPlayer.getUniqueID() != thePlayer.getUniqueID() && !this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID())) {
                 this.opponentTrackerMap.put(entityPlayer.getUniqueID(), new OpponentTracker(entityPlayer));
             }
         }
 
-        List<UUID> uuidsToRemove = new ArrayList<>();
-        for (UUID uuid : this.thrownProjectiles.keySet()) {
-            if (!theWorld.loadedEntityList.contains(this.thrownProjectiles.get(uuid)))
-                uuidsToRemove.add(uuid);
-        }
-
-        for (UUID uuid : uuidsToRemove) {
-            this.thrownProjectiles.remove(uuid);
-        }
-
         for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
-            opponentTracker.tick(this.thrownProjectiles);
-        }
-
-        if (!this.hitByArrow) {
-            for (Entity entity : theWorld.getEntities(EntityArrow.class, input -> {
-                assert input != null;
-                return !input.onGround && input.shootingEntity != null && input.shootingEntity.getUniqueID() != thePlayer.getUniqueID();
-            })) {
-                EntityArrow entityArrow = (EntityArrow) entity;
-                if (theWorld.getEntitiesWithinAABBExcludingEntity(entityArrow,
-                        entityArrow.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(thePlayer)) {
-                    this.ticksSinceArrow = 0;
-                    this.hitByArrow = true;
-                    break;
-                }
-            }
-        }
-
-        if (!this.hitByProjectile) {
-            for (Entity entity : theWorld.getEntities(EntityEgg.class, input -> {
-                assert input != null;
-                return true;
-            })) {
-                if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
-                        entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(thePlayer)) {
-                    if (entity.ticksExisted <= 5) {
-                        this.thrownProjectiles.putIfAbsent(entity.getUniqueID(), (EntityThrowable) entity);
-                    } else if (!this.thrownProjectiles.containsKey(entity.getUniqueID())) {
-                        this.ticksSinceProjectile = 0;
-                        this.hitByProjectile = true;
-                        break;
-                    }
-                }
-            }
-
-            for (Entity entity : theWorld.getEntities(EntitySnowball.class, input -> {
-                assert input != null;
-                return true;
-            })) {
-                if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
-                        entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(thePlayer)) {
-                    if (entity.ticksExisted <= 5) {
-                        this.thrownProjectiles.putIfAbsent(entity.getUniqueID(), (EntityThrowable) entity);
-                    } else if (!this.thrownProjectiles.containsKey(entity.getUniqueID())) {
-                        this.ticksSinceProjectile = 0;
-                        this.hitByProjectile = true;
-                        break;
-                    }
-                }
-            }
+            opponentTracker.tick();
         }
 
         this.endingHealth = thePlayer.getHealth();
@@ -510,7 +549,7 @@ public class CombatSession {
 
         this.potionEffectChange();
 
-        if (this.ticksSinceLeftClick >= 5) {
+        if (ticksSinceLeftClick >= 5) {
             ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
             if (clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) {
                 clicksPerSecondTracker.end();
@@ -519,8 +558,6 @@ public class CombatSession {
                 clicksPerSecondTracker.resetClicks();
             }
         }
-
-        this.ticksSinceLeftClick++;
     }
 
     private boolean allOpponentsAreGone() {
@@ -536,6 +573,7 @@ public class CombatSession {
 
 
     private int getNonNullElementCount(List<?> objects) {
+        if (objects == null) return 0;
         int nonNullCount = 0;
         for (Object object : objects) {
             if (object != null) nonNullCount++;
@@ -544,6 +582,7 @@ public class CombatSession {
     }
 
     private int getNonNullElementCount(Object[] objects) {
+        if (objects == null) return 0;
         int nonNullCount = 0;
         for (Object object : objects) {
             if (object != null) nonNullCount++;
@@ -554,17 +593,17 @@ public class CombatSession {
     private void heldItemChange() {
         int currentItem = Minecraft.getMinecraft().thePlayer.inventory.currentItem;
         HotKeyTracker hotKeyTracker;
-        if (this.hotKeys.isEmpty()) {
+        if (this.hotKeyTrackers.isEmpty()) {
             if (currentItem != Core.mainHotBarSlot.getValue() - 1) {
-                this.hotKeys.add(new HotKeyTracker());
+                this.hotKeyTrackers.add(new HotKeyTracker());
             }
         }
-        if (this.hotKeys.size() != 0) {
+        if (this.hotKeyTrackers.size() != 0) {
             if (!(hotKeyTracker = this.getLatestHotKeyTracker()).hasEnded()) {
                 hotKeyTracker.end();
             }
             if (this.getLatestHotKeyTracker().hasEnded() && currentItem != Core.mainHotBarSlot.getValue() - 1) {
-                this.hotKeys.add(new HotKeyTracker());
+                this.hotKeyTrackers.add(new HotKeyTracker());
             }
         }
         if (currentItem != Core.mainHotBarSlot.getValue() - 1) {
@@ -579,7 +618,7 @@ public class CombatSession {
     }
 
     private HotKeyTracker getLatestHotKeyTracker() {
-        return this.hotKeys.get(this.hotKeys.size() - 1);
+        return this.hotKeyTrackers.get(this.hotKeyTrackers.size() - 1);
     }
 
     private void potionEffectChange() {
@@ -631,7 +670,7 @@ public class CombatSession {
     }
 
     public void hitByArrow(EntityPlayer shooter) {
-        this.hitByArrow = false;
+        hitByArrow = false;
         OpponentTracker opponentTracker = this.getOpponent(shooter, true);
         if (opponentTracker == null) return;
         opponentTracker.arrowsTaken++;
@@ -646,7 +685,7 @@ public class CombatSession {
     }
 
     public void hitByProjectile() {
-        this.hitByProjectile = false;
+        hitByProjectile = false;
         this.projectilesTaken++;
     }
 
@@ -662,8 +701,6 @@ public class CombatSession {
             this.leftClicks = 1;
             opponentTracker.attacksSent = 1;
         }
-        this.lastAttackType = 0;
-        this.lastAttackTimer = 5;
         opponentTracker.attacksLanded++;
         this.attacksLanded++;
     }
@@ -677,19 +714,19 @@ public class CombatSession {
         if (opponentTracker == null) {
             return;
         }
-        if (opponentTracker.hitByProjectile || opponentTracker.hitByFishingRodHook()) {
-            opponentTracker.hitByProjectile = false;
+        if (opponentTracker.opponentHitByProjectile || opponentTracker.hitByFishingRodHook()) {
+            opponentTracker.opponentHitByProjectile = false;
             opponentTracker.projectilesHit++;
             this.projectilesHit++;
             return;
-        } else if (opponentTracker.hitByArrow) {
-            opponentTracker.hitByArrow = false;
+        } else if (opponentTracker.opponentHitByArrow) {
+            opponentTracker.opponentHitByArrow = false;
             opponentTracker.arrowsHit++;
             this.arrowsHit++;
             return;
         }
-        if (this.lastAttackTimer > 0) {
-            if (this.lastAttackType == 0 && player.getUniqueID() == lastAttackedPlayer.getUniqueID()) {
+        if (meleeAttackTimer != 0) {
+            if (player.getUniqueID() == lastAttackedPlayer.getUniqueID()) {
                 opponentTracker.onOpponentHit();
             }
         }
@@ -697,9 +734,9 @@ public class CombatSession {
 
     public void hurt(EntityPlayer attacker) {
         EntityPlayer entityPlayer = this.hitByFishingRodHook();
-        if (this.hitByArrow) {
+        if (hitByArrow) {
             this.hitByArrow(attacker);
-        } else if (entityPlayer != null || this.hitByProjectile) {
+        } else if (entityPlayer != null || hitByProjectile) {
             this.hitByProjectile();
         } else {
             EntityPlayer attackingOpponent = this.getAttackingEntityPlayer();
@@ -733,9 +770,9 @@ public class CombatSession {
     }
 
     private boolean playerHasAppropriateOpponent(EntityPlayer entityPlayer) {
-        if (this.allOpponentTrackersAreEmpty()) return true;
+        if (Core.teamedServer && this.allOpponentTrackersAreEmpty()) return true;
         OpponentTracker opponentTracker = this.opponentTrackerMap.get(entityPlayer.getUniqueID());
-        return !opponentTracker.isEmpty();
+        return !(opponentTracker == null || opponentTracker.isEmpty());
     }
 
     private boolean allOpponentTrackersAreEmpty() {
@@ -771,7 +808,7 @@ public class CombatSession {
         if (opponentTracker == null) return;
         Vec3 positionEyes = thePlayer.getPositionEyes(1.0F);
         if (closestPlayer.getEntityBoundingBox().expand(6, 6, 6).isVecInside(positionEyes)) {
-            this.ticksSinceLeftClick = 0;
+            ticksSinceLeftClick = 0;
             this.getLatestClicksPerSecondCounter().incrementClicks();
             if (this.isWithinRange(closestPlayer)) {
                 this.attacksSent++;
@@ -823,20 +860,20 @@ public class CombatSession {
             this.checkAndEndAddStrafing(false);
         } else if (!leftIsDown && rightIsDown) {
             this.checkAndEndAddStrafing(true);
-        } else if (this.strafes.size() != 0 && !this.getLatestStrafingTracker().hasEnded()) {
+        } else if (this.strafingTrackers.size() != 0 && !this.getLatestStrafingTracker().hasEnded()) {
             this.getLatestStrafingTracker().end();
         }
     }
 
     private void checkAndEndAddStrafing(boolean isRightStrafe) {
         StrafingTracker strafingTracker;
-        if (this.strafes.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded())
+        if (this.strafingTrackers.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded())
             strafingTracker.end();
-        this.strafes.add(new StrafingTracker(isRightStrafe));
+        this.strafingTrackers.add(new StrafingTracker(isRightStrafe));
     }
 
     private StrafingTracker getLatestStrafingTracker() {
-        return this.strafes.get(this.strafes.size() - 1);
+        return this.strafingTrackers.get(this.strafingTrackers.size() - 1);
     }
 
     public void end() {
@@ -860,10 +897,10 @@ public class CombatSession {
             this.opponentTrackerMap.remove(uuid);
         }
 
-        this.hotKeys.removeIf(hotKeyTracker -> hotKeyTracker.getTime() == 0);
+        this.hotKeyTrackers.removeIf(hotKeyTracker -> hotKeyTracker.getTime() == 0);
 
         HotKeyTracker hotKeyTracker;
-        if (this.hotKeys.size() != 0 && !(hotKeyTracker = this.getLatestHotKeyTracker()).hasEnded()) {
+        if (this.hotKeyTrackers.size() != 0 && !(hotKeyTracker = this.getLatestHotKeyTracker()).hasEnded()) {
             hotKeyTracker.end();
         }
 
@@ -871,10 +908,10 @@ public class CombatSession {
             if (!potionEffectTracker.hasEnded()) potionEffectTracker.end();
         }
 
-        this.strafes.removeIf(strafingTracker -> strafingTracker.getTime() == 0);
+        this.strafingTrackers.removeIf(strafingTracker -> strafingTracker.getTime() == 0);
 
         StrafingTracker strafingTracker;
-        if (this.strafes.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded()) {
+        if (this.strafingTrackers.size() != 0 && !(strafingTracker = this.getLatestStrafingTracker()).hasEnded()) {
             strafingTracker.end();
         }
 
@@ -1062,12 +1099,12 @@ public class CombatSession {
         return potionEffects;
     }
 
-    public List<StrafingTracker> getStrafes() {
-        return this.strafes;
+    public List<StrafingTracker> getStrafingTrackers() {
+        return this.strafingTrackers;
     }
 
-    public List<HotKeyTracker> getHotKeys() {
-        return this.hotKeys;
+    public List<HotKeyTracker> getHotKeyTrackers() {
+        return this.hotKeyTrackers;
     }
 
     public long getTime() {
@@ -1191,8 +1228,8 @@ public class CombatSession {
         asJsonObject.add("endingInventory", itemStackListToJsonArray(this.endingInventory));
         asJsonObject.add("endingArmor", itemStackListToJsonArray(this.endingArmor));
         asJsonObject.add("potionEffects", Miscellaneous.toJsonArrayString(this.potionEffects));
-        asJsonObject.add("strafes", Miscellaneous.toJsonArrayString(this.strafes));
-        asJsonObject.add("hotKeys", Miscellaneous.toJsonArrayString(this.hotKeys));
+        asJsonObject.add("strafes", Miscellaneous.toJsonArrayString(this.strafingTrackers));
+        asJsonObject.add("hotKeys", Miscellaneous.toJsonArrayString(this.hotKeyTrackers));
         asJsonObject.add("clicksPerSecondTrackers", Miscellaneous.toJsonArrayString(this.clicksPerSecondTrackers));
 
         return asJsonObject.toString();
@@ -1324,10 +1361,10 @@ public class CombatSession {
         private int arrowsHit = 0;
         private int projectilesHit = 0;
 
-        private boolean hitByArrow = false;
-        private int ticksSinceArrow = 0;
-        private boolean hitByProjectile = false;
-        private int ticksSinceProjectile = 0;
+        private boolean opponentHitByArrow = false;
+        private int ticksSinceOpponentHitByArrow = 0;
+        private boolean opponentHitByProjectile = false;
+        private int ticksSinceOpponentHitByProjectile = 0;
 
         public OpponentTracker(EntityPlayer opponent) {
             this.opponent = opponent;
@@ -1354,17 +1391,17 @@ public class CombatSession {
             this.projectilesHit = projectilesHit;
         }
 
-        public void tick(Map<UUID, EntityThrowable> projectilesThrown) {
-            if (this.ticksSinceArrow >= 5) {
-                this.hitByArrow = false;
+        public void tick() {
+            if (this.ticksSinceOpponentHitByArrow == 5) {
+                this.opponentHitByArrow = false;
             }
-            if (this.ticksSinceProjectile >= 5) {
-                this.hitByProjectile = false;
+            if (this.ticksSinceOpponentHitByProjectile == 5) {
+                this.opponentHitByProjectile = false;
             }
 
             EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
             WorldClient theWorld = Minecraft.getMinecraft().theWorld;
-            if (!this.hitByArrow) {
+            if (!this.opponentHitByArrow) {
                 for (Entity entity : theWorld.getEntities(EntityArrow.class, input -> {
                     assert input != null;
                     return !input.onGround && input.shootingEntity != null && input.shootingEntity.getUniqueID() == thePlayer.getUniqueID();
@@ -1372,41 +1409,41 @@ public class CombatSession {
                     EntityArrow entityArrow = (EntityArrow) entity;
                     if (theWorld.getEntitiesWithinAABBExcludingEntity(entityArrow,
                             entityArrow.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(this.opponent)) {
-                        this.ticksSinceArrow = 0;
-                        this.hitByArrow = true;
+                        this.ticksSinceOpponentHitByArrow = 0;
+                        this.opponentHitByArrow = true;
                         break;
                     }
                 }
             }
 
-            if (!this.hitByProjectile) {
+            if (!this.opponentHitByProjectile) {
                 for (Entity entity : theWorld.getEntities(EntityEgg.class, input -> {
                     assert input != null;
-                    return projectilesThrown.containsKey(input.getUniqueID());
+                    return thrownProjectiles.containsKey(input.getUniqueID());
                 })) {
                     if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
                             entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(this.opponent)) {
-                        this.ticksSinceProjectile = 0;
-                        this.hitByProjectile = true;
+                        this.ticksSinceOpponentHitByProjectile = 0;
+                        this.opponentHitByProjectile = true;
                         break;
                     }
                 }
 
                 for (Entity entity : theWorld.getEntities(EntitySnowball.class, input -> {
                     assert input != null;
-                    return projectilesThrown.containsKey(input.getUniqueID());
+                    return thrownProjectiles.containsKey(input.getUniqueID());
                 })) {
                     if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
                             entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(0.5, 0.5, 0.5)).contains(this.opponent)) {
-                        this.ticksSinceProjectile = 0;
-                        this.hitByProjectile = true;
+                        this.ticksSinceOpponentHitByProjectile = 0;
+                        this.opponentHitByProjectile = true;
                         break;
                     }
                 }
             }
 
-            this.ticksSinceArrow++;
-            this.ticksSinceProjectile++;
+            if (this.ticksSinceOpponentHitByArrow != 5) this.ticksSinceOpponentHitByArrow++;
+            if (this.ticksSinceOpponentHitByProjectile != 5) this.ticksSinceOpponentHitByProjectile++;
         }
 
         private void onOpponentHit() {
@@ -1736,7 +1773,7 @@ public class CombatSession {
         public ComboTracker() {
         }
 
-        private ComboTracker(long startTime, long endTime, int comboCount, boolean ended) {
+        private ComboTracker(long startTime, long endTime, int comboCount) {
             this.startTime = startTime;
             this.endTime = endTime;
             this.comboCount = comboCount;
@@ -1777,7 +1814,7 @@ public class CombatSession {
             long endTime = jsonObject.get("endTime").getAsLong();
             int comboCount = jsonObject.get("comboCount").getAsInt();
 
-            return new ComboTracker(startTime, endTime, comboCount, true);
+            return new ComboTracker(startTime, endTime, comboCount);
         }
 
         public long getStartTime() {

@@ -136,7 +136,7 @@ public class CombatSessionGui extends PanelGui {
 
             List<String> strafing = new ArrayList<>();
 
-            for (CombatSession.StrafingTracker strafingTracker : this.combatSession.getStrafes()) {
+            for (CombatSession.StrafingTracker strafingTracker : this.combatSession.getStrafingTrackers()) {
                 strafing.add((strafingTracker.isRightStrafe() ? ">" : "<") + " - " + Text.formatTimeFromMilliseconds(strafingTracker.getTime(), 0) + "ms");
             }
 
@@ -146,7 +146,7 @@ public class CombatSessionGui extends PanelGui {
             potionEffectPanel.setColor(Color.ORANGE);
             super.guiPanels.add(potionEffectPanel);
 
-            HotKeyPanel hotKeyPanel = new HotKeyPanel("Hot Keys", this.combatSession.getHotKeys());
+            HotKeyPanel hotKeyPanel = new HotKeyPanel("Hot Keys", this.combatSession.getHotKeyTrackers());
             hotKeyPanel.setColor(Color.MAGENTA);
             super.guiPanels.add(hotKeyPanel);
 

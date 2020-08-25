@@ -180,7 +180,7 @@ public class CombatSessionGui extends PanelGui {
 
                 List<String> combos = new ArrayList<>();
                 for (CombatSession.ComboTracker comboTracker : opponentTracker.getComboTrackers()) {
-                    combos.add(Text.formatTimeFromMilliseconds(comboTracker.getStartTime(), 2) + " - " + comboTracker.getComboCount());
+                    combos.add(Text.formatTimeFromMilliseconds(comboTracker.getStartTime() - this.combatSession.getStartTime(), 2) + " - " + comboTracker.getComboCount());
                 }
                 super.createListPanel("Combos - " + opponentTracker.getName(), combos.isEmpty() ? Collections.singletonList("No combos to display.") : combos).setColor(Color.CYAN);
             }

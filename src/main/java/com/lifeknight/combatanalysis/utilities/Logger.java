@@ -12,7 +12,7 @@ import static com.lifeknight.combatanalysis.mod.Core.THREAD_POOL;
 public class Logger {
     private File logFile;
     private final File logFolder;
-    private List<File> logFiles;
+    private final List<File> logFiles = new ArrayList<>();
     private boolean doLog = true;
     private final boolean doLogTime;
     private String currentLog = "";
@@ -32,16 +32,16 @@ public class Logger {
 
         try {
             if (this.logFile.exists()) this.getPreviousLog();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            exception.printStackTrace();
         }
         this.doLogTime = true;
 
         try {
-            this.logFiles = Arrays.asList(this.logFolder.listFiles());
-        } catch (Exception e) {
-            this.logFiles = new ArrayList<>(Collections.singletonList(this.logFile));
-            e.printStackTrace();
+            this.logFiles.addAll(Arrays.asList(this.logFolder.listFiles()));
+        } catch (Exception exception) {
+            this.logFiles.add(this.logFile);
+            exception.printStackTrace();
         }
 
     }

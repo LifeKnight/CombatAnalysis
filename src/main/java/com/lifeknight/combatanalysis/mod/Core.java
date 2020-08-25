@@ -83,6 +83,7 @@ public class Core {
     public static Configuration configuration;
     /*
     How to deal with lava and fire
+    (1) session ids already logged
     */
 
     @EventHandler

@@ -40,7 +40,7 @@ public class Logger {
         try {
             this.logFiles = Arrays.asList(this.logFolder.listFiles());
         } catch (Exception e) {
-            this.logFiles = Collections.singletonList(this.logFile);
+            this.logFiles = new ArrayList<>(Collections.singletonList(this.logFile));
             e.printStackTrace();
         }
 

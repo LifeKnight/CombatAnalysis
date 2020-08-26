@@ -356,10 +356,10 @@ public class ManipulableButton extends GuiButton {
             this.yPosition = Video.getGameHeight() - this.getManipulableHeight() - 5;
         }
 
-        if (cannotTranslateToX(this.getManipulableXPosition())) {
+        if (this.cannotTranslateToX(this.getManipulableXPosition())) {
             this.xPosition = -5;
             this.yPosition = -5;
-            while (cannotTranslateToX(this.getManipulableXPosition())) {
+            while (this.cannotTranslateToX(this.getManipulableXPosition())) {
                 if (!(this.getManipulableXPosition() + this.getManipulableWidth() > Video.getGameWidth() + 1)) {
                     this.yPosition++;
                 } else if (!(this.getManipulableYPosition() + this.getManipulableHeight() >= Video.getGameHeight())) {
@@ -370,10 +370,10 @@ public class ManipulableButton extends GuiButton {
             }
         }
 
-        if (cannotTranslateToY(this.getManipulableYPosition())) {
+        if (this.cannotTranslateToY(this.getManipulableYPosition())) {
             this.xPosition = -5;
             this.yPosition = -5;
-            while (cannotTranslateToY(this.getManipulableYPosition())) {
+            while (this.cannotTranslateToY(this.getManipulableYPosition())) {
                 if (!(this.getManipulableYPosition() + this.getManipulableHeight() >= Video.getGameHeight())) {
                     this.xPosition++;
                 } else if (!(this.getManipulableXPosition() + this.getManipulableWidth() > Video.getGameWidth() + 1)) {

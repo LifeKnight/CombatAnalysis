@@ -3,11 +3,11 @@ package com.lifeknight.combatanalysis.mod;
 import com.google.common.base.Predicates;
 import com.google.gson.*;
 import com.lifeknight.combatanalysis.gui.CombatSessionGui;
-import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Logic;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.Entity;
@@ -47,13 +47,18 @@ public class CombatSession {
     public static List<String> serverFilter = new ArrayList<>();
     public static List<String> typeFilter = new ArrayList<>();
 
+    private static final List<UUID> nonStaticPlayerUuids = new ArrayList<>();
+
     private static int ticksSinceLeftClick = 0;
 
     private static EntityPlayer lastAttackedPlayer = null;
     private static int meleeAttackTimer = 0;
 
-    private static EntityPlayer aimedPlayer = null;
+    private static final List<EntityPlayer> lastArrowShotAimedPlayers = new ArrayList<>();
     private static int arrowShotTimer = 0;
+
+    private static final List<EntityPlayer> lastProjectileThrownAimedPlayers = new ArrayList<>();
+    private static int projectileThrownTimer = 0;
 
     private static int hitByArrowTimer = 0;
     private static int hitByProjectileTimer = 0;
@@ -158,6 +163,7 @@ public class CombatSession {
     }
 
     public static void onWorldLoad() {
+        nonStaticPlayerUuids.clear();
         if (sessionIsRunning && Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnGameEnd.getValue()))
             getLatestAnalysis().end();
     }
@@ -166,46 +172,57 @@ public class CombatSession {
         WorldClient theWorld = Minecraft.getMinecraft().theWorld;
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
         if (!(theWorld == null || thePlayer == null)) {
+
+            for (EntityOtherPlayerMP entityOtherPlayerMP : theWorld.getPlayers(EntityOtherPlayerMP.class, entityOtherPlayerMP -> {
+                assert entityOtherPlayerMP != null;
+                return !nonStaticPlayerUuids.contains(entityOtherPlayerMP.getUniqueID()) &&
+                        !(entityOtherPlayerMP.lastTickPosX == entityOtherPlayerMP.posX &&
+                        entityOtherPlayerMP.lastTickPosY == entityOtherPlayerMP.posY &&
+                        entityOtherPlayerMP.lastTickPosZ == entityOtherPlayerMP.posZ);
+            })) nonStaticPlayerUuids.add(entityOtherPlayerMP.getUniqueID());
+
             double d0 = 1.0;
-            for (Entity entity : theWorld.getEntities(EntityArrow.class, input -> {
-                assert input != null;
-                return !input.onGround && input.shootingEntity != null && input.shootingEntity.getUniqueID() != thePlayer.getUniqueID();
+            int i0 = 7;
+            int i1 = 5;
+            for (Entity entity : theWorld.getEntities(EntityArrow.class, entityArrow -> {
+                assert entityArrow != null;
+                return !entityArrow.onGround && entityArrow.shootingEntity != null && entityArrow.shootingEntity.getUniqueID() != thePlayer.getUniqueID();
             })) {
                 EntityArrow entityArrow = (EntityArrow) entity;
                 if (theWorld.getEntitiesWithinAABBExcludingEntity(entityArrow,
-                        entityArrow.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(d0, d0, d0)).contains(thePlayer)) {
-                    hitByArrowTimer = 5;
+                        entityArrow.getEntityBoundingBox().addCoord(entityArrow.motionX, entityArrow.motionY, entityArrow.motionZ).expand(d0, d0, d0)).contains(thePlayer)) {
+                    hitByArrowTimer = i0;
                     break;
                 }
             }
 
             double d1 = 2.0;
 
-            for (Entity entityEgg : theWorld.getEntities(EntityEgg.class, input -> {
-                assert input != null;
+            for (Entity entityEgg : theWorld.getEntities(EntityEgg.class, entityEgg -> {
+                assert entityEgg != null;
                 return true;
             })) {
                 if (theWorld.getEntitiesWithinAABBExcludingEntity(entityEgg,
-                        entityEgg.getEntityBoundingBox().expand(d1, d1, d1)).contains(thePlayer)) {
-                    if (entityEgg.ticksExisted <= 5 && entityThrowableIsMovingAway((EntityThrowable) entityEgg)) {
+                        entityEgg.getEntityBoundingBox().addCoord(entityEgg.motionX, entityEgg.motionY, entityEgg.motionZ).expand(d1, d1, d1)).contains(thePlayer)) {
+                    if (entityEgg.ticksExisted <= i1 && entityThrowableIsMovingAway((EntityThrowable) entityEgg)) {
                         thrownProjectiles.putIfAbsent(entityEgg.getUniqueID(), (EntityThrowable) entityEgg);
                     } else if (!thrownProjectiles.containsKey(entityEgg.getUniqueID())) {
-                        hitByProjectileTimer = 5;
+                        hitByProjectileTimer = i0;
                         break;
                     }
                 }
             }
 
-            for (Entity entitySnowball : theWorld.getEntities(EntitySnowball.class, input -> {
-                assert input != null;
+            for (Entity entitySnowball : theWorld.getEntities(EntitySnowball.class, entitySnowball -> {
+                assert entitySnowball != null;
                 return true;
             })) {
                 if (theWorld.getEntitiesWithinAABBExcludingEntity(entitySnowball,
-                        entitySnowball.getEntityBoundingBox().expand(d1, d1, d1)).contains(thePlayer)) {
-                    if (entitySnowball.ticksExisted <= 5 && entityThrowableIsMovingAway((EntityThrowable) entitySnowball)) {
+                        entitySnowball.getEntityBoundingBox().addCoord(entitySnowball.motionX, entitySnowball.motionY, entitySnowball.motionZ).expand(d1, d1, d1)).contains(thePlayer)) {
+                    if (entitySnowball.ticksExisted <= i1 && entityThrowableIsMovingAway((EntityThrowable) entitySnowball)) {
                         thrownProjectiles.putIfAbsent(entitySnowball.getUniqueID(), (EntityThrowable) entitySnowball);
                     } else if (!thrownProjectiles.containsKey(entitySnowball.getUniqueID())) {
-                        hitByProjectileTimer = 5;
+                        hitByProjectileTimer = i0;
                         break;
                     }
                 }
@@ -220,32 +237,15 @@ public class CombatSession {
             for (UUID uuid : uuidsToRemove) {
                 thrownProjectiles.remove(uuid);
             }
-
-            Vec3 vec3 = thePlayer.getPositionEyes(1.0F);
-            Vec3 vec31 = thePlayer.getLookVec();
-            double d2 = 7;
-            Vec3 vec32 = vec3.addVector(vec31.xCoord * d2, vec31.yCoord * d2, vec31.zCoord * d2);
-            for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
-                if (!(entityPlayer.getUniqueID() == thePlayer.getUniqueID() ||
-                        entityPlayer.capabilities.isFlying ||
-                        playerIsStationary(entityPlayer) || thePlayer.getDistanceToEntity(entityPlayer) > 6)) {
-                    float f1 = 1.0F;
-                    AxisAlignedBB axisAlignedBB = entityPlayer.getEntityBoundingBox().expand(f1, f1, f1);
-                    MovingObjectPosition movingObjectPosition = axisAlignedBB.calculateIntercept(vec3, vec32);
-
-                    if (movingObjectPosition != null || axisAlignedBB.isVecInside(vec32)) {
-                        aimedPlayer = entityPlayer;
-                    }
-                }
-            }
         }
 
         if (sessionIsRunning) getLatestAnalysis().tick();
 
         if (meleeAttackTimer != 0) meleeAttackTimer--;
+        if (arrowShotTimer != 0) arrowShotTimer--;
+        if (projectileThrownTimer != 0) projectileThrownTimer--;
         if (hitByArrowTimer != 0) hitByArrowTimer--;
         if (hitByProjectileTimer != 0) hitByProjectileTimer--;
-        if (arrowShotTimer != 0) arrowShotTimer--;
         ticksSinceLeftClick++;
     }
 
@@ -261,12 +261,52 @@ public class CombatSession {
     }
 
     public static void onArrowShot() {
-        arrowShotTimer = 0;
+        arrowShotTimer = 5;
+        updateAimedPlayerList(lastArrowShotAimedPlayers);
         if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession()))
             getLatestAnalysis().arrowShot();
     }
 
-    public static void onProjectileThrown() {
+    private static void updateAimedPlayerList(List<EntityPlayer> aimedPlayers) {
+        aimedPlayers.clear();
+
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+        Vec3 vec3 = thePlayer.getPositionEyes(1.0F);
+        Vec3 vec31 = thePlayer.getLookVec();
+        double d2 = 7.0;
+        Vec3 vec32 = vec3.addVector(vec31.xCoord * d2, vec31.yCoord * d2, vec31.zCoord * d2);
+        for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
+            if (!(entityPlayer.getUniqueID() == thePlayer.getUniqueID() ||
+                            entityPlayer.capabilities.isFlying ||
+                            playerIsStationary(entityPlayer) || thePlayer.getDistanceToEntity(entityPlayer) > 7)) {
+                AxisAlignedBB entityPlayerBoundingBox = entityPlayer.getEntityBoundingBox();
+                if (entityPlayerBoundingBox.isVecInside(vec3)) aimedPlayers.add(entityPlayer);
+                else {
+                    float f1 = 1.0F;
+                    AxisAlignedBB axisAlignedBB = entityPlayer.getEntityBoundingBox().expand(f1, f1, f1);
+                    MovingObjectPosition movingObjectPosition = axisAlignedBB.calculateIntercept(vec3, vec32);
+
+                    if (movingObjectPosition != null || axisAlignedBB.isVecInside(vec32)) {
+                        aimedPlayers.add(entityPlayer);
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean playerInList(List<EntityPlayer> entityPlayers, EntityPlayer entityPlayer) {
+        for (EntityPlayer entityPlayer1 : entityPlayers) {
+            if (entityPlayer.getUniqueID() == entityPlayer1.getUniqueID()) return true;
+        }
+        return false;
+    }
+
+    public static void onProjectileThrown(boolean fishingRod) {
+        if (!fishingRod) {
+            projectileThrownTimer = 5;
+            updateAimedPlayerList(lastProjectileThrownAimedPlayers);
+        }
+
         if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession()))
             getLatestAnalysis().projectileThrown();
     }
@@ -285,29 +325,14 @@ public class CombatSession {
     }
 
     public static void onHurt(EntityPlayer attacker) {
-        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession() && (hitByFishingHook() || hitByArrowTimer != 0 || attackedByPlayer())))
+        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession() && (getFishHookThrower() != null || hitByArrowTimer != 0 || attackedByPlayer())))
             getLatestAnalysis().hurt(attacker);
     }
 
     private static boolean playerIsStationary(EntityPlayer entityPlayer) {
-        return entityPlayer.lastTickPosX == entityPlayer.posX &&
+        return nonStaticPlayerUuids.isEmpty() ? !(entityPlayer.lastTickPosX == entityPlayer.posX &&
                 entityPlayer.lastTickPosY == entityPlayer.posY &&
-                entityPlayer.lastTickPosZ == entityPlayer.posZ;
-    }
-
-    private static boolean hitByFishingHook() {
-        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
-        List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
-                getEntitiesWithinAABBExcludingEntity(
-                        thePlayer,
-                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(0.5, 0.5, 0.5));
-
-        for (Entity entity : closestEntities) {
-            if (entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != thePlayer.getUniqueID()) {
-                return true;
-            }
-        }
-        return false;
+                entityPlayer.lastTickPosZ == entityPlayer.posZ) : !nonStaticPlayerUuids.contains(entityPlayer.getUniqueID());
     }
 
     private static boolean attackedByPlayer() {
@@ -315,7 +340,7 @@ public class CombatSession {
         List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
                 getEntitiesWithinAABBExcludingEntity(
                         thePlayer,
-                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(3.5, 3.5, 3.5));
+                        thePlayer.getEntityBoundingBox().expand(3.5, 3.5, 3.5));
 
         for (Entity entity : closestEntities) {
             if (entity instanceof EntityPlayer) {
@@ -542,17 +567,20 @@ public class CombatSession {
                 this.end();
             }
         }
-
-        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingArmor), this.getNonNullElementCount(thePlayer.inventory.armorInventory), 2)) {
+        int endingArmorSize = getNonNullElementCount(this.endingArmor);
+        int armorSize = getNonNullElementCount(thePlayer.inventory.armorInventory);
+        if (Logic.isWithinRange(endingArmorSize, armorSize, 2)) {
             this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
-        } else if (Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnSpectator.getValue())) {
+        } else if (armorSize < endingArmorSize && Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnSpectator.getValue())) {
             this.end();
             return;
         }
 
-        if (Logic.isWithinRange(this.getNonNullElementCount(this.endingInventory), this.getNonNullElementCount(thePlayer.inventory.mainInventory), 3)) {
+        int endingInventorySize = getNonNullElementCount(this.endingInventory);
+        int inventorySize = getNonNullElementCount(thePlayer.inventory.mainInventory);
+        if (Logic.isWithinRange(endingInventorySize, inventorySize, 3)) {
             this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
-        } else if (Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnSpectator.getValue())) {
+        } else if (inventorySize < endingInventorySize && Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnSpectator.getValue())) {
             this.end();
             return;
         }
@@ -578,7 +606,7 @@ public class CombatSession {
 
         if (ticksSinceLeftClick >= 5) {
             ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
-            if (clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) {
+            if (clicksPerSecondTracker.getClicksPerSecond() >= 4 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() > 1) {
                 clicksPerSecondTracker.end();
                 this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
             } else if (clicksPerSecondTracker.getLeftClicks() != 0) {
@@ -598,8 +626,7 @@ public class CombatSession {
         return true;
     }
 
-
-    private int getNonNullElementCount(List<?> objects) {
+    private static int getNonNullElementCount(List<?> objects) {
         if (objects == null) return 0;
         int nonNullCount = 0;
         for (Object object : objects) {
@@ -608,7 +635,7 @@ public class CombatSession {
         return nonNullCount;
     }
 
-    private int getNonNullElementCount(Object[] objects) {
+    private static int getNonNullElementCount(Object[] objects) {
         if (objects == null) return 0;
         int nonNullCount = 0;
         for (Object object : objects) {
@@ -635,7 +662,7 @@ public class CombatSession {
         }
         if (currentItem != Core.mainHotBarSlot.getValue() - 1) {
             ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
-            if (clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) {
+            if (clicksPerSecondTracker.getClicksPerSecond() >= 4 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() > 1) {
                 clicksPerSecondTracker.end();
                 this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
             } else if (clicksPerSecondTracker.getLeftClicks() != 0) {
@@ -741,20 +768,18 @@ public class CombatSession {
         if (opponentTracker == null) {
             return;
         }
-        if (opponentTracker.opponentHitByProjectileTimer != 0 || opponentTracker.hitByFishingRodHook()) {
+        if (opponentTracker.opponentHitByProjectileTimer != 0 || opponentTracker.hitByFishHook() ||
+                (projectileThrownTimer != 0 && playerInList(lastProjectileThrownAimedPlayers, opponentTracker.opponent))) {
             opponentTracker.opponentHitByProjectileTimer = 0;
             opponentTracker.projectilesHit++;
             this.projectilesHit++;
-            return;
-        } else if (opponentTracker.opponentHitByArrowTimer != 0 || (
-                aimedPlayer != null && opponentTracker.opponent.getUniqueID() == aimedPlayer.getUniqueID() && arrowShotTimer != 0)) {
+        } else if (opponentTracker.opponentHitByArrowTimer != 0 ||
+                (arrowShotTimer != 0 && playerInList(lastArrowShotAimedPlayers, opponentTracker.opponent))) {
             opponentTracker.opponentHitByArrowTimer = 0;
             arrowShotTimer = 0;
             opponentTracker.arrowsHit++;
             this.arrowsHit++;
-            return;
-        }
-        if (meleeAttackTimer != 0) {
+        } else if (meleeAttackTimer != 0) {
             if (player.getUniqueID() == lastAttackedPlayer.getUniqueID()) {
                 opponentTracker.onOpponentHit();
             }
@@ -762,7 +787,7 @@ public class CombatSession {
     }
 
     public void hurt(EntityPlayer attacker) {
-        EntityPlayer entityPlayer = hitByFishingRodHook();
+        EntityPlayer entityPlayer = getFishHookThrower();
         if (hitByArrowTimer != 0) {
             this.hitByArrow(attacker);
         } else if (entityPlayer != null || hitByProjectileTimer != 0) {
@@ -783,7 +808,7 @@ public class CombatSession {
         List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
                 getEntitiesWithinAABBExcludingEntity(
                         thePlayer,
-                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(4.5, 4.5, 4.5));
+                        thePlayer.getEntityBoundingBox().expand(4.5, 4.5, 4.5));
 
         for (Entity entity : closestEntities) {
             if (entity instanceof EntityPlayer) {
@@ -823,7 +848,7 @@ public class CombatSession {
 
         for (Entity entityPlayerSurroundingEntity : entityPlayerSurroundingEntities) {
             if (entityPlayerSurroundingEntity.getUniqueID() == Minecraft.getMinecraft().thePlayer.getUniqueID()) {
-                float f1 = 2.5F;
+                float f1 = 3.5F;
                 AxisAlignedBB axisAlignedBB = entityPlayerSurroundingEntity.getEntityBoundingBox().expand(f1, f1, f1);
                 MovingObjectPosition movingObjectPosition = axisAlignedBB.calculateIntercept(vec3, vec32);
 
@@ -833,17 +858,16 @@ public class CombatSession {
         return false;
     }
 
-    private static EntityPlayer hitByFishingRodHook() {
+    private static EntityPlayer getFishHookThrower() {
+        WorldClient theWorld = Minecraft.getMinecraft().theWorld;
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
-        List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
-                getEntitiesWithinAABBExcludingEntity(
-                        thePlayer,
-                        thePlayer.getEntityBoundingBox().addCoord(thePlayer.motionX, thePlayer.motionY, thePlayer.motionZ).expand(0.5, 0.5, 0.5));
-
-        for (Entity entity : closestEntities) {
-            if (entity instanceof EntityFishHook && ((EntityFishHook) entity).angler.getUniqueID() != thePlayer.getUniqueID()) {
-                return ((EntityFishHook) entity).angler;
-            }
+        double d0 = 1.0;
+        for (Entity entityFishHook : theWorld.getEntities(EntityFishHook.class, entityFishHook -> {
+            assert entityFishHook != null;
+            return entityFishHook.angler != null && entityFishHook.angler.getUniqueID() != thePlayer.getUniqueID();
+        })) {
+            if (theWorld.getEntitiesWithinAABBExcludingEntity(entityFishHook,
+                    entityFishHook.getEntityBoundingBox().addCoord(entityFishHook.motionX, entityFishHook.motionY, entityFishHook.motionZ).expand(d0, d0, d0)).contains(thePlayer)) return ((EntityFishHook) entityFishHook).angler;
         }
         return null;
     }
@@ -867,7 +891,7 @@ public class CombatSession {
             }
         } else {
             ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
-            if (clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) {
+            if (clicksPerSecondTracker.getClicksPerSecond() >= 4 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() > 1) {
                 clicksPerSecondTracker.end();
                 this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
             } else if (clicksPerSecondTracker.getLeftClicks() != 0) {
@@ -959,7 +983,7 @@ public class CombatSession {
         }
 
         ClicksPerSecondTracker clicksPerSecondTracker = this.getLatestClicksPerSecondCounter();
-        if ((clicksPerSecondTracker.getClicksPerSecond() >= 5 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() != 1) || this.clicksPerSecondTrackers.isEmpty()) {
+        if ((clicksPerSecondTracker.getClicksPerSecond() >= 4 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() > 1) || this.clicksPerSecondTrackers.isEmpty()) {
             clicksPerSecondTracker.end();
         }
         if (this.opponentTrackerMap.size() > 0 &&
@@ -1039,8 +1063,9 @@ public class CombatSession {
         double trackers = 0;
 
         for (ClicksPerSecondTracker clicksPerSecondTracker : this.clicksPerSecondTrackers) {
-            if (clicksPerSecondTracker.hasEnded()) {
-                totalAverage += clicksPerSecondTracker.getClicksPerSecond();
+            double clicksPerSecond = clicksPerSecondTracker.getClicksPerSecond();
+            if (clicksPerSecondTracker.hasEnded() && !(clicksPerSecond == 0 || clicksPerSecond == Double.POSITIVE_INFINITY)) {
+                totalAverage += clicksPerSecond;
                 trackers++;
             }
         }
@@ -1202,7 +1227,7 @@ public class CombatSession {
     public String detectType() {
         if (this.detectedType != null) return this.detectedType;
 
-        if (this.getNonNullElementCount(this.startingInventory) <= 2 && this.getNonNullElementCount(this.startingArmor) <= 2)
+        if (getNonNullElementCount(this.startingInventory) <= 2 && getNonNullElementCount(this.startingArmor) <= 2)
             this.detectedType = "Sumo";
 
         Map<String, Integer> map = new HashMap<>();
@@ -1441,37 +1466,37 @@ public class CombatSession {
             if (this.opponentHitByProjectileTimer != 0) this.opponentHitByProjectileTimer--;
             EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
             WorldClient theWorld = Minecraft.getMinecraft().theWorld;
-            double d0 = 1.0;
-            for (Entity entity : theWorld.getEntities(EntityArrow.class, input -> {
-                assert input != null;
-                return !input.onGround && input.shootingEntity != null && input.shootingEntity.getUniqueID() == thePlayer.getUniqueID();
+            double d0 = 0.5;
+            int i0 = 5;
+            for (Entity entityArrow : theWorld.getEntities(EntityArrow.class, entityArrow -> {
+                assert entityArrow != null;
+                return !entityArrow.onGround && entityArrow.shootingEntity != null && entityArrow.shootingEntity.getUniqueID() == thePlayer.getUniqueID();
             })) {
-                EntityArrow entityArrow = (EntityArrow) entity;
                 if (theWorld.getEntitiesWithinAABBExcludingEntity(entityArrow,
-                        entityArrow.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(d0, d0, d0)).contains(this.opponent)) {
-                    this.opponentHitByArrowTimer = 5;
+                        entityArrow.getEntityBoundingBox().addCoord(entityArrow.motionX, entityArrow.motionY, entityArrow.motionZ).expand(d0, d0, d0)).contains(this.opponent)) {
+                    this.opponentHitByArrowTimer = i0;
                     break;
                 }
             }
 
-            for (Entity entity : theWorld.getEntities(EntityEgg.class, input -> {
-                assert input != null;
-                return thrownProjectiles.containsKey(input.getUniqueID());
+            for (Entity entityEgg : theWorld.getEntities(EntityEgg.class, entityEgg -> {
+                assert entityEgg != null;
+                return thrownProjectiles.containsKey(entityEgg.getUniqueID());
             })) {
-                if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
-                        entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(d0, d0, d0)).contains(this.opponent)) {
-                    this.opponentHitByProjectileTimer = 5;
+                if (theWorld.getEntitiesWithinAABBExcludingEntity(entityEgg,
+                        entityEgg.getEntityBoundingBox().addCoord(entityEgg.motionX, entityEgg.motionY, entityEgg.motionZ).expand(d0, d0, d0)).contains(this.opponent)) {
+                    this.opponentHitByProjectileTimer = i0;
                     break;
                 }
             }
 
-            for (Entity entity : theWorld.getEntities(EntitySnowball.class, input -> {
-                assert input != null;
-                return thrownProjectiles.containsKey(input.getUniqueID());
+            for (Entity entitySnowball : theWorld.getEntities(EntitySnowball.class, entitySnowball -> {
+                assert entitySnowball != null;
+                return thrownProjectiles.containsKey(entitySnowball.getUniqueID());
             })) {
-                if (theWorld.getEntitiesWithinAABBExcludingEntity(entity,
-                        entity.getEntityBoundingBox().addCoord(entity.motionX, entity.motionY, entity.motionZ).expand(d0, d0, d0)).contains(this.opponent)) {
-                    this.opponentHitByProjectileTimer = 5;
+                if (theWorld.getEntitiesWithinAABBExcludingEntity(entitySnowball,
+                        entitySnowball.getEntityBoundingBox().addCoord(entitySnowball.motionX, entitySnowball.motionY, entitySnowball.motionZ).expand(d0, d0, d0)).contains(this.opponent)) {
+                    this.opponentHitByProjectileTimer = i0;
                     break;
                 }
             }
@@ -1504,7 +1529,7 @@ public class CombatSession {
                     this.projectilesTaken == 0 && this.projectilesHit == 0) {
                 return true;
             }
-            ;
+
             return false;
         }
 
@@ -1617,18 +1642,16 @@ public class CombatSession {
             return combos;
         }
 
-        private boolean hitByFishingRodHook() {
-            double d0 = 1.0;
+        private boolean hitByFishHook() {
+            WorldClient theWorld = Minecraft.getMinecraft().theWorld;
             EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
-            List<Entity> closestEntities = Minecraft.getMinecraft().theWorld.
-                    getEntitiesWithinAABBExcludingEntity(
-                            this.opponent,
-                            this.opponent.getEntityBoundingBox().addCoord(this.opponent.motionX, this.opponent.motionY, this.opponent.motionZ).expand(d0, d0, d0));
-
-            for (Entity entity : closestEntities) {
-                if (entity instanceof EntityFishHook) {
-                    return ((EntityFishHook) entity).angler.getUniqueID() == thePlayer.getUniqueID();
-                }
+            double d0 = 1.0;
+            for (Entity entityFishHook : theWorld.getEntities(EntityFishHook.class, entityFishHook -> {
+                assert entityFishHook != null;
+                return entityFishHook.angler != null && entityFishHook.angler.getUniqueID() == thePlayer.getUniqueID();
+            })) {
+                if (theWorld.getEntitiesWithinAABBExcludingEntity(entityFishHook,
+                        entityFishHook.getEntityBoundingBox().addCoord(entityFishHook.motionX, entityFishHook.motionY, entityFishHook.motionZ).expand(d0, d0, d0)).contains(this.opponent)) return true;
             }
             return false;
         }

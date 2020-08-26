@@ -47,7 +47,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2.12",
+            MOD_VERSION = "0.2.13",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -87,7 +87,7 @@ public class Core {
     */
 
     @EventHandler
-    public void init(FMLInitializationEvent event) {
+    public void initialize(FMLInitializationEvent event) {
         MinecraftForge.EVENT_BUS.register(this);
         ClientCommandHandler.instance.registerCommand(new ModCommand());
         ClientRegistry.registerKeyBinding(toggleCombatSessionKeyBinding);
@@ -251,9 +251,9 @@ public class Core {
         if (runMod.getValue() && event.action == PlayerInteractEvent.Action.RIGHT_CLICK_AIR) {
             Item item = Minecraft.getMinecraft().thePlayer.getHeldItem().getItem();
             if (item instanceof ItemFishingRod && Minecraft.getMinecraft().thePlayer.fishEntity == null) {
-                CombatSession.onProjectileThrown();
+                CombatSession.onProjectileThrown(true);
             } else if (item instanceof ItemEgg || item instanceof ItemSnowball) {
-                CombatSession.onProjectileThrown();
+                CombatSession.onProjectileThrown(false);
             }
         }
     }
@@ -281,7 +281,7 @@ public class Core {
             Minecraft.getMinecraft().displayGuiScreen(guiToOpen);
             guiToOpen = null;
         }
-        Manipulable.renderManipulables();
+        if (runMod.getValue()) Manipulable.renderManipulables();
     }
 
     public static void openGui(GuiScreen guiScreen) {

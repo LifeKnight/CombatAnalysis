@@ -87,6 +87,6 @@ public abstract class LifeKnightVariable {
     }
 
     public interface ICustomDisplayString {
-        public String customDisplayString(Object... objects);
+        String customDisplayString(Object... objects);
     }
 }

@@ -2,10 +2,7 @@ package com.lifeknight.combatanalysis.mod;
 
 import com.lifeknight.combatanalysis.gui.Manipulable;
 import com.lifeknight.combatanalysis.gui.hud.EnhancedHudText;
-import com.lifeknight.combatanalysis.utilities.Chat;
-import com.lifeknight.combatanalysis.utilities.Logger;
-import com.lifeknight.combatanalysis.utilities.Miscellaneous;
-import com.lifeknight.combatanalysis.utilities.Text;
+import com.lifeknight.combatanalysis.utilities.*;
 import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
 import com.lifeknight.combatanalysis.variables.LifeKnightList;
 import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
@@ -47,7 +44,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.2.13",
+            MOD_VERSION = "0.2.14",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -83,7 +80,6 @@ public class Core {
     public static Configuration configuration;
     /*
     How to deal with lava and fire
-    (1) session ids already logged
     */
 
     @EventHandler
@@ -281,7 +277,7 @@ public class Core {
             Minecraft.getMinecraft().displayGuiScreen(guiToOpen);
             guiToOpen = null;
         }
-        if (runMod.getValue()) Manipulable.renderManipulables();
+        if (event.phase == TickEvent.Phase.END && runMod.getValue()) Manipulable.renderManipulables();
     }
 
     public static void openGui(GuiScreen guiScreen) {

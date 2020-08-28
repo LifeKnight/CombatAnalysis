@@ -11,7 +11,6 @@ import com.lifeknight.combatanalysis.utilities.Video;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.GlStateManager;
-import scala.tools.nsc.backend.icode.Members;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -22,7 +21,8 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-import static net.minecraft.util.EnumChatFormatting.*;
+import static net.minecraft.util.EnumChatFormatting.GREEN;
+import static net.minecraft.util.EnumChatFormatting.RED;
 
 public class CombatSessionFilterGui extends GuiScreen {
     private final GuiScreen lastGui;
@@ -33,8 +33,8 @@ public class CombatSessionFilterGui extends GuiScreen {
     private boolean deletedSessionsOnly = CombatSession.deletedSessionsOnly;
     private int wonFilterType = CombatSession.wonFilterType;
     private boolean dateFilterType = CombatSession.dateFilterType;
-    private final Date firstDate = (Date) CombatSession.firstDate.clone();
-    private final Date secondDate = (Date) CombatSession.secondDate.clone();
+    private static final Date firstDate = (Date) CombatSession.firstDate.clone();
+    private static final Date secondDate = (Date) CombatSession.secondDate.clone();
 
     private final List<String> opponentFilter = new ArrayList<>(CombatSession.opponentFilter);
     private final List<String> serverFilter = new ArrayList<>(CombatSession.serverFilter);
@@ -42,6 +42,8 @@ public class CombatSessionFilterGui extends GuiScreen {
 
     public CombatSessionFilterGui(GuiScreen lastGui) {
         this.lastGui = lastGui;
+        firstDate.setTime(CombatSession.firstDate.getTime());
+        secondDate.setTime(CombatSession.secondDate.getTime());
     }
 
     @Override
@@ -91,8 +93,8 @@ public class CombatSessionFilterGui extends GuiScreen {
                 CombatSessionFilterGui.this.deletedSessionsOnly = false;
                 CombatSessionFilterGui.this.wonFilterType = 0;
                 CombatSessionFilterGui.this.dateFilterType = false;
-                CombatSessionFilterGui.this.firstDate.setTime(0);
-                CombatSessionFilterGui.this.secondDate.setTime(0);
+                firstDate.setTime(0);
+                secondDate.setTime(0);
 
                 CombatSessionFilterGui.this.opponentFilter.clear();
                 CombatSessionFilterGui.this.serverFilter.clear();
@@ -140,10 +142,10 @@ public class CombatSessionFilterGui extends GuiScreen {
             public void handleInput() {
                 String text = this.getText();
                 if (text.isEmpty()) {
-                    CombatSessionFilterGui.this.firstDate.setTime(0);
+                    firstDate.setTime(0);
                     this.setSubDisplayMessage("");
                 } else if (text.equalsIgnoreCase("today")) {
-                    CombatSessionFilterGui.this.firstDate.setTime(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                    firstDate.setTime(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
                     this.setSubDisplayMessage("");
                 } else {
                     try {
@@ -158,7 +160,7 @@ public class CombatSessionFilterGui extends GuiScreen {
                             this.setSubDisplayMessage(RED + "Invalid input!");
                         } else {
                             String dateString = year + "-" + (month < 10 ? "0" + month : month) + "-" + (day < 10 ? "0" + day : day);
-                            CombatSessionFilterGui.this.firstDate.setTime(LocalDate.parse(dateString).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                            firstDate.setTime(LocalDate.parse(dateString).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
                             this.setSubDisplayMessage("");
                         }
                     } catch (Exception exception) {
@@ -177,8 +179,8 @@ public class CombatSessionFilterGui extends GuiScreen {
                 return false;
             }
         });
-        if (this.firstDate.getTime() != 0) {
-            firstDateFilterField.setText(new SimpleDateFormat("MM/dd/yy").format(this.firstDate));
+        if (firstDate.getTime() != 0) {
+            firstDateFilterField.setText(new SimpleDateFormat("MM/dd/yy").format(firstDate));
         }
 
         LifeKnightTextField secondDateFilterField;
@@ -187,10 +189,10 @@ public class CombatSessionFilterGui extends GuiScreen {
             public void handleInput() {
                 String text = this.getText();
                 if (text.isEmpty()) {
-                    CombatSessionFilterGui.this.secondDate.setTime(0);
+                    secondDate.setTime(0);
                     this.setSubDisplayMessage("");
                 } else if (text.equalsIgnoreCase("today")) {
-                    CombatSessionFilterGui.this.secondDate.setTime(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() + 86400000L);
+                    secondDate.setTime(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() + 86400000L);
                     this.setSubDisplayMessage("");
                 } else {
                     try {
@@ -205,7 +207,7 @@ public class CombatSessionFilterGui extends GuiScreen {
                             this.setSubDisplayMessage(RED + "Invalid input!");
                         } else {
                             String dateString = year + "-" + (month < 10 ? "0" + month : month) + "-" + (day < 10 ? "0" + day : day);
-                            CombatSessionFilterGui.this.secondDate.setTime(LocalDate.parse(dateString).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                            secondDate.setTime(LocalDate.parse(dateString).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
                             this.setSubDisplayMessage("");
                         }
                     } catch (Exception exception) {
@@ -225,8 +227,8 @@ public class CombatSessionFilterGui extends GuiScreen {
             }
         });
         secondDateFilterField.setVisible(this.dateFilterType);
-        if (this.secondDate.getTime() != 0) {
-            secondDateFilterField.setText(new SimpleDateFormat("MM/dd/yy").format(this.secondDate));
+        if (secondDate.getTime() != 0) {
+            secondDateFilterField.setText(new SimpleDateFormat("MM/dd/yy").format(secondDate));
         }
 
         LifeKnightTextField opponentFilterField;
@@ -325,8 +327,8 @@ public class CombatSessionFilterGui extends GuiScreen {
                 CombatSession.deletedSessionsOnly = CombatSessionFilterGui.this.deletedSessionsOnly;
                 CombatSession.wonFilterType = CombatSessionFilterGui.this.wonFilterType;
                 CombatSession.dateFilterType = CombatSessionFilterGui.this.dateFilterType;
-                CombatSession.firstDate = CombatSessionFilterGui.this.firstDate;
-                CombatSession.secondDate = CombatSessionFilterGui.this.secondDate;
+                CombatSession.firstDate.setTime(firstDate.getTime());
+                CombatSession.secondDate.setTime(secondDate.getTime());
                 CombatSession.opponentFilter = CombatSessionFilterGui.this.opponentFilter;
                 CombatSession.serverFilter = CombatSessionFilterGui.this.serverFilter;
                 CombatSession.typeFilter = CombatSessionFilterGui.this.typeFilter;
@@ -344,8 +346,8 @@ public class CombatSessionFilterGui extends GuiScreen {
         for (CombatSession combatSession : CombatSession.getCombatSessions()) {
             if ((this.deletedSessionsOnly && combatSession.isDeleted()) || (!this.deletedSessionsOnly && !combatSession.isDeleted()) &&
                     (this.wonFilterType == 0 || ((this.wonFilterType == 1 && combatSession.isWon()) || (this.wonFilterType == 2 && !combatSession.isWon()))) &&
-                    ((this.dateFilterType && ((this.firstDate.getTime() == 0 || this.secondDate.getTime() == 0) || (combatSession.getStartTime() >= this.firstDate.getTime() && combatSession.getStartTime() <= this.secondDate.getTime() + 86400000L))) ||
-                            (!this.dateFilterType && (this.firstDate.getTime() == 0 || (combatSession.getStartTime() >= this.firstDate.getTime() && combatSession.getStartTime() <= this.firstDate.getTime() + 86400000L)))) &&
+                    ((this.dateFilterType && ((firstDate.getTime() == 0 || secondDate.getTime() == 0) || (combatSession.getStartTime() >= firstDate.getTime() && combatSession.getStartTime() <= secondDate.getTime() + 86400000L))) ||
+                            (!this.dateFilterType && (firstDate.getTime() == 0 || (combatSession.getStartTime() >= firstDate.getTime() && combatSession.getStartTime() <= firstDate.getTime() + 86400000L)))) &&
                     (this.typeFilter.isEmpty() || Text.containsAny(combatSession.detectType(), this.typeFilter, true)) &&
                     (this.serverFilter.isEmpty() || Text.containsAny(combatSession.getServerIp(), this.serverFilter, true)) &&
                     (this.opponentFilter.isEmpty() || Text.containsAny(this.opponentFilter, combatSession.getOpponentNames(), true)

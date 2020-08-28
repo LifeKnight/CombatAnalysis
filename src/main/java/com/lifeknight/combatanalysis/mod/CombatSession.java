@@ -40,8 +40,8 @@ public class CombatSession {
     public static boolean deletedSessionsOnly = false;
     public static int wonFilterType = 0;
     public static boolean dateFilterType = false;
-    public static Date firstDate = new Date(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
-    public static Date secondDate = new Date(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
+    public static final Date firstDate = new Date(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
+    public static final Date secondDate = new Date(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
 
     public static List<String> opponentFilter = new ArrayList<>();
     public static List<String> serverFilter = new ArrayList<>();
@@ -103,10 +103,9 @@ public class CombatSession {
 
     private static boolean canStartCombatSession() {
         if (!userCanStartCombatSession()) return false;
-        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
 
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
-            if (!(entityPlayer.getUniqueID() == thePlayer.getUniqueID() ||
+            if (!(entityPlayer.isUser() ||
                     entityPlayer.capabilities.isFlying ||
                     playerIsStationary(entityPlayer))) {
                 return true;
@@ -177,9 +176,10 @@ public class CombatSession {
                 assert entityOtherPlayerMP != null;
                 return !nonStaticPlayerUuids.contains(entityOtherPlayerMP.getUniqueID()) &&
                         !(entityOtherPlayerMP.lastTickPosX == entityOtherPlayerMP.posX &&
-                        entityOtherPlayerMP.lastTickPosY == entityOtherPlayerMP.posY &&
-                        entityOtherPlayerMP.lastTickPosZ == entityOtherPlayerMP.posZ);
-            })) nonStaticPlayerUuids.add(entityOtherPlayerMP.getUniqueID());
+                                entityOtherPlayerMP.lastTickPosY == entityOtherPlayerMP.posY &&
+                                entityOtherPlayerMP.lastTickPosZ == entityOtherPlayerMP.posZ);
+            }))
+                nonStaticPlayerUuids.add(entityOtherPlayerMP.getUniqueID());
 
             double d0 = 1.0;
             int i0 = 7;
@@ -276,9 +276,9 @@ public class CombatSession {
         double d2 = 7.0;
         Vec3 vec32 = vec3.addVector(vec31.xCoord * d2, vec31.yCoord * d2, vec31.zCoord * d2);
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
-            if (!(entityPlayer.getUniqueID() == thePlayer.getUniqueID() ||
-                            entityPlayer.capabilities.isFlying ||
-                            playerIsStationary(entityPlayer) || thePlayer.getDistanceToEntity(entityPlayer) > 7)) {
+            if (!(entityPlayer.isUser() ||
+                    entityPlayer.capabilities.isFlying ||
+                    playerIsStationary(entityPlayer) || thePlayer.getDistanceToEntity(entityPlayer) > 7)) {
                 AxisAlignedBB entityPlayerBoundingBox = entityPlayer.getEntityBoundingBox();
                 if (entityPlayerBoundingBox.isVecInside(vec3)) aimedPlayers.add(entityPlayer);
                 else {
@@ -586,7 +586,7 @@ public class CombatSession {
         }
 
         for (EntityPlayer entityPlayer : theWorld.playerEntities) {
-            if (entityPlayer.getUniqueID() != thePlayer.getUniqueID() && !this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID()) && !playerIsStationary(entityPlayer)) {
+            if (entityPlayer.isUser() && !this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID()) && !playerIsStationary(entityPlayer)) {
                 this.opponentTrackerMap.put(entityPlayer.getUniqueID(), new OpponentTracker(entityPlayer));
             }
         }
@@ -837,23 +837,23 @@ public class CombatSession {
         return true;
     }
 
-    private static boolean playerIsAimingAtUser(EntityPlayer entityPlayer) {
+    public static boolean playerIsAimingAtUser(EntityPlayer entityPlayer) {
         WorldClient theWorld = Minecraft.getMinecraft().theWorld;
-        Vec3 vec3 = entityPlayer.getPositionEyes(1.0F);
-        Vec3 vec31 = entityPlayer.getLookVec();
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
+        Vec3 entityPlayerPositionEyes = entityPlayer.getPositionEyes(1.0F);
+        Vec3 entityPlayerLookVec = entityPlayer.getLookVec();
         double d0 = 4.25;
-        Vec3 vec32 = vec3.addVector(vec31.xCoord * d0, vec31.yCoord * d0, vec31.zCoord * d0);
+        Vec3 vec32 = entityPlayerPositionEyes.addVector(entityPlayerLookVec.xCoord * d0, entityPlayerLookVec.yCoord * d0, entityPlayerLookVec.zCoord * d0);
         float f = 10F;
-        List<Entity> entityPlayerSurroundingEntities = theWorld.getEntitiesInAABBexcluding(entityPlayer, entityPlayer.getEntityBoundingBox().addCoord(vec31.xCoord * d0, vec31.yCoord * d0, vec31.zCoord * d0).expand(f, f, f), Predicates.and(EntitySelectors.NOT_SPECTATING, entity -> entity instanceof EntityPlayer));
+        List<Entity> entityPlayerSurroundingEntities = theWorld.getEntitiesInAABBexcluding(entityPlayer, entityPlayer.getEntityBoundingBox().expand(f, f, f), Predicates.and(EntitySelectors.NOT_SPECTATING, entity -> entity instanceof EntityPlayer));
+        if (entityPlayerSurroundingEntities.contains(thePlayer)) {
+            if (entityPlayer.getEntityBoundingBox().intersectsWith(thePlayer.getEntityBoundingBox())) return true;
+            float f1 = 3.5F;
+            AxisAlignedBB axisAlignedBB = thePlayer.getEntityBoundingBox().expand(f1, f1, f1);
+            MovingObjectPosition movingObjectPosition = axisAlignedBB.calculateIntercept(entityPlayerPositionEyes, vec32);
 
-        for (Entity entityPlayerSurroundingEntity : entityPlayerSurroundingEntities) {
-            if (entityPlayerSurroundingEntity.getUniqueID() == Minecraft.getMinecraft().thePlayer.getUniqueID()) {
-                float f1 = 3.5F;
-                AxisAlignedBB axisAlignedBB = entityPlayerSurroundingEntity.getEntityBoundingBox().expand(f1, f1, f1);
-                MovingObjectPosition movingObjectPosition = axisAlignedBB.calculateIntercept(vec3, vec32);
+            return (axisAlignedBB.isVecInside(vec32) || (movingObjectPosition != null && !axisAlignedBB.isVecInside(entityPlayerPositionEyes)));
 
-                return (movingObjectPosition != null || axisAlignedBB.isVecInside(vec32));
-            }
         }
         return false;
     }
@@ -867,7 +867,8 @@ public class CombatSession {
             return entityFishHook.angler != null && entityFishHook.angler.getUniqueID() != thePlayer.getUniqueID();
         })) {
             if (theWorld.getEntitiesWithinAABBExcludingEntity(entityFishHook,
-                    entityFishHook.getEntityBoundingBox().addCoord(entityFishHook.motionX, entityFishHook.motionY, entityFishHook.motionZ).expand(d0, d0, d0)).contains(thePlayer)) return ((EntityFishHook) entityFishHook).angler;
+                    entityFishHook.getEntityBoundingBox().addCoord(entityFishHook.motionX, entityFishHook.motionY, entityFishHook.motionZ).expand(d0, d0, d0)).contains(thePlayer))
+                return ((EntityFishHook) entityFishHook).angler;
         }
         return null;
     }
@@ -908,7 +909,7 @@ public class CombatSession {
         EntityPlayer closestPlayer = null;
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
-            if ((closestPlayer == null || thePlayer.getDistanceToEntity(entityPlayer) < thePlayer.getDistanceToEntity(closestPlayer)) && !(entityPlayer.getUniqueID() == thePlayer.getUniqueID() ||
+            if ((closestPlayer == null || thePlayer.getDistanceToEntity(entityPlayer) < thePlayer.getDistanceToEntity(closestPlayer)) && !(entityPlayer.isUser() ||
                     entityPlayer.capabilities.isFlying ||
                     (playerIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)) || (Core.teamedServer && thePlayer.isOnSameTeam(entityPlayer)))) {
                 closestPlayer = entityPlayer;
@@ -1651,7 +1652,8 @@ public class CombatSession {
                 return entityFishHook.angler != null && entityFishHook.angler.getUniqueID() == thePlayer.getUniqueID();
             })) {
                 if (theWorld.getEntitiesWithinAABBExcludingEntity(entityFishHook,
-                        entityFishHook.getEntityBoundingBox().addCoord(entityFishHook.motionX, entityFishHook.motionY, entityFishHook.motionZ).expand(d0, d0, d0)).contains(this.opponent)) return true;
+                        entityFishHook.getEntityBoundingBox().addCoord(entityFishHook.motionX, entityFishHook.motionY, entityFishHook.motionZ).expand(d0, d0, d0)).contains(this.opponent))
+                    return true;
             }
             return false;
         }

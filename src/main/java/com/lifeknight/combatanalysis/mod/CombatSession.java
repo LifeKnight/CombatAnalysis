@@ -3,6 +3,7 @@ package com.lifeknight.combatanalysis.mod;
 import com.google.common.base.Predicates;
 import com.google.gson.*;
 import com.lifeknight.combatanalysis.gui.CombatSessionGui;
+import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Logic;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
@@ -314,7 +315,7 @@ public class CombatSession {
     public static void onAttack(EntityPlayer target) {
         lastAttackedPlayer = target;
         meleeAttackTimer = 5;
-        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession() && Core.teamedServer))
+        if (sessionIsRunning)
             getLatestAnalysis().attack(target);
 
     }
@@ -586,7 +587,7 @@ public class CombatSession {
         }
 
         for (EntityPlayer entityPlayer : theWorld.playerEntities) {
-            if (entityPlayer.isUser() && !this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID()) && !playerIsStationary(entityPlayer)) {
+            if (!(entityPlayer.isUser() || this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID()) || playerIsStationary(entityPlayer))) {
                 this.opponentTrackerMap.put(entityPlayer.getUniqueID(), new OpponentTracker(entityPlayer));
             }
         }
@@ -704,17 +705,11 @@ public class CombatSession {
     }
 
     private OpponentTracker getOpponent(EntityPlayer opponent, boolean forced) {
-        if (!userCanStartCombatSession()) {
-            return null;
-        }
+        if (!userCanStartCombatSession()) return null;
         if (opponent == null) opponent = this.getClosestPlayer();
-        if (opponent == null) {
-            return null;
-        }
+        if (opponent == null) return null;
+        if (!(forced || this.playerHasAppropriateOpponent(opponent))) return null;
 
-        if (!(forced || Core.teamedServer || this.playerHasAppropriateOpponent(opponent))) {
-            return null;
-        }
         return this.opponentTrackerMap.get(opponent.getUniqueID());
     }
 
@@ -765,19 +760,19 @@ public class CombatSession {
 
     public void playerHurt(EntityPlayer player) {
         OpponentTracker opponentTracker = this.getOpponent(player, true);
-        if (opponentTracker == null) {
-            return;
-        }
+        if (opponentTracker == null) return;
         if (opponentTracker.opponentHitByProjectileTimer != 0 || opponentTracker.hitByFishHook() ||
                 (projectileThrownTimer != 0 && playerInList(lastProjectileThrownAimedPlayers, opponentTracker.opponent))) {
             opponentTracker.opponentHitByProjectileTimer = 0;
             opponentTracker.projectilesHit++;
+            if (this.projectilesThrown == 0) this.projectilesThrown = 1;
             this.projectilesHit++;
         } else if (opponentTracker.opponentHitByArrowTimer != 0 ||
                 (arrowShotTimer != 0 && playerInList(lastArrowShotAimedPlayers, opponentTracker.opponent))) {
             opponentTracker.opponentHitByArrowTimer = 0;
             arrowShotTimer = 0;
             opponentTracker.arrowsHit++;
+            if (this.arrowsShot == 0) this.arrowsShot = 1;
             this.arrowsHit++;
         } else if (meleeAttackTimer != 0) {
             if (player.getUniqueID() == lastAttackedPlayer.getUniqueID()) {
@@ -814,7 +809,7 @@ public class CombatSession {
             if (entity instanceof EntityPlayer) {
                 EntityPlayer entityPlayer = (EntityPlayer) entity;
                 if (!(entityPlayer.capabilities.isFlying ||
-                        (playerIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)) || entityPlayer.limbSwingAmount == 0 || !playerIsAimingAtUser(entityPlayer) || (Core.teamedServer && thePlayer.isOnSameTeam(entityPlayer)))) {
+                        (playerIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)) || entityPlayer.limbSwingAmount == 0 || !playerIsAimingAtUser(entityPlayer))) {
                     closestPlayer = entityPlayer;
                 }
             }
@@ -823,18 +818,8 @@ public class CombatSession {
     }
 
     private boolean playerHasAppropriateOpponent(EntityPlayer entityPlayer) {
-        if (Core.teamedServer && this.allOpponentTrackersAreEmpty()) {
-            return true;
-        }
         OpponentTracker opponentTracker = this.opponentTrackerMap.get(entityPlayer.getUniqueID());
         return !(opponentTracker == null || opponentTracker.isEmpty());
-    }
-
-    private boolean allOpponentTrackersAreEmpty() {
-        for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
-            if (!opponentTracker.isEmpty()) return false;
-        }
-        return true;
     }
 
     public static boolean playerIsAimingAtUser(EntityPlayer entityPlayer) {
@@ -911,7 +896,7 @@ public class CombatSession {
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
             if ((closestPlayer == null || thePlayer.getDistanceToEntity(entityPlayer) < thePlayer.getDistanceToEntity(closestPlayer)) && !(entityPlayer.isUser() ||
                     entityPlayer.capabilities.isFlying ||
-                    (playerIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)) || (Core.teamedServer && thePlayer.isOnSameTeam(entityPlayer)))) {
+                    (playerIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)))) {
                 closestPlayer = entityPlayer;
             }
         }
@@ -1505,6 +1490,8 @@ public class CombatSession {
         }
 
         private void onOpponentHit() {
+            if (this.attacksSent == 0) this.attacksSent = 1;
+            if (this.attacksLanded == 0) this.attacksLanded = 1;
             this.opponentHitsTaken++;
             EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
             if (thePlayer.fallDistance > 0.0F && !thePlayer.onGround && !thePlayer.isOnLadder() && !thePlayer.isInWater() && !thePlayer.isPotionActive(Potion.blindness) && thePlayer.ridingEntity == null)
@@ -1525,13 +1512,9 @@ public class CombatSession {
         }
 
         private boolean isEmpty() {
-            if (this.hitsTaken == 0 && this.opponentHitsTaken == 0 &&
+            return this.hitsTaken == 0 && this.opponentHitsTaken == 0 &&
                     this.arrowsTaken == 0 && this.arrowsHit == 0 &&
-                    this.projectilesTaken == 0 && this.projectilesHit == 0) {
-                return true;
-            }
-
-            return false;
+                    this.projectilesTaken == 0 && this.projectilesHit == 0;
         }
 
         private ComboTracker getLatestComboTracker() {

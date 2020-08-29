@@ -260,11 +260,11 @@ public class CombatSession {
         return (movingObjectPosition == null);
     }
 
-    public static void onArrowShot() {
-        arrowShotTimer = 5;
-        updateAimedPlayerList(lastArrowShotAimedPlayers);
-        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession()))
-            getLatestAnalysis().arrowShot();
+    private static boolean playerInList(List<EntityPlayer> entityPlayers, EntityPlayer entityPlayer) {
+        for (EntityPlayer entityPlayer1 : entityPlayers) {
+            if (entityPlayer.getUniqueID() == entityPlayer1.getUniqueID()) return true;
+        }
+        return false;
     }
 
     private static void updateAimedPlayerList(List<EntityPlayer> aimedPlayers) {
@@ -294,11 +294,11 @@ public class CombatSession {
         }
     }
 
-    private static boolean playerInList(List<EntityPlayer> entityPlayers, EntityPlayer entityPlayer) {
-        for (EntityPlayer entityPlayer1 : entityPlayers) {
-            if (entityPlayer.getUniqueID() == entityPlayer1.getUniqueID()) return true;
-        }
-        return false;
+    public static void onArrowShot() {
+        arrowShotTimer = 5;
+        updateAimedPlayerList(lastArrowShotAimedPlayers);
+        if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession()))
+            getLatestAnalysis().arrowShot();
     }
 
     public static void onProjectileThrown(boolean fishingRod) {
@@ -710,7 +710,6 @@ public class CombatSession {
 
     public void arrowShot() {
         if (this.rightClicks == 0) this.rightClicks = 1;
-        if (this.getOpponent(null) == null) return;
         this.arrowsShot++;
     }
 
@@ -726,7 +725,6 @@ public class CombatSession {
         if (this.rightClicks == 0) {
             this.rightClicks = 1;
         }
-        if (this.getOpponent(null) == null) return;
         this.projectilesThrown++;
     }
 

@@ -81,7 +81,10 @@ public class CombatSessionGui extends PanelGui {
             basicData.add("Server: " + this.combatSession.getServerIp());
             basicData.add("Date: " + Miscellaneous.getTimeAndDate(this.combatSession.getStartTime()));
             basicData.add("Duration: " + Text.formatTimeFromMilliseconds(this.combatSession.getTime(), 2));
-            basicData.add("Detected Type: " + this.combatSession.detectType());
+
+            String scoreboardDisplayName = this.combatSession.getScoreboardDisplayName();
+            if (scoreboardDisplayName != null) basicData.add("Alternate Server: " + scoreboardDisplayName);
+
             basicData.add("");
             basicData.add("Version: " + this.combatSession.getVersion());
 
@@ -133,14 +136,6 @@ public class CombatSessionGui extends PanelGui {
             overall.add("Projectiles Taken: " + this.combatSession.getProjectilesTaken());
 
             super.createListPanel("Overall Stats", overall).setColor(Color.BLUE);
-
-            List<String> strafing = new ArrayList<>();
-
-            for (CombatSession.StrafingTracker strafingTracker : this.combatSession.getStrafingTrackers()) {
-                strafing.add((strafingTracker.isRightStrafe() ? ">" : "<") + " - " + Text.formatTimeFromMilliseconds(strafingTracker.getTime(), 0) + "ms");
-            }
-
-            super.createListPanel("Strafes", strafing.size() != 0 ? strafing : Collections.singletonList("There are no strafes to display."));
 
             PotionEffectPanel potionEffectPanel = new PotionEffectPanel("Potion Effects", this.combatSession.getPotionEffects(), this.combatSession.getStartTime());
             potionEffectPanel.setColor(Color.ORANGE);

@@ -10,40 +10,40 @@ import java.util.regex.Pattern;
 
 public class Text {
 
-	public static List<String> returnStartingEntries(String[] strings, String input, boolean ignoreCase) {
-		if (input == null || input.isEmpty()) return Arrays.asList(strings);
-		List<String> result = new ArrayList<>();
-			for (String string : strings) {
-				if (ignoreCase) {
-					if (string.toLowerCase().startsWith(input.toLowerCase())) result.add(string);
-				} else {
-					if (string.startsWith(input)) result.add(string);
-				}
-			}
-		return result;
-	}
+    public static List<String> returnStartingEntries(String[] strings, String input, boolean ignoreCase) {
+        if (input == null || input.isEmpty()) return Arrays.asList(strings);
+        List<String> result = new ArrayList<>();
+        for (String string : strings) {
+            if (ignoreCase) {
+                if (string.toLowerCase().startsWith(input.toLowerCase())) result.add(string);
+            } else {
+                if (string.startsWith(input)) result.add(string);
+            }
+        }
+        return result;
+    }
 
-	public static int countWords(String msg) {
-		int count = 0;
-		for (int x = 0; x < msg.length(); x++) {
-			if (msg.charAt(x) == ' ') {
-				count++;
-			}
-		}
-		return ++count;
-	}
+    public static int countWords(String msg) {
+        int count = 0;
+        for (int x = 0; x < msg.length(); x++) {
+            if (msg.charAt(x) == ' ') {
+                count++;
+            }
+        }
+        return ++count;
+    }
 
-	public static String removeFormattingCodes(String input) {
-		return EnumChatFormatting.getTextWithoutFormattingCodes(input);
-	}
+    public static String removeFormattingCodes(String input) {
+        return EnumChatFormatting.getTextWithoutFormattingCodes(input);
+    }
 
-	public static String multiplyString(String string, int times) {
-		StringBuilder result = new StringBuilder();
-		for (int i = 0; i < times; i++) {
-			result.append(string);
-		}
-		return result.toString();
-	}
+    public static String multiplyString(String string, int times) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < times; i++) {
+            result.append(string);
+        }
+        return result.toString();
+    }
 
     public static String formatCapitalization(String input, boolean keepFirstCapitalized) {
         StringBuilder stringBuilder = new StringBuilder();
@@ -62,31 +62,36 @@ public class Text {
         return stringBuilder.insert(0, keepFirstCapitalized ? input.charAt(0) : Character.toLowerCase(input.charAt(0))).toString();
     }
 
-	public static String shortenDouble(double value, int decimalDigits) {
-		String asString = String.valueOf(value);
-		int wholeDigits = asString.contains(".") ? asString.substring(0, asString.indexOf(".")).length() : asString.length();
-		return new DecimalFormat(multiplyString("#", wholeDigits) + "." + multiplyString("#", decimalDigits)).format(value);
-	}
+    public static String shortenDouble(double value, int decimalDigits) {
+        String asString = String.valueOf(value);
+        int wholeDigits = asString.contains(".") ? asString.substring(0, asString.indexOf(".")).length() : asString.length();
+        return new DecimalFormat(multiplyString("#", wholeDigits) + "." + multiplyString("#", decimalDigits)).format(value);
+    }
 
-    public static boolean containsAny(String text, List<String> strings, boolean ignoreCase) {
+    public static String removeAllPunctuation(String text) {
+        return text.replaceAll("\\W", "");
+    }
+
+    public static boolean containsAny(String text, List<String> strings, boolean ignoreCase, boolean ignorePunctuation) {
+        if (text == null) return false;
+        if (ignoreCase) text = text.toLowerCase();
+        if (ignorePunctuation) text = removeAllPunctuation(text);
         for (String string : strings) {
-            if (ignoreCase) {
-                if (text.toLowerCase().contains(string.toLowerCase())) return true;
-            } else {
-                if (text.contains(string)) return true;
-            }
+            if (ignoreCase) string = string.toLowerCase();
+            if (ignorePunctuation) string = removeAllPunctuation(string);
+            if (text.contains(string)) return true;
         }
         return false;
     }
 
-    public static boolean containsAny(List<String> strings, List<String> strings2, boolean ignoreCase) {
+    public static boolean containsAny(List<String> strings, List<String> strings2, boolean ignoreCase, boolean ignorePunctuation) {
         for (String string : strings) {
+            if (ignoreCase) string = string.toLowerCase();
+            if (ignorePunctuation) string = removeAllPunctuation(string);
             for (String string2 : strings2) {
-                if (ignoreCase) {
-                    if (string.toLowerCase().contains(string2.toLowerCase())) return true;
-                } else {
-                    if (string.contains(string2)) return true;
-                }
+                if (ignoreCase) string2 = string2.toLowerCase();
+                if (ignorePunctuation) string2 = removeAllPunctuation(string2);
+                if (string2.contains(string)) return true;
             }
         }
         return false;

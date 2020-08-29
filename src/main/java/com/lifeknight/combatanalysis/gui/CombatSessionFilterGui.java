@@ -238,7 +238,7 @@ public class CombatSessionFilterGui extends GuiScreen {
                 String text = this.getText();
 
                 CombatSessionFilterGui.this.opponentFilter.clear();
-                if (!text.isEmpty() && text.length() > 2) {
+                if (!text.isEmpty()) {
                     if (text.contains(",")) {
                         String[] opponents = text.split(",");
                         CombatSessionFilterGui.this.opponentFilter.addAll(Arrays.asList(opponents));
@@ -268,7 +268,7 @@ public class CombatSessionFilterGui extends GuiScreen {
                 String text = this.getText();
 
                 CombatSessionFilterGui.this.serverFilter.clear();
-                if (!text.isEmpty() && text.length() > 2) {
+                if (!text.isEmpty()) {
                     if (text.contains(",")) {
                         String[] servers = text.split(",");
                         CombatSessionFilterGui.this.serverFilter.addAll(Arrays.asList(servers));
@@ -298,7 +298,7 @@ public class CombatSessionFilterGui extends GuiScreen {
                 String text = this.getText();
 
                 CombatSessionFilterGui.this.typeFilter.clear();
-                if (!text.isEmpty() && text.length() > 2) {
+                if (!text.isEmpty()) {
                     if (text.contains(",")) {
                         String[] opponents = text.split(",");
                         CombatSessionFilterGui.this.typeFilter.addAll(Arrays.asList(opponents));
@@ -348,9 +348,9 @@ public class CombatSessionFilterGui extends GuiScreen {
                     (this.wonFilterType == 0 || ((this.wonFilterType == 1 && combatSession.isWon()) || (this.wonFilterType == 2 && !combatSession.isWon()))) &&
                     ((this.dateFilterType && ((firstDate.getTime() == 0 || secondDate.getTime() == 0) || (combatSession.getStartTime() >= firstDate.getTime() && combatSession.getStartTime() <= secondDate.getTime() + 86400000L))) ||
                             (!this.dateFilterType && (firstDate.getTime() == 0 || (combatSession.getStartTime() >= firstDate.getTime() && combatSession.getStartTime() <= firstDate.getTime() + 86400000L)))) &&
-                    (this.typeFilter.isEmpty() || Text.containsAny(combatSession.detectType(), this.typeFilter, true)) &&
-                    (this.serverFilter.isEmpty() || Text.containsAny(combatSession.getServerIp(), this.serverFilter, true)) &&
-                    (this.opponentFilter.isEmpty() || Text.containsAny(this.opponentFilter, combatSession.getOpponentNames(), true)
+                    (this.typeFilter.isEmpty() || Text.containsAny(combatSession.detectType(), this.typeFilter, true, true)) &&
+                    (this.serverFilter.isEmpty() || (Text.containsAny(combatSession.getServerIp(), this.serverFilter, true, true) || Text.containsAny(combatSession.getScoreboardDisplayName(), this.serverFilter, true, true))) &&
+                    (this.opponentFilter.isEmpty() || Text.containsAny(this.opponentFilter, combatSession.getOpponentNames(), true, true)
                     )) count++;
         }
         return count;

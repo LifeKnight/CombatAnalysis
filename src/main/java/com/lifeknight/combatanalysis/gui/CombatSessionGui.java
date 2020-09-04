@@ -310,7 +310,7 @@ public class CombatSessionGui extends PanelGui {
                                 itemStack, this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 + 2 + this.yOffsetPosition
                         );
                         int stackSize = this.itemStacks.get(itemStack);
-                        String description = " - " + (this.showCount ?stackSize + "x " : "") + (itemStack.getMaxDamage() == 0 ? "" : (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
+                        String description = " - " + (this.showCount ? stackSize + "x " : "") + (itemStack.getMaxDamage() == 0 ? "" : (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
 
                         fontRenderer.drawString(description, this.xPosition + 5 + this.xOffsetPosition + 16, this.yPosition + 14 + i * 20 + 7 + this.yOffsetPosition, 0xffffffff);
                     }
@@ -348,44 +348,48 @@ public class CombatSessionGui extends PanelGui {
                 int width = 16 + fontRenderer.getStringWidth(this.getStringForItem(itemStack));
                 longestWidth = Math.max(longestWidth, width);
             }
+
             for (ItemStack itemStack : this.endingItemStacks.keySet()) {
-                if (this.onlyExistsInEnding(itemStack.getUnlocalizedName())) {
+                if (this.onlyExistsInEnding(itemStack)) {
                     int width = 16 + fontRenderer.getStringWidth(this.getStringForItem(itemStack));
                     longestWidth = Math.max(longestWidth, width);
                 }
             }
+
             return Math.max(fontRenderer.getStringWidth(this.name), longestWidth) + 15;
         }
-        
+
         private String getStringForItem(ItemStack itemStack) {
             StringBuilder result = new StringBuilder();
             if (this.startingItemStacks.containsKey(itemStack)) {
                 int stackSize = this.startingItemStacks.get(itemStack);
-                if (this.showCount || itemStack.getMaxDamage() != 0) result.append(" -").append(this.showCount ? " " + stackSize + "x" : "").append(itemStack.getMaxDamage() == 0 ? "" : " " + (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
+                if (this.showCount || itemStack.getMaxDamage() != 0) {
+                    result.append(" -").append(this.showCount ? " " + stackSize + "x" : "").append(itemStack.getMaxDamage() == 0 ? "" : " " + (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
+                }
                 ItemStack endingItemStack;
-                if ((endingItemStack = this.getEndingItemStackByName(itemStack.getUnlocalizedName())) != null) {
-                        int secondStackSize = this.endingItemStacks.get(endingItemStack);
+                if ((endingItemStack = this.getEndingItemStackByStartingStack(itemStack)) != null) {
+                    int secondStackSize = this.endingItemStacks.get(endingItemStack);
                     if ((this.showCount && stackSize != secondStackSize) || (endingItemStack.getMaxDamage() != 0 && itemStack.getItemDamage() != endingItemStack.getItemDamage())) {
                         result.append(" ->").append(this.showCount && stackSize != secondStackSize ? " " + secondStackSize + "x" : "").append(endingItemStack.getMaxDamage() == 0 || itemStack.getItemDamage() == endingItemStack.getItemDamage() ? "" : " " + (int) (100 * (endingItemStack.getMaxDamage() - endingItemStack.getItemDamage()) / (double) endingItemStack.getMaxDamage()) + "%");
                     }
                 }
             } else {
                 int stackSize = this.endingItemStacks.get(itemStack);
-                result.append(" - ").append("0x").append(" ->").append(this.showCount ? " " +stackSize + "x" : "").append(itemStack.getMaxDamage() == 0 ? "" : " " + (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
+                result.append(" - ").append("0x").append(" ->").append(this.showCount ? " " + stackSize + "x" : "").append(itemStack.getMaxDamage() == 0 ? "" : " " + (int) (100 * (itemStack.getMaxDamage() - itemStack.getItemDamage()) / (double) itemStack.getMaxDamage()) + "%");
             }
             return result.toString();
         }
-        
-        private ItemStack getEndingItemStackByName(String unlocalizedName) {
-            for (ItemStack itemStack : this.endingItemStacks.keySet()) {
-                if (itemStack.getUnlocalizedName().equals(unlocalizedName)) return itemStack;
+
+        private ItemStack getEndingItemStackByStartingStack(ItemStack itemStack) {
+            for (ItemStack itemStack1 : this.endingItemStacks.keySet()) {
+                if (Miscellaneous.itemStacksAreEqual(itemStack, itemStack1)) return itemStack1;
             }
             return null;
         }
 
-        private boolean onlyExistsInEnding(String unlocalizedName) {
-            for (ItemStack itemStack : this.startingItemStacks.keySet()) {
-                if (itemStack.getUnlocalizedName().equals(unlocalizedName)) return false;
+        private boolean onlyExistsInEnding(ItemStack itemStack) {
+            for (ItemStack itemStack1 : this.startingItemStacks.keySet()) {
+                if (Miscellaneous.itemStacksAreEqual(itemStack, itemStack1)) return false;
             }
             return true;
         }
@@ -394,7 +398,7 @@ public class CombatSessionGui extends PanelGui {
         protected int getPanelHeight() {
             int i = this.startingItemStacks.size();
             for (ItemStack itemStack : this.endingItemStacks.keySet()) {
-                if (this.onlyExistsInEnding(itemStack.getUnlocalizedName())) i++;
+                if (this.onlyExistsInEnding(itemStack)) i++;
             }
             return Math.max(30, i * 20 + 5);
         }
@@ -421,12 +425,12 @@ public class CombatSessionGui extends PanelGui {
                         i++;
                     }
                     for (ItemStack itemStack : this.endingItemStacks.keySet()) {
-                        if (this.onlyExistsInEnding(itemStack.getUnlocalizedName())) {
+                        if (this.onlyExistsInEnding(itemStack)) {
                             Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(
                                     itemStack, this.xPosition + 5 + this.xOffsetPosition, this.yPosition + 14 + i * 20 + 2 + this.yOffsetPosition
                             );
                             fontRenderer.drawString(this.getStringForItem(itemStack), this.xPosition + 5 + this.xOffsetPosition + 16, this.yPosition + 14 + i * 20 + 7 + this.yOffsetPosition, 0xffffffff);
-                            i++; 
+                            i++;
                         }
                     }
                 }

@@ -17,9 +17,9 @@ public abstract class Manipulable {
 
     public Manipulable(String name, float defaultX, float defaultY) {
         manipulableComponents.add(this);
-        this.positionX = new LifeKnightNumber.LifeKnightFloat( "Position X", name + " HUD Text", defaultX, 0F, 1920F);
-        this.positionY = new LifeKnightNumber.LifeKnightFloat("Position Y", name + " HUD Text", defaultY, 0F, 1080F);
-        this.scale = new LifeKnightNumber.LifeKnightFloat("Scale", name + " HUD Text", 1.0F, 0.1F, 5.0F);
+        this.positionX = new LifeKnightNumber.LifeKnightFloat( "Position X", name, defaultX, 0F, 1920F);
+        this.positionY = new LifeKnightNumber.LifeKnightFloat("Position Y", name, defaultY, 0F, 1080F);
+        this.scale = new LifeKnightNumber.LifeKnightFloat("Scale", name, 1.0F, 0.1F, 5.0F);
         this.positionX.setShowInLifeKnightGui(false);
         this.positionY.setShowInLifeKnightGui(false);
         this.scale.setShowInLifeKnightGui(false);
@@ -80,7 +80,7 @@ public abstract class Manipulable {
     }
 
     public float getUncheckedYPosition() {
-        return Video.scaleFrom1080pWidth(this.positionY.getValue()) /this. scale.getValue();
+        return Video.scaleFrom1080pWidth(this.positionY.getValue()) / this.scale.getValue();
     }
 
     public float getRawXPosition() {
@@ -100,12 +100,9 @@ public abstract class Manipulable {
     public abstract boolean isVisible();
 
     public abstract void doRender();
-    
+
     public void render() {
-        GlStateManager.pushMatrix();
-        GlStateManager.scale(this.scale.getValue(), this.scale.getValue(), this.scale.getValue());
         this.doRender();
-        GlStateManager.popMatrix();
     }
 
     public abstract void drawButton(Minecraft minecraft, int mouseX, int mouseY, int xPosition, int yPosition, int width, int height, float scale, boolean isSelectedButton);

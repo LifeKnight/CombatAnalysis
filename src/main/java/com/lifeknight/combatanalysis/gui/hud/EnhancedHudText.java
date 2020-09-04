@@ -2,25 +2,29 @@ package com.lifeknight.combatanalysis.gui.hud;
 
 import com.lifeknight.combatanalysis.gui.Manipulable;
 import com.lifeknight.combatanalysis.gui.components.LifeKnightButton;
+import com.lifeknight.combatanalysis.mod.Core;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
+import com.lifeknight.combatanalysis.utilities.Render;
 import com.lifeknight.combatanalysis.utilities.Text;
 import com.lifeknight.combatanalysis.utilities.Video;
 import com.lifeknight.combatanalysis.variables.LifeKnightBoolean;
 import com.lifeknight.combatanalysis.variables.LifeKnightCycle;
 import com.lifeknight.combatanalysis.variables.LifeKnightString;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.util.EnumChatFormatting;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.lifeknight.combatanalysis.mod.Core.hudTextShadow;
 import static net.minecraft.util.EnumChatFormatting.GREEN;
 import static net.minecraft.util.EnumChatFormatting.RED;
 
 public abstract class EnhancedHudText extends Manipulable {
     public static final List<EnhancedHudText> textToRender = new ArrayList<>();
+    private static final Color textBoxColor = new Color(26, 26, 26);
     private final String prefix;
     private final LifeKnightBoolean hudTextVisible;
     private final LifeKnightCycle separator;
@@ -31,28 +35,34 @@ public abstract class EnhancedHudText extends Manipulable {
     public final List<LifeKnightButton> connectedButtons = new ArrayList<>();
 
     public EnhancedHudText(String name, int defaultX, int defaultY, String prefix) {
-        super(name, defaultX, defaultY);
+        super(name + " HUD Text", defaultX, defaultY);
         this.prefix = prefix;
         this.hudTextVisible = new LifeKnightBoolean("Visible", name + " HUD Text", true);
-        this.separator = new LifeKnightCycle("Prefix Color", name + " HUD Text", Arrays.asList(" > ", ": ", " | ", " - "));
-        this.prefixColor = new LifeKnightCycle("Color", name + " HUD Text", Arrays.asList(
-                        "Red",
-                        "Gold",
-                        "Yellow",
-                        "Green",
-                        "Aqua",
-                        "Blue",
-                        "Light Purple",
-                        "Dark Red",
-                        "Dark Green",
-                        "Dark Aqua",
-                        "Dark Blue",
-                        "Dark Purple",
-                        "White",
-                        "Gray",
-                        "Dark Gray",
-                        "Black"
-                ), 12);
+        this.separator = new LifeKnightCycle("Separator", name + " HUD Text", Arrays.asList(">", ":", "|", "-", "[]"));
+        this.prefixColor = new LifeKnightCycle("Prefix Color", name + " HUD Text", Arrays.asList(
+                "Red",
+                "Gold",
+                "Yellow",
+                "Green",
+                "Aqua",
+                "Blue",
+                "Light Purple",
+                "Dark Red",
+                "Dark Green",
+                "Dark Aqua",
+                "Dark Blue",
+                "Dark Purple",
+                "White",
+                "Gray",
+                "Dark Gray",
+                "Black",
+                "Chroma"
+        ), 12) {
+            @Override
+            public String getCustomDisplayString() {
+                return "Prefix Color: " + (this.getValue() == 16 ? Miscellaneous.CHROMA_STRING : Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString());
+            }
+        };
         this.contentColor = new LifeKnightCycle("Content Color", name + " HUD Text", Arrays.asList(
                 "Red",
                 "Gold",
@@ -69,14 +79,20 @@ public abstract class EnhancedHudText extends Manipulable {
                 "White",
                 "Gray",
                 "Dark Gray",
-                "Black"
-        ), 12);
+                "Black",
+                "Chroma"
+        ), 12) {
+            @Override
+            public String getCustomDisplayString() {
+                return "Content Color: " + (this.getValue() == 16 ? Miscellaneous.CHROMA_STRING : Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString());
+            }
+        };
         this.alignment = new LifeKnightCycle("Alignment", name + " HUD Text", Arrays.asList(
                 "Left",
                 "Center",
                 "Right"
         ));
-        this.lastString = new LifeKnightString("Last String", name + " HUD Text", getTextToDisplay());
+        this.lastString = new LifeKnightString("Last String", name + " HUD Text", this.getTextToDisplay());
         this.lastString.setShowInLifeKnightGui(false);
         this.hudTextVisible.setShowInLifeKnightGui(false);
         this.separator.setShowInLifeKnightGui(false);
@@ -84,79 +100,76 @@ public abstract class EnhancedHudText extends Manipulable {
         this.contentColor.setShowInLifeKnightGui(false);
         this.alignment.setShowInLifeKnightGui(false);
 
-        this.connectedButtons.add(new LifeKnightButton("", 0, 0, 0, 100) {
+        this.hudTextVisible.setiCustomDisplayString(objects -> this.hudTextVisible.getValue() ? GREEN + "Shown" : RED + "Hidden");
+        this.separator.setiCustomDisplayString(objects -> "Separator: " + this.separator.getCurrentValueString());
+        this.alignment.setiCustomDisplayString(objects -> "Alignment: " + this.alignment.getCurrentValueString());
+
+        this.connectedButtons.add(new LifeKnightButton(EnhancedHudText.this.hudTextVisible.getCustomDisplayString(), 0, 0, 0, 100) {
             @Override
             public void work() {
-                hudTextVisible.toggle();
+                EnhancedHudText.this.hudTextVisible.toggle();
+                this.displayString = EnhancedHudText.this.hudTextVisible.getCustomDisplayString();
             }
 
-            @Override
-            public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-                this.displayString = hudTextVisible.getValue() ? GREEN + "Shown" : RED + "Hidden";
-                super.drawButton(mc, mouseX, mouseY);
-            }
         });
+
         if (!prefix.isEmpty()) {
-            this.connectedButtons.add(new LifeKnightButton("Separator: " + separator.getCurrentValueString(), 0, 0, 0, 100) {
+            this.connectedButtons.add(new LifeKnightButton(this.separator.getCurrentValueString(), 0, 0, 0, 100) {
                 @Override
                 public void work() {
-                    separator.next();
+                    EnhancedHudText.this.separator.next();
                 }
 
                 @Override
-                public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-                    this.displayString = "Separator: " + separator.getCurrentValueString().replace(" ", "");
-                    super.drawButton(mc, mouseX, mouseY);
+                public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
+                    this.displayString = EnhancedHudText.this.separator.getCustomDisplayString();
+                    super.drawButton(minecraft, mouseX, mouseY);
                 }
             });
-            this.connectedButtons.add(new LifeKnightButton("Prefix Color: " + Miscellaneous.getEnumChatFormatting(prefixColor.getCurrentValueString()) + prefixColor.getCurrentValueString(), 0, 0, 0, 100) {
+            this.connectedButtons.add(new LifeKnightButton(this.prefixColor.getCustomDisplayString(), 0, 0, 0, 100) {
                 @Override
                 public void work() {
-                    prefixColor.next();
+                    EnhancedHudText.this.prefixColor.next();
                 }
 
                 @Override
-                public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-                    this.displayString = "Prefix Color: " + Miscellaneous.getEnumChatFormatting(prefixColor.getCurrentValueString()) + prefixColor.getCurrentValueString();
+                public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
+                    this.displayString = EnhancedHudText.this.prefixColor.getCustomDisplayString();
                     int i;
                     if (!((i = Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.displayString) + 15) < 100)) {
                         this.width = i;
                     } else {
                         this.width = 100;
                     }
-                    super.drawButton(mc, mouseX, mouseY);
+                    super.drawButton(minecraft, mouseX, mouseY);
                 }
             });
         }
-        this.connectedButtons.add(new LifeKnightButton("Content Color: " + Miscellaneous.getEnumChatFormatting(EnhancedHudText.this.contentColor.getCurrentValueString()) + EnhancedHudText.this.contentColor.getCurrentValueString(), 0, 0, 0, 100) {
+
+        this.connectedButtons.add(new LifeKnightButton(this.contentColor.getCustomDisplayString(), 0, 0, 0, 100) {
             @Override
             public void work() {
                 EnhancedHudText.this.contentColor.next();
             }
 
             @Override
-            public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-                this.displayString = "Content Color: " + Miscellaneous.getEnumChatFormatting(EnhancedHudText.this.contentColor.getCurrentValueString()) + EnhancedHudText.this.contentColor.getCurrentValueString();
+            public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
+                this.displayString = EnhancedHudText.this.contentColor.getCustomDisplayString();
                 int i;
                 if (!((i = Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.displayString) + 15) < 100)) {
                     this.width = i;
                 } else {
                     this.width = 100;
                 }
-                super.drawButton(mc, mouseX, mouseY);
+                super.drawButton(minecraft, mouseX, mouseY);
             }
-
         });
-        this.connectedButtons.add(new LifeKnightButton("", 0, 0, 0, 100) {
+
+        this.connectedButtons.add(new LifeKnightButton(this.alignment.getCustomDisplayString(), 0, 0, 0, 100) {
             @Override
             public void work() {
                 EnhancedHudText.this.alignment.next();
-            }
-
-            @Override
-            public void drawButton(Minecraft mc, int mouseX, int mouseY) {
-                this.displayString = "Alignment: " + EnhancedHudText.this.alignment.getCurrentValueString();
-                super.drawButton(mc, mouseX, mouseY);
+                this.displayString = EnhancedHudText.this.alignment.getCustomDisplayString();
             }
         });
 
@@ -182,30 +195,127 @@ public abstract class EnhancedHudText extends Manipulable {
         if (this.prefix.isEmpty()) {
             return Miscellaneous.getEnumChatFormatting(this.contentColor.getCurrentValueString()) + this.getTextToDisplay();
         } else {
-            return Miscellaneous.getEnumChatFormatting(this.prefixColor.getCurrentValueString()) + this.prefix + this.separator.getCurrentValueString() + Miscellaneous.getEnumChatFormatting(this.contentColor.getCurrentValueString()) + this.getTextToDisplay();
+            switch (this.separator.getValue()) {
+                case 1:
+                    return Miscellaneous.getEnumChatFormatting(this.prefixColor.getCurrentValueString()) + this.prefix + ": " + Miscellaneous.getEnumChatFormatting(this.contentColor.getCurrentValueString()) + this.getTextToDisplay();
+                case 4:
+                    return Miscellaneous.getEnumChatFormatting(this.prefixColor.getCurrentValueString()) + "[" + this.prefix + "] " + Miscellaneous.getEnumChatFormatting(this.contentColor.getCurrentValueString()) + this.getTextToDisplay();
+            }
+            return Miscellaneous.getEnumChatFormatting(this.prefixColor.getCurrentValueString()) + this.prefix + " " + this.separator.getCurrentValueString() + " " + Miscellaneous.getEnumChatFormatting(this.contentColor.getCurrentValueString()) + this.getTextToDisplay();
         }
+    }
+
+    private String getCleanDisplayText() {
+        return EnumChatFormatting.getTextWithoutFormattingCodes(this.getDisplayText());
     }
 
     public abstract boolean isVisible();
 
     public void doRender() {
-        if (Minecraft.getMinecraft().inGameHasFocus && hudTextVisible.getValue() && this.isVisible()) {
-            Minecraft.getMinecraft().fontRendererObj.drawString(this.getDisplayText(), this.getXCoordinate(), this.getYCoordinate(), 0xffffffff, hudTextShadow.getValue());
+        if (Minecraft.getMinecraft().inGameHasFocus && this.hudTextVisible.getValue() && this.isVisible()) {
+            float scale = this.getScale();
+            float xPosition = this.getXCoordinate();
+            float yPosition = this.getRawYPosition();
+            float height = this.getHeight();
+            float width = this.getWidth();
+            if (Core.hudTextBox.getValue()) {
+                Render.drawRectangle(xPosition, yPosition, xPosition + width, yPosition + height, scale, textBoxColor, 255F * Core.hudTextBoxOpacity.getValue());
+            }
+            this.drawText(xPosition, yPosition, width, scale);
+        }
+    }
+
+    private void drawText(float xPosition, float yPosition, float width, float scale) {
+        FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
+        if (Core.hudTextBox.getValue()) yPosition += 1.7F * scale;
+
+        boolean dropShadow = Core.hudTextShadow.getValue();
+        boolean contentChroma = this.contentColor.getValue() == 16;
+
+        float chromaSpeed = 1000F / Core.chromaSpeed.getValue();
+
+        EnumChatFormatting prefixColor = Miscellaneous.getEnumChatFormatting(this.prefixColor.getCurrentValueString());
+        EnumChatFormatting contentColor = Miscellaneous.getEnumChatFormatting(this.contentColor.getCurrentValueString());
+
+        if (this.prefix.isEmpty()) {
+            if (contentChroma) {
+                if (Core.hudTextBox.getValue()) {
+                    Render.drawHorizontallyCenteredChromaString(xPosition + width / 2F, yPosition, scale, dropShadow, chromaSpeed, this.getCleanDisplayText());
+                } else {
+                    Render.drawHorizontallyCenteredString(xPosition + width / 2F, yPosition, scale, dropShadow, this.getDisplayText());
+                }
+            }
+        } else {
+            boolean prefixChroma = this.prefixColor.getValue() == 16;
+            float textXPosition = Core.hudTextBox.getValue() ? xPosition + width / 2 - scale * fontRenderer.getStringWidth(this.getDisplayText()) / 2F + 0.7F : xPosition;
+
+            if (this.separator.getValue() == 4) {
+                if (prefixChroma) {
+                    Render.drawChromaString(textXPosition, yPosition, scale, dropShadow, chromaSpeed, "[");
+                } else {
+                    Render.drawString(textXPosition, yPosition, scale, dropShadow, prefixColor + "[");
+                }
+                textXPosition += fontRenderer.getCharWidth('[') * scale;
+            }
+
+            if (prefixChroma) {
+                Render.drawChromaString(textXPosition, yPosition, scale, dropShadow, chromaSpeed, this.prefix);
+            } else {
+                Render.drawString(textXPosition, yPosition, scale, dropShadow, prefixColor + this.prefix);
+            }
+
+
+            textXPosition += fontRenderer.getStringWidth(this.prefix) * scale;
+
+            switch (this.separator.getValue()) {
+                case 1:
+                    if (prefixChroma) {
+                        Render.drawChromaString(textXPosition, yPosition, scale, dropShadow, chromaSpeed, ":");
+                    } else {
+                        Render.drawString(textXPosition, yPosition, scale, dropShadow, prefixColor + ":");
+                    }
+                    textXPosition += fontRenderer.getCharWidth(':') * scale;
+                    break;
+                case 4:
+                    if (prefixChroma) {
+                        Render.drawChromaString(textXPosition, yPosition, scale, dropShadow, chromaSpeed, "]");
+                    } else {
+                        Render.drawString(textXPosition, yPosition, scale, dropShadow, prefixColor + "]");
+                    }
+                    textXPosition += fontRenderer.getCharWidth(']') * scale;
+                    break;
+
+                default:
+                    String separator = " " + this.separator.getCurrentValueString();
+                    if (prefixChroma) {
+                        Render.drawChromaString(textXPosition, yPosition, scale, dropShadow, chromaSpeed, separator);
+                    } else {
+                        Render.drawString(textXPosition, yPosition, scale, dropShadow, prefixColor + separator);
+                    }
+                    textXPosition += fontRenderer.getStringWidth(separator) * scale;
+                    break;
+            }
+
+            if (contentChroma) {
+                Render.drawChromaString(textXPosition, yPosition, scale, dropShadow, chromaSpeed, " " + this.getTextToDisplay());
+            } else {
+                Render.drawString(textXPosition, yPosition, scale, dropShadow, " " + contentColor + this.getTextToDisplay());
+            }
         }
     }
 
     @Override
-    public void update(int newX, int newY, float s) {
-        updateString(getDisplayText());
-        super.update(newX, newY, s);
+    public void update(int newX, int newY, float newScale) {
+        this.updateString(this.getDisplayText());
+        super.update(newX, newY, newScale);
     }
 
     @Override
     public void drawButton(Minecraft minecraft, int mouseX, int mouseY, int xPosition, int yPosition, int width, int height, float scale, boolean isSelectedButton) {
-        GlStateManager.pushMatrix();
-        GlStateManager.scale(scale, scale, scale);
-        Minecraft.getMinecraft().fontRendererObj.drawString(getDisplayText(), xPosition / scale, (yPosition + 1) / scale, 0xffffffff, hudTextShadow.getValue());
-        GlStateManager.popMatrix();
+        if (Core.hudTextBox.getValue()) {
+            Render.drawRectangle(xPosition, yPosition, xPosition + width, yPosition + height, scale, textBoxColor, 255F * Core.hudTextBoxOpacity.getValue());
+        }
+        this.drawText(xPosition, yPosition, width, scale);
         for (LifeKnightButton lifeKnightButton : this.connectedButtons) {
             lifeKnightButton.visible = isSelectedButton;
             lifeKnightButton.xPosition = xPosition - 120 < 0 ? xPosition + width + 20 : xPosition - 120;
@@ -217,7 +327,7 @@ public abstract class EnhancedHudText extends Manipulable {
 
     @Override
     public float getXCoordinate() {
-        float xCoordinate = super.getUncheckedXPosition();
+        float xCoordinate = this.getRawXPosition();
         float toAddX;
         switch (this.alignment.getValue()) {
             case 0:
@@ -238,18 +348,26 @@ public abstract class EnhancedHudText extends Manipulable {
         return Math.max(xCoordinate, 0F);
     }
 
-    public void updateString(String newString) {
+    private void updateString(String newString) {
         this.lastString.setValue(Text.removeFormattingCodes(newString));
     }
 
     @Override
     public float getDefaultWidth() {
-        return Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.getDisplayText()) + (hudTextShadow.getValue() ? 0.3F : -0.2F);
+        float defaultWidth = Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.getDisplayText()) + (Core.hudTextShadow.getValue() ? 0.3F : -0.2F);
+
+        if (!Core.hudTextBox.getValue()) return defaultWidth;
+
+        return defaultWidth + 10F;
     }
 
     @Override
     public float getDefaultHeight() {
-        return 8F + (hudTextShadow.getValue() ? 0.5F : -0.5F);
+        float defaultHeight = 8F + (Core.hudTextShadow.getValue() ? 0.5F : -0.5F);
+
+        if (!Core.hudTextBox.getValue()) return defaultHeight;
+
+        return defaultHeight + 3F;
     }
 
     @Override

@@ -40,7 +40,7 @@ public class PanelGui extends GuiScreen {
         this.fontRendererObj.drawString(this.name, 1, 2, 0xffffffff, true);
         GlStateManager.popMatrix();
 
-        Render.drawHorizontalLine(0, this.width, 55, new float[]{255, 255, 255}, 255F, 2);
+        Render.drawHorizontalLine(55, 0, this.width, new float[]{255, 255, 255}, 255F, 2);
 
         for (GuiPanel guiPanel : this.visibleGuiPanels) {
             guiPanel.drawPanel();
@@ -108,8 +108,8 @@ public class PanelGui extends GuiScreen {
             }
 
             @Override
-            public boolean textboxKeyTyped(char p_146201_1_, int p_146201_2_) {
-                if (super.textboxKeyTyped(p_146201_1_, p_146201_2_)) {
+            public boolean textboxKeyTyped(char characterTyped, int keyCode) {
+                if (super.textboxKeyTyped(characterTyped, keyCode)) {
                     this.handleInput();
                     return true;
                 }
@@ -402,11 +402,11 @@ public class PanelGui extends GuiScreen {
                         }
 
                         @Override
-                        public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+                        public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
                             GlStateManager.pushMatrix();
                             GuiPanel.this.scissor();
                             GL11.glEnable(GL11.GL_SCISSOR_TEST);
-                            super.drawButton(mc, mouseX, mouseY);
+                            super.drawButton(minecraft, mouseX, mouseY);
                             GL11.glDisable(GL11.GL_SCISSOR_TEST);
                             GlStateManager.popMatrix();
                         }
@@ -475,8 +475,8 @@ public class PanelGui extends GuiScreen {
                 FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
                 Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + this.width, this.yPosition + 13, this.color, 170F);
                 fontRenderer.drawString(this.name, this.xPosition + this.width / 2 - fontRenderer.getStringWidth(this.name) / 2, this.yPosition + 3, 0xffffffff);
-                Render.drawRectangle(this.xPosition, this.yPosition + 14, this.xPosition + this.width + 1, this.yPosition + this.height, Color.BLACK, 62F);
                 Render.drawEmptyBox(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + 13, Color.BLACK, 150F, 1);
+                Render.drawRectangle(this.xPosition, this.yPosition + 13, this.xPosition + this.width + 1, this.yPosition + this.height, Color.BLACK, 62F);
                 GL11.glDisable(GL11.GL_SCISSOR_TEST);
                 GlStateManager.popMatrix();
             }

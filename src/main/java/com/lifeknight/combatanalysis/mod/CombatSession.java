@@ -3,6 +3,7 @@ package com.lifeknight.combatanalysis.mod;
 import com.google.common.base.Predicates;
 import com.google.gson.*;
 import com.lifeknight.combatanalysis.gui.CombatSessionGui;
+import com.lifeknight.combatanalysis.utilities.Chat;
 import com.lifeknight.combatanalysis.utilities.Logic;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Text;
@@ -21,7 +22,6 @@ import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.*;
 import net.minecraft.world.WorldSettings;
-import org.lwjgl.input.Keyboard;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -64,6 +64,8 @@ public class CombatSession {
     private static int hitByProjectileTimer = 0;
 
     private static final Map<UUID, EntityThrowable> thrownProjectiles = new HashMap<>();
+
+    private static int lastHeldItemIndex;
 
     public static void getLoggedCombatSessions() {
         List<CombatSession> loggedCombatSessions = new ArrayList<>();
@@ -154,7 +156,7 @@ public class CombatSession {
                             (!dateFilterType && (firstDate.getTime() == 0 || (combatSession.getStartTime() >= firstDate.getTime() && combatSession.getStartTime() <= firstDate.getTime() + 86400000L)))) &&
                     (typeFilter.isEmpty() || Text.containsAny(combatSession.detectType(), typeFilter, true, true)) &&
                     (serverFilter.isEmpty() || (Text.containsAny(combatSession.getServerIp(), serverFilter, true, true) || Text.containsAny(combatSession.getScoreboardDisplayName(), serverFilter, true, true))) &&
-                    (opponentFilter.isEmpty() || Text.containsAny(opponentFilter, combatSession.getOpponentNames(), true, true))) 
+                    (opponentFilter.isEmpty() || Text.containsAny(opponentFilter, combatSession.getOpponentNames(), true, true)))
                 combatSessions.add(combatSession);
         }
 
@@ -163,7 +165,7 @@ public class CombatSession {
 
     public static void onWorldLoad() {
         nonStaticPlayerUuids.clear();
-        if (sessionIsRunning && Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnGameEnd.getValue()))
+        if (sessionIsRunning && Core.automaticSessions.getValue() && (Core.allAutomaticEnd.getValue() || Core.endOnGameEnd.getValue()))
             getLatestAnalysis().end();
     }
 
@@ -240,6 +242,8 @@ public class CombatSession {
         }
 
         if (sessionIsRunning) getLatestAnalysis().tick();
+
+        if (thePlayer != null) lastHeldItemIndex = thePlayer.inventory.currentItem;
 
         if (meleeAttackTimer != 0) meleeAttackTimer--;
         if (arrowShotTimer != 0) arrowShotTimer--;
@@ -384,7 +388,7 @@ public class CombatSession {
     }
 
     public static String meleeAccuracy() {
-        return !sessionIsRunning || attacksSent() == 0 ? "N/A" : getLatestAnalysis().getMeleeAccuracy();
+        return sessionIsRunning && attacksSent() != 0 ? getLatestAnalysis().getMeleeAccuracy() : "N/A";
     }
 
     public static int projectilesThrown() {
@@ -392,7 +396,7 @@ public class CombatSession {
     }
 
     public static String projectileAccuracy() {
-        return !sessionIsRunning || projectilesThrown() == 0 ? "N/A" : getLatestAnalysis().getProjectileAccuracy();
+        return sessionIsRunning && projectilesThrown() != 0 ? getLatestAnalysis().getProjectileAccuracy() : "N/A";
     }
 
     public static int arrowsShot() {
@@ -404,7 +408,7 @@ public class CombatSession {
     }
 
     public static String arrowAccuracy() {
-        return !sessionIsRunning || arrowsShot() == 0 ? "N/A" : getLatestAnalysis().getArrowAccuracy();
+        return sessionIsRunning && arrowsShot() != 0 ? getLatestAnalysis().getArrowAccuracy() : "N/A";
     }
 
     public static int hitsTaken() {
@@ -457,7 +461,6 @@ public class CombatSession {
     private final List<PotionEffectTracker> potionEffects;
 
     // Hotkey time
-    private int lastHeldItemIndex;
     private final List<HotKeyTracker> hotKeyTrackers;
 
     // Left Clicks Per Second
@@ -515,11 +518,6 @@ public class CombatSession {
         this.scoreboardDisplayName = Miscellaneous.getScoreboardDisplayName();
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
 
-        EntityPlayer closestPlayer;
-        if ((closestPlayer = this.getClosestPlayer()) != null && !playerIsStationary(closestPlayer)) {
-            this.opponentTrackerMap.put(closestPlayer.getUniqueID(), new OpponentTracker(closestPlayer));
-        }
-
         this.clicksPerSecondTrackers.add(new ClicksPerSecondTracker());
 
         this.startingPosition = thePlayer.getPosition();
@@ -529,7 +527,6 @@ public class CombatSession {
 
         this.startingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
         this.startingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
-        this.lastHeldItemIndex = thePlayer.inventory.currentItem;
 
         this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
         this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
@@ -542,32 +539,31 @@ public class CombatSession {
         WorldClient theWorld = Minecraft.getMinecraft().theWorld;
 
         if (thePlayer == null || theWorld == null) {
-            if (Core.automaticSessions.getValue() && Core.allAutoEnd.getValue()) {
-                this.end();
-            }
+            if (Core.automaticSessions.getValue() && Core.allAutomaticEnd.getValue()) this.end();
             return;
         }
 
         if (Core.automaticSessions.getValue()) {
-            if ((Core.allAutoEnd.getValue() || Core.endOnSpectator.getValue()) && thePlayer.capabilities.allowFlying) {
+            if ((Core.allAutomaticEnd.getValue() || Core.endOnSpectator.getValue()) && thePlayer.capabilities.allowFlying) {
                 this.end();
                 return;
-            } else if (Core.allAutoEnd.getValue() && this.allOpponentsAreGone()) {
+            } else if (Core.allAutomaticEnd.getValue() && this.allOpponentsAreGone()) {
                 this.end();
                 return;
             }
         }
 
-        if (Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnGameEnd.getValue())) {
+        if (Core.automaticSessions.getValue() && (Core.allAutomaticEnd.getValue() || Core.endOnGameEnd.getValue())) {
             if (this.startingPosition != null && thePlayer.getDistance(this.startingPosition.getX(), this.startingPosition.getY(), this.startingPosition.getZ()) >= 1500) {
                 this.end();
             }
         }
+
         int endingArmorSize = getNonNullElementCount(this.endingArmor);
         int armorSize = getNonNullElementCount(thePlayer.inventory.armorInventory);
         if (Logic.isWithinRange(endingArmorSize, armorSize, 2)) {
             this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
-        } else if (armorSize < endingArmorSize && Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnSpectator.getValue())) {
+        } else if (armorSize < endingArmorSize && Core.automaticSessions.getValue() && (Core.allAutomaticEnd.getValue() || Core.endOnSpectator.getValue())) {
             this.end();
             return;
         }
@@ -576,15 +572,14 @@ public class CombatSession {
         int inventorySize = getNonNullElementCount(thePlayer.inventory.mainInventory);
         if (Logic.isWithinRange(endingInventorySize, inventorySize, 3)) {
             this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
-        } else if (inventorySize < endingInventorySize && Core.automaticSessions.getValue() && (Core.allAutoEnd.getValue() || Core.endOnSpectator.getValue())) {
+        } else if (inventorySize < endingInventorySize && Core.automaticSessions.getValue() && (Core.allAutomaticEnd.getValue() || Core.endOnSpectator.getValue())) {
             this.end();
             return;
         }
 
         for (EntityPlayer entityPlayer : theWorld.playerEntities) {
-            if (!(entityPlayer.isUser() || this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID()) || playerIsStationary(entityPlayer))) {
+            if (!(entityPlayer.isUser() || this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID()) || playerIsStationary(entityPlayer)))
                 this.opponentTrackerMap.put(entityPlayer.getUniqueID(), new OpponentTracker(entityPlayer));
-            }
         }
 
         for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
@@ -593,10 +588,7 @@ public class CombatSession {
 
         this.endingHealth = thePlayer.getHealth();
 
-        if (this.lastHeldItemIndex != thePlayer.inventory.currentItem) {
-            this.heldItemChange();
-        }
-        this.lastHeldItemIndex = thePlayer.inventory.currentItem;
+        if (lastHeldItemIndex != thePlayer.inventory.currentItem) this.heldItemChange();
 
         this.potionEffectChange();
 
@@ -719,12 +711,17 @@ public class CombatSession {
         if (opponentTracker == null) return;
         opponentTracker.arrowsTaken++;
         this.arrowsTaken++;
+        addDetailsToChat(opponentTracker.opponent);
+    }
+
+    private static void addDetailsToChat(EntityPlayer entityPlayer) {
+        if (!Core.debug.getValue()) return;
+        Chat.addChatMessage(String.format("[%s] %s", entityPlayer.getName(),
+                Text.shortenDouble(Minecraft.getMinecraft().thePlayer.getDistanceToEntity(entityPlayer), 2)));
     }
 
     public void projectileThrown() {
-        if (this.rightClicks == 0) {
-            this.rightClicks = 1;
-        }
+        if (this.rightClicks == 0) this.rightClicks = 1;
         this.projectilesThrown++;
     }
 
@@ -735,9 +732,7 @@ public class CombatSession {
 
     public void attack(EntityPlayer target) {
         OpponentTracker opponentTracker = this.getOpponent(target);
-        if (opponentTracker == null || !this.isWithinRange(target)) {
-            return;
-        }
+        if (opponentTracker == null || !this.isWithinRange(target)) return;
         if (this.attacksSent == 0) {
             this.attacksSent = 1;
             this.leftClicks = 1;
@@ -787,7 +782,9 @@ public class CombatSession {
             if (opponentTracker == null) return;
             opponentTracker.onUserDamage();
             this.hitsTaken++;
+            addDetailsToChat(opponentTracker.opponent);
         }
+
     }
 
     private EntityPlayer getAttackingEntityPlayer() {
@@ -909,7 +906,6 @@ public class CombatSession {
             OpponentTracker opponentTracker = this.opponentTrackerMap.get(uuid);
             if (opponentTracker.isEmpty()) opponentUuidsToRemove.add(uuid);
             else opponentTracker.comboTrackers.removeIf(comboTracker -> comboTracker.getComboCount() < 3);
-
         }
 
         for (UUID uuid : opponentUuidsToRemove) {
@@ -931,6 +927,7 @@ public class CombatSession {
         if ((clicksPerSecondTracker.getClicksPerSecond() >= 4 && !clicksPerSecondTracker.hasEnded() && clicksPerSecondTracker.getLeftClicks() > 1) || this.clicksPerSecondTrackers.isEmpty()) {
             clicksPerSecondTracker.end();
         }
+
         if (this.opponentTrackerMap.size() > 0 &&
                 !(this.hitsTaken == 0 && this.getHitsDealt() == 0 &&
                         this.arrowsTaken == 0 && this.arrowsHit == 0 &&
@@ -1001,8 +998,9 @@ public class CombatSession {
     }
 
     public String getAverageClicksPerSecond() {
-        if (this.clicksPerSecondTrackers.isEmpty() || (this.clicksPerSecondTrackers.size() == 1 && !this.getLatestClicksPerSecondCounter().hasEnded()))
+        if (this.clicksPerSecondTrackers.isEmpty() || (this.clicksPerSecondTrackers.size() == 1 && !this.getLatestClicksPerSecondCounter().hasEnded())) {
             return "0";
+        }
 
         double totalAverage = 0;
         double trackers = 0;
@@ -1049,7 +1047,7 @@ public class CombatSession {
             if (itemStack != null) {
                 Integer stackSize;
                 for (ItemStack itemStack1 : map.keySet()) {
-                    if (itemStack.getItem().getRegistryName().equals(itemStack1.getItem().getRegistryName())) {
+                    if (Miscellaneous.itemStacksAreEqual(itemStack, itemStack1)) {
                         itemStack = itemStack1;
                         break;
                     }
@@ -1084,7 +1082,7 @@ public class CombatSession {
             if (itemStack != null) {
                 Integer stackSize;
                 for (ItemStack itemStack1 : map.keySet()) {
-                    if (itemStack.getItem().getRegistryName().equals(itemStack1.getItem().getRegistryName())) {
+                    if (Miscellaneous.itemStacksAreEqual(itemStack, itemStack1)) {
                         itemStack = itemStack1;
                         break;
                     }
@@ -1166,14 +1164,16 @@ public class CombatSession {
         for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
             names.add(opponentTracker.name);
         }
+
         return names;
     }
 
     public String detectType() {
         if (this.detectedType != null) return this.detectedType;
 
-        if (getNonNullElementCount(this.startingInventory) <= 2 && getNonNullElementCount(this.startingArmor) <= 2)
+        if (getNonNullElementCount(this.startingInventory) <= 2 && getNonNullElementCount(this.startingArmor) <= 2) {
             this.detectedType = "Sumo";
+        }
 
         Map<String, Integer> map = new HashMap<>();
 
@@ -1210,6 +1210,7 @@ public class CombatSession {
         for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
             highestHitsOnOpponent = Math.max(highestHitsOnOpponent, opponentTracker.opponentHitsTaken);
         }
+
         return highestHitsOnOpponent;
     }
 
@@ -1475,7 +1476,7 @@ public class CombatSession {
         }
 
         public String attackAccuracy() {
-            return this.attacksSent == 0 ? "N/A" : Text.shortenDouble(this.attacksLanded / (double) this.attacksSent * 100, 1) + "%";
+            return this.attacksSent != 0 ? Text.shortenDouble(this.attacksLanded / (double) this.attacksSent * 100, 1) + "%" : "N/A";
         }
 
         public int getHitsTaken() {
@@ -1629,10 +1630,12 @@ public class CombatSession {
         @Override
         public String toString() {
             JsonObject asJsonObject = new JsonObject();
+
             asJsonObject.addProperty("startTime", this.startTime);
             asJsonObject.addProperty("endTime", this.endTime);
             asJsonObject.addProperty("index", this.index);
             asJsonObject.addProperty("itemStack", this.itemStack == null ? "null" : this.itemStack.serializeNBT().toString());
+
             return asJsonObject.toString();
         }
 
@@ -1692,10 +1695,12 @@ public class CombatSession {
         @Override
         public String toString() {
             JsonObject asJsonObject = new JsonObject();
+
             asJsonObject.addProperty("startTime", this.startTime);
             asJsonObject.addProperty("endTime", this.endTime);
             asJsonObject.addProperty("potionEffect", this.potionEffect.writeCustomPotionEffectToNBT(new NBTTagCompound()).toString());
             asJsonObject.addProperty("totalDuration", this.totalDuration);
+
             return asJsonObject.toString();
         }
 
@@ -1747,9 +1752,11 @@ public class CombatSession {
         @Override
         public String toString() {
             JsonObject asJsonObject = new JsonObject();
+
             asJsonObject.addProperty("startTime", this.startTime);
             asJsonObject.addProperty("endTime", this.endTime);
             asJsonObject.addProperty("comboCount", this.comboCount);
+
             return asJsonObject.toString();
         }
 
@@ -1812,10 +1819,12 @@ public class CombatSession {
         @Override
         public String toString() {
             JsonObject asJsonObject = new JsonObject();
+
             asJsonObject.addProperty("startTime", this.startTime);
             asJsonObject.addProperty("endTime", this.endTime);
             asJsonObject.addProperty("leftClicks", this.leftClicks);
             asJsonObject.addProperty("ended", this.ended);
+
             return asJsonObject.toString();
         }
 

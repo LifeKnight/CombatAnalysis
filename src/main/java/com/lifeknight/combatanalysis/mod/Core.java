@@ -44,7 +44,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.3.1",
+            MOD_VERSION = "0.4",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -57,13 +57,30 @@ public class Core {
     };
     public static final LifeKnightBoolean gridSnapping = new LifeKnightBoolean("Grid Snapping", "HUD", true);
     public static final LifeKnightBoolean hudTextShadow = new LifeKnightBoolean("HUD Text Shadow", "HUD", true);
+    public static final LifeKnightBoolean hudTextBox = new LifeKnightBoolean("HUD Text Box", "HUD", true);
+    public static final LifeKnightNumber.LifeKnightFloat hudTextBoxOpacity = new LifeKnightNumber.LifeKnightFloat("HUD Text Box Opacity", "HUD", 0.7F, 0F, 1F);
+    public static final LifeKnightNumber.LifeKnightFloat chromaSpeed = new LifeKnightNumber.LifeKnightFloat("Chroma Speed", "HUD", 0.5F, 0.125F, 1F);
+
+    static {
+        hudTextBoxOpacity.setiCustomDisplayString(objects -> {
+            float value = (float) objects[0];
+            return "HUD Text Box Opacity: " + Text.shortenDouble(value * 100F, 2) + "%";
+        });
+        chromaSpeed.setiCustomDisplayString(objects -> {
+            float value = (float) objects[0];
+            return "Chroma Speed: " + Text.shortenDouble(value * 100F, 2) + "%";
+        }
+        );
+    }
+
     private static final LifeKnightBoolean showStatus = new LifeKnightBoolean("Show Status", "HUD", true);
     public static final LifeKnightBoolean automaticSessions = new LifeKnightBoolean("Automatic Sessions", "Settings", true);
-    public static final LifeKnightBoolean allAutoEnd = new LifeKnightBoolean("End For All End Requirements", "Auto End", true);
+    public static final LifeKnightBoolean allAutomaticEnd = new LifeKnightBoolean("End For All End Requirements", "Auto End", true);
     public static final LifeKnightBoolean endOnGameEnd = new LifeKnightBoolean("End On Game End", "Auto End", true);
     public static final LifeKnightBoolean endOnSpectator = new LifeKnightBoolean("End On Spectator", "Auto End", true);
     public static final LifeKnightBoolean automaticallyLogSessions = new LifeKnightBoolean("Auto-Log Sessions", "Settings", true);
     public static final LifeKnightNumber.LifeKnightInteger mainHotBarSlot = new LifeKnightNumber.LifeKnightInteger("Main Hotbar Slot", "Settings", 1, 1, 9);
+    public static final LifeKnightBoolean debug = new LifeKnightBoolean("Debug", "Extra", false);
     public static final KeyBinding toggleCombatSessionKeyBinding = new KeyBinding("Toggle combat session", 0x1B, MOD_NAME);
     public static final KeyBinding openLatestCombatSessionKeyBinding = new KeyBinding("Open latest combat session", 0x26, MOD_NAME);
     public static final LifeKnightList.LifeKnightIntegerList deletedSessionIds = new LifeKnightList.LifeKnightIntegerList("Deleted Session IDs", "Extra");
@@ -229,9 +246,7 @@ public class Core {
 
     @SubscribeEvent
     public void onArrowShot(ArrowLooseEvent event) {
-        if (runMod.getValue() && event.charge >= 3) {
-            CombatSession.onArrowShot();
-        }
+        if (runMod.getValue() && event.charge >= 3) CombatSession.onArrowShot();
     }
 
     @SubscribeEvent
@@ -279,8 +294,6 @@ public class Core {
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
-        if (runMod.getValue() && event.phase == TickEvent.Phase.END) {
-            CombatSession.onTick();
-        }
+        if (event.phase == TickEvent.Phase.END && runMod.getValue()) CombatSession.onTick();
     }
 }

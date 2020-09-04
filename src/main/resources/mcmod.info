@@ -5,10 +5,9 @@
   "description": "Analyzes/provides statistics on your combat.",
   "version": "${version}",
   "mcversion": "${mcversion}",
-  "url": "",
-  "updateUrl": "",
+  "url": "https://docs.google.com/document/d/1P6OcXd6FpkvnvQOQceTRc8daLg0ZT6rVySSPypP_v0A/edit?usp=sharing",
   "authorList": ["LifeKnight"],
-  "credits": "Idea by Willerhide.\nBeta Testers: physa, TheLemoade, and Willerhide.",
+  "credits": "Idea by Willerhide.\nBeta Testers: LifeKnight, physa, TheLemoade, and Willerhide.",
   "logoFile": "",
   "screenshots": [],
   "dependencies": []

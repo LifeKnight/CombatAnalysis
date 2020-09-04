@@ -9,6 +9,7 @@ import com.lifeknight.combatanalysis.mod.Core;
 import com.lifeknight.combatanalysis.variables.LifeKnightCycle;
 import com.lifeknight.combatanalysis.variables.LifeKnightNumber;
 import net.minecraft.client.Minecraft;
+import net.minecraft.item.ItemStack;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.EnumChatFormatting;
@@ -24,6 +25,14 @@ import static com.lifeknight.combatanalysis.gui.hud.EnhancedHudText.textToRender
 import static net.minecraft.util.EnumChatFormatting.*;
 
 public class Miscellaneous {
+    public static final String CHROMA_STRING =
+            RED + "C" +
+                    GOLD + "h" +
+                    YELLOW + "r" +
+                    GREEN + "o" +
+                    BLUE + "m" +
+                    LIGHT_PURPLE + "a";
+
     public static String getCurrentDateString() {
         return new SimpleDateFormat("MM/dd/yyyy").format(System.currentTimeMillis());
     }
@@ -34,6 +43,18 @@ public class Miscellaneous {
 
     public static String getTimeAndDate(long epochTime) {
         return new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a").format(epochTime);
+    }
+
+    public static int getRandomIntBetweenRange(int min, int max) {
+        return ThreadLocalRandom.current().nextInt(min, max + 1);
+    }
+
+    public static boolean getRandomTrueOrFalse() {
+        return getRandomDoubleBetweenRange(0, 1) == 1;
+    }
+
+    public static double getRandomDoubleBetweenRange(double min, double max) {
+        return ThreadLocalRandom.current().nextDouble(min, max);
     }
 
     public static EnumChatFormatting getEnumChatFormatting(String formattedName) {
@@ -84,8 +105,7 @@ public class Miscellaneous {
             float value = (float) objects[0];
             return "Scale: " + value * 100 + "%";
         });
-        ;
-        new LifeKnightCycle("Default Separator", "HUD", Arrays.asList(" > ", ": ", " | ", " - ")) {
+        new LifeKnightCycle("Default Separator", "HUD", Arrays.asList(">", ":", "|", "-", "[]")) {
             @Override
             public void onValueChange() {
                 for (EnhancedHudText enhancedHudText : textToRender) {
@@ -95,7 +115,7 @@ public class Miscellaneous {
 
             @Override
             public String getCustomDisplayString() {
-                return "Default Separator:" + YELLOW + (this.getCurrentValueString().equals(":") ? " :" : this.getCurrentValueString());
+                return "Default Separator: " + YELLOW + this.getCurrentValueString();
             }
         };
         new LifeKnightCycle("Default Prefix Color", "HUD", Arrays.asList(
@@ -114,7 +134,8 @@ public class Miscellaneous {
                 "White",
                 "Gray",
                 "Dark Gray",
-                "Black"
+                "Black",
+                "Chroma"
         ), 12) {
             @Override
             public void onValueChange() {
@@ -125,7 +146,7 @@ public class Miscellaneous {
 
             @Override
             public String getCustomDisplayString() {
-                return "Default Prefix Color: " + Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString();
+                return "Default Prefix Color: " + (this.getValue() == 16 ? CHROMA_STRING : Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString());
             }
         };
         new LifeKnightCycle("Default Content Color", "HUD", Arrays.asList(
@@ -144,7 +165,8 @@ public class Miscellaneous {
                 "White",
                 "Gray",
                 "Dark Gray",
-                "Black"
+                "Black",
+                "Chroma"
         ), 12) {
             @Override
             public void onValueChange() {
@@ -155,7 +177,7 @@ public class Miscellaneous {
 
             @Override
             public String getCustomDisplayString() {
-                return "Default Content Color: " + Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString();
+                return "Default Content Color: " + (this.getValue() == 16 ? CHROMA_STRING : Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString());
             }
         };
     }
@@ -205,5 +227,19 @@ public class Miscellaneous {
         scoreboardDisplayName = Text.removeFormattingCodes(scoreboardDisplayName);
 
         return scoreboardDisplayName;
+    }
+
+    public static boolean itemStacksAreEqual(ItemStack itemStackA, ItemStack itemStackB) {
+        if (!itemStackA.getUnlocalizedName().equals(itemStackB.getUnlocalizedName())) return false;
+
+        if (itemStackA.getEnchantmentTagList() == null && itemStackB.getEnchantmentTagList() == null) return true;
+
+        if (itemStackA.getEnchantmentTagList() == null && itemStackB.getEnchantmentTagList() != null) return false;
+
+        if (itemStackA.getEnchantmentTagList() != null && itemStackB.getEnchantmentTagList() == null) return false;
+
+        if (itemStackA.getEnchantmentTagList().equals(itemStackB.getEnchantmentTagList())) return true;
+
+        return false;
     }
 }

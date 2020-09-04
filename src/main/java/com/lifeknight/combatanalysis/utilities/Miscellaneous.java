@@ -103,9 +103,9 @@ public class Miscellaneous {
             }
         }.setiCustomDisplayString(objects -> {
             float value = (float) objects[0];
-            return "Scale: " + value * 100 + "%";
+            return "Default HUD Text Scale: " + Text.shortenDouble(value * 100, 2) + "%";
         });
-        new LifeKnightCycle("Default Separator", "HUD", Arrays.asList(">", ":", "|", "-", "[]")) {
+        new LifeKnightCycle("Default HUD Text Separator", "HUD", Arrays.asList(">", ":", "|", "-", "[]")) {
             @Override
             public void onValueChange() {
                 for (EnhancedHudText enhancedHudText : textToRender) {
@@ -118,7 +118,7 @@ public class Miscellaneous {
                 return "Default Separator: " + YELLOW + this.getCurrentValueString();
             }
         };
-        new LifeKnightCycle("Default Prefix Color", "HUD", Arrays.asList(
+        new LifeKnightCycle("Default HUD Text Prefix Color", "HUD", Arrays.asList(
                 "Red",
                 "Gold",
                 "Yellow",
@@ -146,10 +146,10 @@ public class Miscellaneous {
 
             @Override
             public String getCustomDisplayString() {
-                return "Default Prefix Color: " + (this.getValue() == 16 ? CHROMA_STRING : Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString());
+                return "Default HUD Text Prefix Color: " + (this.getValue() == 16 ? CHROMA_STRING : Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString());
             }
         };
-        new LifeKnightCycle("Default Content Color", "HUD", Arrays.asList(
+        new LifeKnightCycle("Default HUD Text Content Color", "HUD", Arrays.asList(
                 "Red",
                 "Gold",
                 "Yellow",
@@ -177,7 +177,7 @@ public class Miscellaneous {
 
             @Override
             public String getCustomDisplayString() {
-                return "Default Content Color: " + (this.getValue() == 16 ? CHROMA_STRING : Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString());
+                return "Default HUD Text Content Color: " + (this.getValue() == 16 ? CHROMA_STRING : Miscellaneous.getEnumChatFormatting(this.getCurrentValueString()) + this.getCurrentValueString());
             }
         };
     }

@@ -1,10 +1,13 @@
 package com.lifeknight.combatanalysis.gui.components;
 
+import com.lifeknight.combatanalysis.utilities.Render;
 import com.lifeknight.combatanalysis.utilities.Video;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
+
+import java.awt.*;
 
 public abstract class ScrollBar extends GuiButton {
     public boolean dragging = false;
@@ -25,7 +28,7 @@ public abstract class ScrollBar extends GuiButton {
     @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {
         if (this.visible) {
-            Gui.drawRect(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, 0xffffffff);
+            Render.drawRectangle(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, this.dragging ? Color.GRAY : Color.WHITE, 255F);
             this.mouseDragged(mc, mouseX, mouseY);
         }
     }
@@ -82,7 +85,7 @@ public abstract class ScrollBar extends GuiButton {
         @Override
         public void drawButton(Minecraft mc, int mouseX, int mouseY) {
             if (this.visible) {
-                Gui.drawRect(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, 0xffffffff);
+                Render.drawRectangle(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, this.dragging ? Color.GRAY : Color.WHITE, 255F);
                 this.mouseDragged(mc, mouseX, mouseY);
             }
         }

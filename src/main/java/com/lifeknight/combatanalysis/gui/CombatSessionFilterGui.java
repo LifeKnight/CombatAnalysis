@@ -2,16 +2,22 @@ package com.lifeknight.combatanalysis.gui;
 
 import com.lifeknight.combatanalysis.gui.components.LifeKnightButton;
 import com.lifeknight.combatanalysis.gui.components.LifeKnightTextField;
+import com.lifeknight.combatanalysis.gui.components.ScrollBar;
 import com.lifeknight.combatanalysis.mod.CombatSession;
 import com.lifeknight.combatanalysis.mod.Core;
 import com.lifeknight.combatanalysis.utilities.Miscellaneous;
 import com.lifeknight.combatanalysis.utilities.Render;
 import com.lifeknight.combatanalysis.utilities.Text;
 import com.lifeknight.combatanalysis.utilities.Video;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.GlStateManager;
+import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.GL11;
 
+import java.awt.*;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -27,6 +33,7 @@ import static net.minecraft.util.EnumChatFormatting.RED;
 public class CombatSessionFilterGui extends GuiScreen {
     private final GuiScreen lastGui;
     private final List<LifeKnightTextField> lifeKnightTextFields = new ArrayList<>();
+    private ScrollBar scrollBar;
 
     private int resultsFound = 0;
 
@@ -40,6 +47,13 @@ public class CombatSessionFilterGui extends GuiScreen {
     private final List<String> serverFilter = new ArrayList<>(CombatSession.serverFilter);
     private final List<String> typeFilter = new ArrayList<>(CombatSession.typeFilter);
 
+    private LifeKnightButton firstLeftMostPanelButton;
+    private LifeKnightButton wonLossFilter;
+    private LifeKnightButton dateTypeFilter;
+
+    private LifeKnightTextField firstDateFilterField;
+    private LifeKnightTextField secondDateFilterField;
+
     public CombatSessionFilterGui(GuiScreen lastGui) {
         this.lastGui = lastGui;
         firstDate.setTime(CombatSession.firstDate.getTime());
@@ -50,7 +64,7 @@ public class CombatSessionFilterGui extends GuiScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
         GlStateManager.pushMatrix();
-        double scale = 5 * (Video.getGameWidth() / (double) Video.getSupposedWidth());
+        double scale = 5 * (this.width / (double) Video.getSupposedWidth());
         GlStateManager.scale(scale, scale, scale);
         this.drawString(this.fontRendererObj, "Filter", 1, 2, 0xffffffff);
         GlStateManager.popMatrix();
@@ -58,25 +72,57 @@ public class CombatSessionFilterGui extends GuiScreen {
         this.drawCenteredString(this.fontRendererObj, "Results Found", (2 * this.width / 3) + (this.width / 3) / 2, 70, 0xffffffff);
         this.drawCenteredString(this.fontRendererObj, String.valueOf(this.resultsFound), (2 * this.width / 3) + (this.width / 3) / 2, 55 + ((this.height - 55) / 2), 0xffffffff);
 
-        Render.drawHorizontalLine(0, this.width, 55, new float[]{255, 255, 255}, 255F, 2);
+        Render.drawHorizontalLine(55, 0, this.width, Color.WHITE, 255F, 2);
 
-        Render.drawVerticalLine(this.width / 3, 55, this.height, new float[]{255, 255, 255}, 255F, 2);
-        Render.drawVerticalLine(2 * this.width / 3, 55, this.height, new float[]{255, 255, 255}, 255F, 2);
+        Render.drawVerticalLine(this.width / 3, 55, this.height, Color.WHITE, 255F, 2);
+        Render.drawVerticalLine(2 * this.width / 3, 55, this.height, Color.WHITE, 255F, 2);
+
+        boolean isBetween = CombatSessionFilterGui.this.dateFilterType;
+        int leftmostPanelHeight = isBetween ?
+                Math.max(this.height - 57, 25 + 30 * 4 + 35 + 30) :
+                this.height - 57;
+        int j = Mouse.getDWheel() / 13;
+        if (mouseX <= this.width / 3 + 2 && mouseY >= 57) {
+            if (((j > 0) && this.scrollBar.yPosition > 0) || ((j < 0) && this.scrollBar.yPosition + this.scrollBar.height < this.height)) {
+                while (j > 0 && this.firstLeftMostPanelButton.yPosition + j > 55 + 25) {
+                    j--;
+                }
+
+                LifeKnightTextField lastTextField = isBetween ? this.secondDateFilterField : this.firstDateFilterField;
+
+                while (j < 0 && lastTextField.yPosition + 30 + j < this.height - 10) {
+                    j++;
+                }
+
+                this.firstLeftMostPanelButton.yPosition += j;
+                this.firstLeftMostPanelButton.updateOriginalYPosition();
+                this.wonLossFilter.yPosition += j;
+                this.wonLossFilter.updateOriginalYPosition();
+                this.dateTypeFilter.yPosition += j;
+                this.dateTypeFilter.updateOriginalYPosition();
+
+                this.firstDateFilterField.yPosition += j;
+                this.firstDateFilterField.updateOriginalYPosition();
+                this.secondDateFilterField.yPosition += j;
+                this.secondDateFilterField.updateOriginalYPosition();
+            }
+        }
+
+        int theHeight = this.height - 57;
+        this.scrollBar.yPosition = (int) (((-(this.firstLeftMostPanelButton.yPosition - 25 - 55)) / (leftmostPanelHeight - (double) theHeight) * (theHeight - this.scrollBar.height))) + 58;
 
         for (LifeKnightTextField lifeKnightTextField : this.lifeKnightTextFields) {
             lifeKnightTextField.drawTextBoxAndName();
             lifeKnightTextField.drawStringBelowBox();
         }
+
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
-
-    /*
-    Reset all button
-    */
 
     @Override
     public void initGui() {
         this.updateResultCount();
+        this.buttonList.clear();
         this.lifeKnightTextFields.clear();
 
         if (this.lastGui != null) {
@@ -106,15 +152,53 @@ public class CombatSessionFilterGui extends GuiScreen {
                 CombatSessionFilterGui.this.updateResultCount();
             }
         });
-        this.buttonList.add(new LifeKnightButton(this.deletedSessionsOnly ? RED + "Deleted" : GREEN + "Available", this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25, 100) {
+        this.buttonList.add(this.firstLeftMostPanelButton = new LifeKnightButton(this.deletedSessionsOnly ? RED + "Deleted" : GREEN + "Available", this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25, 100) {
             @Override
             public void work() {
                 CombatSessionFilterGui.this.deletedSessionsOnly = !CombatSessionFilterGui.this.deletedSessionsOnly;
                 this.displayString = CombatSessionFilterGui.this.deletedSessionsOnly ? RED + "Deleted" : GREEN + "Available";
                 CombatSessionFilterGui.this.updateResultCount();
             }
+
+            @Override
+            public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
+                GlStateManager.pushMatrix();
+                Render.glScissor(this.xPosition, Math.max(this.yPosition, 57), this.width, Math.min(this.height, this.height - (57 - this.yPosition)));
+                GL11.glEnable(GL11.GL_SCISSOR_TEST);
+                if (this.visible) {
+                    FontRenderer fontRenderer = minecraft.fontRendererObj;
+                    mc.getTextureManager().bindTexture(buttonTextures);
+                    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                    this.hovered = mouseX >= this.xPosition && mouseY >= Math.max(this.yPosition, 57) && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+                    int hoverState = this.getHoverState(this.hovered);
+                    GlStateManager.enableBlend();
+                    GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+                    GlStateManager.blendFunc(770, 771);
+                    this.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 46 + hoverState * 20, this.width / 2, this.height);
+                    this.drawTexturedModalRect(this.xPosition + this.width / 2, this.yPosition, 200 - this.width / 2, 46 + hoverState * 20, this.width / 2, this.height);
+                    this.mouseDragged(minecraft, mouseX, mouseY);
+                    int displayStringColor = 14737632;
+
+                    if (this.packedFGColour != 0) {
+                        displayStringColor = this.packedFGColour;
+                    } else if (!this.enabled) {
+                        displayStringColor = 10526880;
+                    } else if (this.hovered) {
+                        displayStringColor = 16777120;
+                    }
+
+                    this.drawCenteredString(fontRenderer, this.displayString, this.xPosition + this.width / 2, this.yPosition + (this.height - 8) / 2, displayStringColor);
+                }
+                GL11.glDisable(GL11.GL_SCISSOR_TEST);
+                GlStateManager.popMatrix();
+            }
+
+            @Override
+            public boolean mousePressed(Minecraft minecraft, int mouseX, int mouseY) {
+                return super.mousePressed(minecraft, mouseX, mouseY) && mouseY >= 57;
+            }
         });
-        this.buttonList.add(new LifeKnightButton(this.wonFilterType == 0 ? "Won/Lost" : this.wonFilterType == 1 ? GREEN + "Won" : RED + "Lost", this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25 + 30, 100) {
+        this.buttonList.add(this.wonLossFilter = new LifeKnightButton(this.wonFilterType == 0 ? "Won/Lost" : this.wonFilterType == 1 ? GREEN + "Won" : RED + "Lost", this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25 + 30, 100) {
             @Override
             public void work() {
                 if (CombatSessionFilterGui.this.wonFilterType == 2) {
@@ -126,18 +210,26 @@ public class CombatSessionFilterGui extends GuiScreen {
                 CombatSessionFilterGui.this.updateResultCount();
             }
         });
-        this.buttonList.add(new LifeKnightButton(this.dateFilterType ? "Between" : "During", this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25 + 30 * 2, 100) {
+        this.buttonList.add(this.dateTypeFilter = new LifeKnightButton(this.dateFilterType ? "Between" : "During", this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25 + 30 * 2, 100) {
             @Override
             public void work() {
                 CombatSessionFilterGui.this.dateFilterType = !CombatSessionFilterGui.this.dateFilterType;
                 this.displayString = CombatSessionFilterGui.this.dateFilterType ? "Between" : "During";
                 CombatSessionFilterGui.this.lifeKnightTextFields.get(0).setName(CombatSessionFilterGui.this.dateFilterType ? "After" : "During");
                 CombatSessionFilterGui.this.lifeKnightTextFields.get(1).setVisible(CombatSessionFilterGui.this.dateFilterType);
+                boolean isBetween = CombatSessionFilterGui.this.dateFilterType;
+                if (!isBetween) {
+                    CombatSessionFilterGui.this.initGui();
+                    return;
+                }
+                int panelHeight = Math.max(this.height - 57, 25 + 30 * 4 + 35 + 30);
+                int theHeight = CombatSessionFilterGui.this.height - 57;
+                CombatSessionFilterGui.this.scrollBar.height = (int) (theHeight * (theHeight / (double) panelHeight));
+                CombatSessionFilterGui.this.scrollBar.visible = panelHeight > theHeight;
                 CombatSessionFilterGui.this.updateResultCount();
             }
         });
-        LifeKnightTextField firstDateFilterField;
-        this.lifeKnightTextFields.add(firstDateFilterField = new LifeKnightTextField(this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25 + 30 * 3 + 10, 100, 17, CombatSessionFilterGui.this.dateFilterType ? "After" : "During") {
+        this.lifeKnightTextFields.add(this.firstDateFilterField = new LifeKnightTextField(this.buttonList.size(), (this.width / 3) / 2 - 50, 55 + 25 + 30 * 3 + 10, 100, 17, CombatSessionFilterGui.this.dateFilterType ? "After" : "During") {
             @Override
             public void handleInput() {
                 String text = this.getText();
@@ -179,12 +271,12 @@ public class CombatSessionFilterGui extends GuiScreen {
                 return false;
             }
         });
+
         if (firstDate.getTime() != 0) {
-            firstDateFilterField.setText(new SimpleDateFormat("MM/dd/yy").format(firstDate));
+            this.firstDateFilterField.setText(new SimpleDateFormat("MM/dd/yy").format(firstDate));
         }
 
-        LifeKnightTextField secondDateFilterField;
-        this.lifeKnightTextFields.add(secondDateFilterField = new LifeKnightTextField(this.buttonList.size() + 1, (this.width / 3) / 2 - 50, 55 + 25 + 30 * 4 + 35, 100, 17, "Before") {
+        this.lifeKnightTextFields.add(this.secondDateFilterField = new LifeKnightTextField(this.buttonList.size() + 1, (this.width / 3) / 2 - 50, 55 + 25 + 30 * 4 + 35, 100, 17, "Before") {
             @Override
             public void handleInput() {
                 String text = this.getText();
@@ -226,10 +318,56 @@ public class CombatSessionFilterGui extends GuiScreen {
                 return false;
             }
         });
-        secondDateFilterField.setVisible(this.dateFilterType);
+
+        this.secondDateFilterField.setVisible(this.dateFilterType);
         if (secondDate.getTime() != 0) {
-            secondDateFilterField.setText(new SimpleDateFormat("MM/dd/yy").format(secondDate));
+            this.secondDateFilterField.setText(new SimpleDateFormat("MM/dd/yy").format(secondDate));
         }
+
+        boolean isBetween = this.dateFilterType;
+        int panelHeight = isBetween ?
+                Math.max(this.height - 57, 25 + 30 * 4 + 35 + 30) :
+                this.height - 57;
+
+        this.buttonList.add(this.scrollBar = new ScrollBar(this.buttonList.size(), this.width / 3 - 6, 58, 4, 0) {
+            @Override
+            public void onDrag(int scroll) {
+                scroll = -scroll;
+
+                int scaledScroll = (int) (scroll * panelHeight / (double) CombatSessionFilterGui.this.height);
+                LifeKnightTextField lastTextField = CombatSessionFilterGui.this.dateFilterType ?
+                        CombatSessionFilterGui.this.secondDateFilterField : CombatSessionFilterGui.this.firstDateFilterField;
+
+                while (scaledScroll > 0 && CombatSessionFilterGui.this.firstLeftMostPanelButton.originalYPosition + scaledScroll > 55 + 25) {
+                    scaledScroll--;
+                }
+
+                while (scaledScroll < 0 && lastTextField.originalYPosition + 30 + scaledScroll < CombatSessionFilterGui.this.height - 10) {
+                    scaledScroll++;
+                }
+
+                CombatSessionFilterGui.this.firstLeftMostPanelButton.yPosition = CombatSessionFilterGui.this.firstLeftMostPanelButton.originalYPosition + scaledScroll;
+                CombatSessionFilterGui.this.wonLossFilter.yPosition = CombatSessionFilterGui.this.wonLossFilter.originalYPosition + scaledScroll;
+                CombatSessionFilterGui.this.dateTypeFilter.yPosition = CombatSessionFilterGui.this.dateTypeFilter.originalYPosition + scaledScroll;
+
+                CombatSessionFilterGui.this.firstDateFilterField.yPosition = CombatSessionFilterGui.this.firstDateFilterField.originalYPosition + scaledScroll;
+                CombatSessionFilterGui.this.secondDateFilterField.yPosition = CombatSessionFilterGui.this.secondDateFilterField.originalYPosition + scaledScroll;
+            }
+
+            @Override
+            public void onMousePress() {
+                CombatSessionFilterGui.this.firstLeftMostPanelButton.updateOriginalYPosition();
+                CombatSessionFilterGui.this.wonLossFilter.updateOriginalYPosition();
+                CombatSessionFilterGui.this.dateTypeFilter.updateOriginalYPosition();
+                CombatSessionFilterGui.this.firstDateFilterField.updateOriginalYPosition();
+                CombatSessionFilterGui.this.secondDateFilterField.updateOriginalYPosition();
+            }
+        });
+
+        int theHeight = this.height - 57;
+
+        this.scrollBar.height = (int) (theHeight * (theHeight / (double) panelHeight));
+        this.scrollBar.visible = panelHeight > theHeight && isBetween;
 
         LifeKnightTextField opponentFilterField;
         this.lifeKnightTextFields.add(opponentFilterField = new LifeKnightTextField(this.buttonList.size() + 2, this.width / 2 - 50, 55 + 25, 100, 17, "Opponents") {
@@ -358,7 +496,7 @@ public class CombatSessionFilterGui extends GuiScreen {
 
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
-        ((LifeKnightButton) button).work();
+        if (button instanceof LifeKnightButton) ((LifeKnightButton) button).work();
     }
 
     @Override

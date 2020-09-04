@@ -165,13 +165,13 @@ public class Render extends Gui {
         FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
         float x2 = x;
         for (char currentCharacter : text.toCharArray()) {
-            long dif = (long) (x2 * 10 - y * 10);
-            long l = System.currentTimeMillis() - dif;
-            int i = Color.HSBtoRGB(l % (int) speed / speed, 0.8f, 0.8f);
+            long position = (long) (x2 * 10 - y * 10);
+            long timedPosition = System.currentTimeMillis() - position;
+            int color = Color.HSBtoRGB(timedPosition % (int) speed / speed, 0.8f, 0.8f);
             String currentCharacterString = String.valueOf(currentCharacter);
             GlStateManager.pushMatrix();
             GlStateManager.scale(scale, scale, scale);
-            fontRenderer.drawString(currentCharacterString, x2 / scale , y / scale, i, dropShadow);
+            fontRenderer.drawString(currentCharacterString, x2 / scale , y / scale, color, dropShadow);
             GlStateManager.popMatrix();
             x2 += fontRenderer.getCharWidth(currentCharacter) * scale;
         }

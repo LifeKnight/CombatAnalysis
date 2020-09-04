@@ -604,12 +604,20 @@ public class CombatSession {
     }
 
     private boolean allOpponentsAreGone() {
+        if (this.opponentTrackerMap.isEmpty()) return false;
         for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
-            if (this.playerHasAppropriateOpponent(opponentTracker.opponent)) {
-                if (!(opponentTracker.opponent.isDead) || Minecraft.getMinecraft().theWorld.playerEntities.contains(opponentTracker.opponent)) {
+            if (this.playerHasAppropriateOpponent(opponentTracker.opponent) || (this.allOpponentTrackersAreEmpty())) {
+                if (!opponentTracker.opponent.isDead || Minecraft.getMinecraft().theWorld.playerEntities.contains(opponentTracker.opponent)) {
                     return false;
                 }
             }
+        }
+        return true;
+    }
+
+    private boolean allOpponentTrackersAreEmpty() {
+        for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
+            if (!opponentTracker.isEmpty()) return false;
         }
         return true;
     }

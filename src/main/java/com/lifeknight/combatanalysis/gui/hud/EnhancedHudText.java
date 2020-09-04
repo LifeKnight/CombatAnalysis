@@ -104,17 +104,21 @@ public abstract class EnhancedHudText extends Manipulable {
         this.separator.setiCustomDisplayString(objects -> "Separator: " + this.separator.getCurrentValueString());
         this.alignment.setiCustomDisplayString(objects -> "Alignment: " + this.alignment.getCurrentValueString());
 
-        this.connectedButtons.add(new LifeKnightButton(EnhancedHudText.this.hudTextVisible.getCustomDisplayString(), 0, 0, 0, 100) {
+        this.connectedButtons.add(new LifeKnightButton(this.hudTextVisible.getCustomDisplayString(), 0, 0, 0, 100) {
             @Override
             public void work() {
                 EnhancedHudText.this.hudTextVisible.toggle();
-                this.displayString = EnhancedHudText.this.hudTextVisible.getCustomDisplayString();
             }
 
+            @Override
+            public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+                this.displayString = EnhancedHudText.this.hudTextVisible.getCustomDisplayString();
+                super.drawButton(mc, mouseX, mouseY);
+            }
         });
 
         if (!prefix.isEmpty()) {
-            this.connectedButtons.add(new LifeKnightButton(this.separator.getCurrentValueString(), 0, 0, 0, 100) {
+            this.connectedButtons.add(new LifeKnightButton(this.separator.getCustomDisplayString(), 0, 0, 0, 100) {
                 @Override
                 public void work() {
                     EnhancedHudText.this.separator.next();
@@ -169,7 +173,12 @@ public abstract class EnhancedHudText extends Manipulable {
             @Override
             public void work() {
                 EnhancedHudText.this.alignment.next();
+            }
+
+            @Override
+            public void drawButton(Minecraft mc, int mouseX, int mouseY) {
                 this.displayString = EnhancedHudText.this.alignment.getCustomDisplayString();
+                super.drawButton(mc, mouseX, mouseY);
             }
         });
 
@@ -219,7 +228,7 @@ public abstract class EnhancedHudText extends Manipulable {
             float height = this.getHeight();
             float width = this.getWidth();
             if (Core.hudTextBox.getValue()) {
-                Render.drawRectangle(xPosition, yPosition, xPosition + width, yPosition + height, scale, textBoxColor, 255F * Core.hudTextBoxOpacity.getValue());
+                Render.drawRectangle(xPosition, yPosition, xPosition + width, yPosition + height + 1, 1.0F, textBoxColor, 255F * Core.hudTextBoxOpacity.getValue());
             }
             this.drawText(xPosition, yPosition, width, scale);
         }
@@ -313,7 +322,7 @@ public abstract class EnhancedHudText extends Manipulable {
     @Override
     public void drawButton(Minecraft minecraft, int mouseX, int mouseY, int xPosition, int yPosition, int width, int height, float scale, boolean isSelectedButton) {
         if (Core.hudTextBox.getValue()) {
-            Render.drawRectangle(xPosition, yPosition, xPosition + width, yPosition + height, scale, textBoxColor, 255F * Core.hudTextBoxOpacity.getValue());
+            Render.drawRectangle(xPosition, yPosition, xPosition + width, yPosition + height, 1.0F, textBoxColor, 255F * Core.hudTextBoxOpacity.getValue());
         }
         this.drawText(xPosition, yPosition, width, scale);
         for (LifeKnightButton lifeKnightButton : this.connectedButtons) {
@@ -325,6 +334,15 @@ public abstract class EnhancedHudText extends Manipulable {
         }
     }
 
+
+    private float getLastStringTheoreticalWidth() {
+        float defaultWidth = Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.lastString.getValue()) + (Core.hudTextShadow.getValue() ? 0.3F : -0.2F);
+
+        if (Core.hudTextBox.getValue()) defaultWidth += 10F;
+
+        return (float) Math.ceil(defaultWidth * this.getScale());
+    }
+
     @Override
     public float getXCoordinate() {
         float xCoordinate = this.getRawXPosition();
@@ -334,15 +352,15 @@ public abstract class EnhancedHudText extends Manipulable {
                 toAddX = 0;
                 break;
             case 1:
-                toAddX = (int) ((-this.getDefaultWidth() / 2F) + Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.lastString.getValue()) / 2F);
+                toAddX = (int) ((-this.getWidth() / 2F) + this.getLastStringTheoreticalWidth() / 2F);
                 break;
             default:
-                toAddX = Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.lastString.getValue()) - this.getDefaultWidth();
+                toAddX = this.getLastStringTheoreticalWidth() - this.getWidth();
                 break;
         }
         xCoordinate += toAddX;
-        if (xCoordinate + this.getDefaultWidth() > Video.getGameWidth() + 1) {
-            xCoordinate = Video.getGameWidth() + 1 - this.getDefaultWidth();
+        if (xCoordinate + this.getWidth() > Video.getGameWidth() + 1) {
+            xCoordinate = Video.getGameWidth() + 1 - this.getWidth();
         }
 
         return Math.max(xCoordinate, 0F);
@@ -372,12 +390,12 @@ public abstract class EnhancedHudText extends Manipulable {
 
     @Override
     public float getWidth() {
-        return (float) Math.ceil(this.getDefaultWidth() * super.getScale());
+        return (float) Math.ceil(this.getDefaultWidth() * this.getScale());
     }
 
     @Override
     public float getHeight() {
-        return (float) Math.ceil(this.getDefaultHeight() * super.getScale());
+        return (float) Math.ceil(this.getDefaultHeight() * this.getScale());
     }
 
     public void setVisibility(boolean newVisibility) {

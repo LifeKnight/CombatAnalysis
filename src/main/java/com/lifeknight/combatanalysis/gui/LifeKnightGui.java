@@ -426,7 +426,7 @@ public class LifeKnightGui extends GuiScreen {
                 }
 
                 for (GuiButton guiButton : LifeKnightGui.this.buttonList) {
-                    if (guiButton instanceof LifeKnightButton && guiButton.displayString.equals(">") || guiButton.displayString.equals("<")) {
+                    if (guiButton instanceof LifeKnightButton && (guiButton.displayString.equals(">") || guiButton.displayString.equals("<"))) {
                         guiButton.yPosition = ((LifeKnightButton) guiButton).originalYPosition + scaledScroll;
                     }
                 }

@@ -12,6 +12,7 @@ import com.lifeknight.combatanalysis.variables.LifeKnightCycle;
 import com.lifeknight.combatanalysis.variables.LifeKnightString;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.util.EnumChatFormatting;
 
 import java.awt.*;
@@ -25,6 +26,8 @@ import static net.minecraft.util.EnumChatFormatting.RED;
 public abstract class EnhancedHudText extends Manipulable {
     public static final List<EnhancedHudText> textToRender = new ArrayList<>();
     private static final Color textBoxColor = new Color(26, 26, 26);
+    private static final Color buttonHoveredColor = new Color(51, 153, 255);
+    private static final Color defaultButtonColor = new Color(71, 71, 71);
     private final String prefix;
     private final LifeKnightBoolean hudTextVisible;
     private final LifeKnightCycle separator;
@@ -111,9 +114,28 @@ public abstract class EnhancedHudText extends Manipulable {
             }
 
             @Override
-            public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+            public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
                 this.displayString = EnhancedHudText.this.hudTextVisible.getCustomDisplayString();
-                super.drawButton(mc, mouseX, mouseY);
+                if (this.visible) {
+                    FontRenderer fontRenderer = minecraft.fontRendererObj;
+                    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                    this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+
+                    Render.drawEmptyBox(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, Color.WHITE, 255F);
+                    Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + 1 + this.width - 2, this.yPosition + 1 + this.height - 2, this.hovered ? buttonHoveredColor : defaultButtonColor, 120F);
+
+                    this.mouseDragged(minecraft, mouseX, mouseY);
+                    int j = 14737632;
+                    if (this.packedFGColour != 0) {
+                        j = this.packedFGColour;
+                    } else if (!this.enabled) {
+                        j = 10526880;
+                    } else if (this.hovered) {
+                        j = 16777120;
+                    }
+
+                    this.drawCenteredString(fontRenderer, this.displayString, this.xPosition + this.width / 2, this.yPosition + (this.height - 8) / 2, j);
+                }
             }
         });
 
@@ -127,7 +149,26 @@ public abstract class EnhancedHudText extends Manipulable {
                 @Override
                 public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
                     this.displayString = EnhancedHudText.this.separator.getCustomDisplayString();
-                    super.drawButton(minecraft, mouseX, mouseY);
+                    if (this.visible) {
+                        FontRenderer fontRenderer = minecraft.fontRendererObj;
+                        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                        this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+
+                        Render.drawEmptyBox(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, Color.WHITE, 255F);
+                        Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + 1 + this.width - 2, this.yPosition + 1 + this.height - 2, this.hovered ? buttonHoveredColor : defaultButtonColor, 120F);
+
+                        this.mouseDragged(minecraft, mouseX, mouseY);
+                        int j = 14737632;
+                        if (this.packedFGColour != 0) {
+                            j = this.packedFGColour;
+                        } else if (!this.enabled) {
+                            j = 10526880;
+                        } else if (this.hovered) {
+                            j = 16777120;
+                        }
+
+                        this.drawCenteredString(fontRenderer, this.displayString, this.xPosition + this.width / 2, this.yPosition + (this.height - 8) / 2, j);
+                    }
                 }
             });
             this.connectedButtons.add(new LifeKnightButton(this.prefixColor.getCustomDisplayString(), 0, 0, 0, 100) {
@@ -145,7 +186,26 @@ public abstract class EnhancedHudText extends Manipulable {
                     } else {
                         this.width = 100;
                     }
-                    super.drawButton(minecraft, mouseX, mouseY);
+                    if (this.visible) {
+                        FontRenderer fontRenderer = minecraft.fontRendererObj;
+                        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                        this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+
+                        Render.drawEmptyBox(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, Color.WHITE, 255F);
+                        Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + 1 + this.width - 2, this.yPosition + 1 + this.height - 2, this.hovered ? buttonHoveredColor : defaultButtonColor, 120F);
+
+                        this.mouseDragged(minecraft, mouseX, mouseY);
+                        int j = 14737632;
+                        if (this.packedFGColour != 0) {
+                            j = this.packedFGColour;
+                        } else if (!this.enabled) {
+                            j = 10526880;
+                        } else if (this.hovered) {
+                            j = 16777120;
+                        }
+
+                        this.drawCenteredString(fontRenderer, this.displayString, this.xPosition + this.width / 2, this.yPosition + (this.height - 8) / 2, j);
+                    }
                 }
             });
         }
@@ -165,7 +225,26 @@ public abstract class EnhancedHudText extends Manipulable {
                 } else {
                     this.width = 100;
                 }
-                super.drawButton(minecraft, mouseX, mouseY);
+                if (this.visible) {
+                    FontRenderer fontRenderer = minecraft.fontRendererObj;
+                    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                    this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+
+                    Render.drawEmptyBox(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, Color.WHITE, 255F);
+                    Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + 1 + this.width - 2, this.yPosition + 1 + this.height - 2, this.hovered ? buttonHoveredColor : defaultButtonColor, 120F);
+
+                    this.mouseDragged(minecraft, mouseX, mouseY);
+                    int j = 14737632;
+                    if (this.packedFGColour != 0) {
+                        j = this.packedFGColour;
+                    } else if (!this.enabled) {
+                        j = 10526880;
+                    } else if (this.hovered) {
+                        j = 16777120;
+                    }
+
+                    this.drawCenteredString(fontRenderer, this.displayString, this.xPosition + this.width / 2, this.yPosition + (this.height - 8) / 2, j);
+                }
             }
         });
 
@@ -176,9 +255,28 @@ public abstract class EnhancedHudText extends Manipulable {
             }
 
             @Override
-            public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+            public void drawButton(Minecraft minecraft, int mouseX, int mouseY) {
                 this.displayString = EnhancedHudText.this.alignment.getCustomDisplayString();
-                super.drawButton(mc, mouseX, mouseY);
+                if (this.visible) {
+                    FontRenderer fontRenderer = minecraft.fontRendererObj;
+                    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                    this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+
+                    Render.drawEmptyBox(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, Color.WHITE, 255F);
+                    Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + 1 + this.width - 2, this.yPosition + 1 + this.height - 2, this.hovered ? buttonHoveredColor : defaultButtonColor, 120F);
+
+                    this.mouseDragged(minecraft, mouseX, mouseY);
+                    int j = 14737632;
+                    if (this.packedFGColour != 0) {
+                        j = this.packedFGColour;
+                    } else if (!this.enabled) {
+                        j = 10526880;
+                    } else if (this.hovered) {
+                        j = 16777120;
+                    }
+
+                    this.drawCenteredString(fontRenderer, this.displayString, this.xPosition + this.width / 2, this.yPosition + (this.height - 8) / 2, j);
+                }
             }
         });
 
@@ -230,13 +328,16 @@ public abstract class EnhancedHudText extends Manipulable {
             if (Core.hudTextBox.getValue()) {
                 Render.drawRectangle(xPosition, yPosition, xPosition + width, yPosition + height + 1, 1.0F, textBoxColor, 255F * Core.hudTextBoxOpacity.getValue());
             }
-            this.drawText(xPosition, yPosition, width, scale);
+            this.drawText(xPosition, yPosition, width, height, scale);
         }
     }
 
-    private void drawText(float xPosition, float yPosition, float width, float scale) {
+    private void drawText(float xPosition, float yPosition, float width, float height, float scale) {
         FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
-        if (Core.hudTextBox.getValue()) yPosition += 1.7F * scale;
+        if (Core.hudTextBox.getValue()) {
+            float offset = (height - (fontRenderer.FONT_HEIGHT + 0.3F) * scale);
+            yPosition += offset;
+        }
 
         boolean dropShadow = Core.hudTextShadow.getValue();
         boolean contentChroma = this.contentColor.getValue() == 16;
@@ -324,7 +425,7 @@ public abstract class EnhancedHudText extends Manipulable {
         if (Core.hudTextBox.getValue()) {
             Render.drawRectangle(xPosition, yPosition, xPosition + width, yPosition + height, 1.0F, textBoxColor, 255F * Core.hudTextBoxOpacity.getValue());
         }
-        this.drawText(xPosition, yPosition, width, scale);
+        this.drawText(xPosition, yPosition, width, height, scale);
         for (LifeKnightButton lifeKnightButton : this.connectedButtons) {
             lifeKnightButton.visible = isSelectedButton;
             lifeKnightButton.xPosition = xPosition - 120 < 0 ? xPosition + width + 20 : xPosition - 120;

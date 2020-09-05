@@ -180,20 +180,4 @@ public class Render extends Gui {
     public static void drawHorizontallyCenteredChromaString(float x, float y, float scale, boolean dropShadow, float speed, String text) {
         drawChromaString(x - scale * Minecraft.getMinecraft().fontRendererObj.getStringWidth(text) / 2F + 1F, y, scale, dropShadow, speed, text);
     }
-
-    public static void drawString(float x, float y, float scale, boolean dropShadow, boolean chroma, String text) {
-        if (chroma) {
-            drawChromaString(x, y, scale, dropShadow, 1000F / Core.chromaSpeed.getValue(), text);
-            return;
-        }
-        drawString(x, y, scale, dropShadow, text);
-    }
-
-    public static void drawHorizontallyCenteredString(float x, float y, float scale, boolean dropShadow, boolean chroma, String text) {
-        if (chroma) {
-            drawHorizontallyCenteredChromaString(x, y, scale, dropShadow, 1000F / Core.chromaSpeed.getValue(), text);
-            return;
-        }
-        drawHorizontallyCenteredString(x, y, scale, dropShadow, text);
-    }
 }

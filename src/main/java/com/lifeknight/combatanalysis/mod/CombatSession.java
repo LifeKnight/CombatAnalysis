@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.*;
@@ -109,7 +110,8 @@ public class CombatSession {
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
             if (!(entityPlayer.isUser() ||
                     entityPlayer.capabilities.isFlying ||
-                    playerIsStationary(entityPlayer))) {
+                    entityIsStationary(entityPlayer) ||
+                    !isInTabList(entityPlayer))) {
                 return true;
             }
         }
@@ -188,7 +190,7 @@ public class CombatSession {
             int i1 = 5;
             for (Entity entity : theWorld.getEntities(EntityArrow.class, entityArrow -> {
                 assert entityArrow != null;
-                return !entityArrow.onGround && entityArrow.shootingEntity != null && entityArrow.shootingEntity.getUniqueID() != thePlayer.getUniqueID();
+                return !entityIsStationary(entityArrow) && entityArrow.shootingEntity != null && entityArrow.shootingEntity.getUniqueID() != thePlayer.getUniqueID();
             })) {
                 EntityArrow entityArrow = (EntityArrow) entity;
                 if (theWorld.getEntitiesWithinAABBExcludingEntity(entityArrow,
@@ -282,7 +284,8 @@ public class CombatSession {
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
             if (!(entityPlayer.isUser() ||
                     entityPlayer.capabilities.isFlying ||
-                    playerIsStationary(entityPlayer) || thePlayer.getDistanceToEntity(entityPlayer) > 7)) {
+                    entityIsStationary(entityPlayer) || thePlayer.getDistanceToEntity(entityPlayer) > 7) ||
+                    !isInTabList(entityPlayer)) {
                 AxisAlignedBB entityPlayerBoundingBox = entityPlayer.getEntityBoundingBox();
                 if (entityPlayerBoundingBox.isVecInside(vec3)) aimedPlayers.add(entityPlayer);
                 else {
@@ -296,6 +299,16 @@ public class CombatSession {
                 }
             }
         }
+    }
+
+    private static boolean entityIsStationary(Entity entity) {
+        if (entity instanceof EntityPlayer && !nonStaticPlayerUuids.isEmpty()) {
+            return !nonStaticPlayerUuids.contains(entity.getUniqueID());
+        }
+
+        return entity.posX == entity.lastTickPosX &&
+                entity.posY == entity.lastTickPosY &&
+                entity.posZ == entity.lastTickPosZ;
     }
 
     public static void onArrowShot() {
@@ -331,12 +344,6 @@ public class CombatSession {
     public static void onHurt(EntityPlayer attacker) {
         if (sessionIsRunning || (Core.automaticSessions.getValue() && canStartCombatSession() && (getFishHookThrower() != null || hitByArrowTimer != 0 || attackedByPlayer())))
             getLatestAnalysis().hurt(attacker);
-    }
-
-    private static boolean playerIsStationary(EntityPlayer entityPlayer) {
-        return nonStaticPlayerUuids.isEmpty() ? !(entityPlayer.lastTickPosX == entityPlayer.posX &&
-                entityPlayer.lastTickPosY == entityPlayer.posY &&
-                entityPlayer.lastTickPosZ == entityPlayer.posZ) : !nonStaticPlayerUuids.contains(entityPlayer.getUniqueID());
     }
 
     private static boolean attackedByPlayer() {
@@ -531,6 +538,11 @@ public class CombatSession {
         this.endingArmor = Arrays.asList(thePlayer.inventory.armorInventory.clone());
         this.endingInventory = Arrays.asList(thePlayer.inventory.mainInventory.clone());
 
+        for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
+            if (!(entityPlayer.isUser() || entityIsStationary(entityPlayer) || !isInTabList(entityPlayer)))
+                this.opponentTrackerMap.put(entityPlayer.getUniqueID(), new OpponentTracker(entityPlayer));
+        }
+
         sessionIsRunning = true;
     }
 
@@ -578,7 +590,7 @@ public class CombatSession {
         }
 
         for (EntityPlayer entityPlayer : theWorld.playerEntities) {
-            if (!(entityPlayer.isUser() || this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID()) || playerIsStationary(entityPlayer)))
+            if (!(entityPlayer.isUser() || this.opponentTrackerMap.containsKey(entityPlayer.getUniqueID()) || entityIsStationary(entityPlayer) || !isInTabList(entityPlayer)))
                 this.opponentTrackerMap.put(entityPlayer.getUniqueID(), new OpponentTracker(entityPlayer));
         }
 
@@ -603,11 +615,18 @@ public class CombatSession {
         }
     }
 
+    private static boolean isInTabList(EntityPlayer entityPlayer) {
+        for (NetworkPlayerInfo networkPlayerInfo : Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap()) {
+            if (networkPlayerInfo.getGameProfile().equals(entityPlayer.getGameProfile())) return true;
+        }
+        return false;
+    }
+
     private boolean allOpponentsAreGone() {
-        if (this.opponentTrackerMap.isEmpty()) return false;
+        if (this.allOpponentTrackersAreEmpty()) return false;
         for (OpponentTracker opponentTracker : this.opponentTrackerMap.values()) {
-            if (this.playerHasAppropriateOpponent(opponentTracker.opponent) || (this.allOpponentTrackersAreEmpty())) {
-                if (!opponentTracker.opponent.isDead || Minecraft.getMinecraft().theWorld.playerEntities.contains(opponentTracker.opponent)) {
+            if (!opponentTracker.isEmpty()) {
+                if (Minecraft.getMinecraft().theWorld.playerEntities.contains(opponentTracker.opponent)) {
                     return false;
                 }
             }
@@ -719,13 +738,6 @@ public class CombatSession {
         if (opponentTracker == null) return;
         opponentTracker.arrowsTaken++;
         this.arrowsTaken++;
-        addDetailsToChat(opponentTracker.opponent);
-    }
-
-    private static void addDetailsToChat(EntityPlayer entityPlayer) {
-        if (!Core.debug.getValue()) return;
-        Chat.addChatMessage(String.format("[%s] %s", entityPlayer.getName(),
-                Text.shortenDouble(Minecraft.getMinecraft().thePlayer.getDistanceToEntity(entityPlayer), 2)));
     }
 
     public void projectileThrown() {
@@ -778,6 +790,7 @@ public class CombatSession {
     }
 
     public void hurt(EntityPlayer attacker) {
+        EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
         EntityPlayer entityPlayer = getFishHookThrower();
         if (hitByArrowTimer != 0) {
             this.hitByArrow(attacker);
@@ -790,7 +803,10 @@ public class CombatSession {
             if (opponentTracker == null) return;
             opponentTracker.onUserDamage();
             this.hitsTaken++;
-            addDetailsToChat(opponentTracker.opponent);
+            if (Core.debug.getValue()) {
+                Chat.addChatMessage(String.format("[MELEE DAMAGE] (%s) %s", opponentTracker.opponent.getName(),
+                        Text.shortenDouble(thePlayer.getDistanceToEntity(opponentTracker.opponent), 2)));
+            }
         }
 
     }
@@ -807,7 +823,8 @@ public class CombatSession {
             if (entity instanceof EntityPlayer) {
                 EntityPlayer entityPlayer = (EntityPlayer) entity;
                 if (!(entityPlayer.capabilities.isFlying ||
-                        (playerIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)) || entityPlayer.limbSwingAmount == 0 || !playerIsAimingAtUser(entityPlayer))) {
+                        (entityIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)) ||
+                        !isInTabList(entityPlayer) || entityPlayer.limbSwingAmount == 0 || !playerIsAimingAtUser(entityPlayer))) {
                     closestPlayer = entityPlayer;
                 }
             }
@@ -894,7 +911,8 @@ public class CombatSession {
         for (EntityPlayer entityPlayer : Minecraft.getMinecraft().theWorld.playerEntities) {
             if ((closestPlayer == null || thePlayer.getDistanceToEntity(entityPlayer) < thePlayer.getDistanceToEntity(closestPlayer)) && !(entityPlayer.isUser() ||
                     entityPlayer.capabilities.isFlying ||
-                    (playerIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)))) {
+                    (entityIsStationary(entityPlayer) && !this.playerHasAppropriateOpponent(entityPlayer)) ||
+                    !isInTabList(entityPlayer))) {
                 closestPlayer = entityPlayer;
             }
         }
@@ -1414,7 +1432,7 @@ public class CombatSession {
             int i0 = 5;
             for (Entity entityArrow : theWorld.getEntities(EntityArrow.class, entityArrow -> {
                 assert entityArrow != null;
-                return !entityArrow.onGround && entityArrow.shootingEntity != null && entityArrow.shootingEntity.getUniqueID() == thePlayer.getUniqueID();
+                return !entityIsStationary(entityArrow) && entityArrow.shootingEntity != null && entityArrow.shootingEntity.getUniqueID() == thePlayer.getUniqueID();
             })) {
                 if (theWorld.getEntitiesWithinAABBExcludingEntity(entityArrow,
                         entityArrow.getEntityBoundingBox().addCoord(entityArrow.motionX, entityArrow.motionY, entityArrow.motionZ).expand(d0, d0, d0)).contains(this.opponent)) {

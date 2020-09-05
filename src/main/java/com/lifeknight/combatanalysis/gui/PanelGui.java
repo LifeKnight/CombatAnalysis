@@ -473,9 +473,9 @@ public class PanelGui extends GuiScreen {
                 Render.glScissor(this.xPosition, Math.max(57, this.yPosition), this.width, theHeight);
                 GL11.glEnable(GL11.GL_SCISSOR_TEST);
                 FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
-                Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + this.width, this.yPosition + 13, this.color, 170F);
-                fontRenderer.drawString(this.name, this.xPosition + this.width / 2 - fontRenderer.getStringWidth(this.name) / 2, this.yPosition + 3, 0xffffffff);
                 Render.drawEmptyBox(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + 13, Color.BLACK, 150F, 1);
+                Render.drawRectangle(this.xPosition + 1, this.yPosition + 1, this.xPosition + this.width - 1, this.yPosition + 13 - 1, this.color, 170F);
+                fontRenderer.drawString(this.name, this.xPosition + this.width / 2 - fontRenderer.getStringWidth(this.name) / 2, this.yPosition + 3, 0xffffffff);
                 Render.drawRectangle(this.xPosition, this.yPosition + 13, this.xPosition + this.width + 1, this.yPosition + this.height, Color.BLACK, 62F);
                 GL11.glDisable(GL11.GL_SCISSOR_TEST);
                 GlStateManager.popMatrix();

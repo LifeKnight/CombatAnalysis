@@ -44,7 +44,7 @@ import static net.minecraft.util.EnumChatFormatting.GOLD;
 public class Core {
     public static final String
             MOD_NAME = "Combat Analysis",
-            MOD_VERSION = "0.4.2",
+            MOD_VERSION = "0.4.3",
             MOD_ID = "combatanalysis";
     public static final EnumChatFormatting MOD_COLOR = GOLD;
     public static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool(new LifeKnightThreadFactory());
@@ -203,6 +203,18 @@ public class Core {
             public String getTextToDisplay() {
                 leftClicks.removeIf(time -> time < System.currentTimeMillis() - 1000L);
                 return String.valueOf(leftClicks.size());
+            }
+
+            @Override
+            public boolean isVisible() {
+                return showStatus.getValue() && CombatSession.sessionIsRunning();
+            }
+        };
+
+        new EnhancedHudText("Can Hit", 0, 800, "Can Hit Opponent") {
+            @Override
+            public String getTextToDisplay() {
+                return CombatSession.canHitOpponent();
             }
 
             @Override

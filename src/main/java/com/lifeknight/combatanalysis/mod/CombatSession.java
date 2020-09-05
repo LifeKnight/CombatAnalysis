@@ -426,6 +426,18 @@ public class CombatSession {
         return sessionIsRunning ? getLatestAnalysis().arrowsTaken : 0;
     }
 
+    public static String canHitOpponent() {
+        if (!sessionIsRunning) return "N/A";
+
+        EntityPlayer entityPlayer = currentCombatSession.getClosestPlayer();
+
+        if (entityPlayer == null) return "N/A";
+        double d0 = 3.0;
+        boolean canHit = entityPlayer.getEntityBoundingBox().expand(d0, d0, d0).isVecInside(Minecraft.getMinecraft().thePlayer.getPositionEyes(1.0F));
+
+        return (canHit ? EnumChatFormatting.GREEN : EnumChatFormatting.RED) + entityPlayer.getName();
+    }
+
     private final int id;
     private String version = Core.MOD_VERSION;
     private String scoreboardDisplayName;
@@ -715,7 +727,7 @@ public class CombatSession {
     }
 
     private OpponentTracker getOpponent(EntityPlayer opponent) {
-        return getOpponent(opponent, false);
+        return this.getOpponent(opponent, false);
     }
 
     private OpponentTracker getOpponent(EntityPlayer opponent, boolean forced) {
@@ -769,19 +781,19 @@ public class CombatSession {
     public void playerHurt(EntityPlayer player) {
         OpponentTracker opponentTracker = this.getOpponent(player, true);
         if (opponentTracker == null) return;
-        if (opponentTracker.opponentHitByProjectileTimer != 0 || opponentTracker.hitByFishHook() ||
-                (projectileThrownTimer != 0 && playerInList(lastProjectileThrownAimedPlayers, opponentTracker.opponent))) {
-            opponentTracker.opponentHitByProjectileTimer = 0;
-            opponentTracker.projectilesHit++;
-            if (this.projectilesThrown == 0) this.projectilesThrown = 1;
-            this.projectilesHit++;
-        } else if (opponentTracker.opponentHitByArrowTimer != 0 ||
+        if (opponentTracker.opponentHitByArrowTimer != 0 ||
                 (arrowShotTimer != 0 && playerInList(lastArrowShotAimedPlayers, opponentTracker.opponent))) {
             opponentTracker.opponentHitByArrowTimer = 0;
             arrowShotTimer = 0;
             opponentTracker.arrowsHit++;
             if (this.arrowsShot == 0) this.arrowsShot = 1;
             this.arrowsHit++;
+        } else if (opponentTracker.opponentHitByProjectileTimer != 0 || opponentTracker.hitByFishHook() ||
+                (projectileThrownTimer != 0 && playerInList(lastProjectileThrownAimedPlayers, opponentTracker.opponent))) {
+            opponentTracker.opponentHitByProjectileTimer = 0;
+            opponentTracker.projectilesHit++;
+            if (this.projectilesThrown == 0) this.projectilesThrown = 1;
+            this.projectilesHit++;
         } else if (meleeAttackTimer != 0) {
             if (player.getUniqueID() == lastAttackedPlayer.getUniqueID()) {
                 opponentTracker.onOpponentHit();
@@ -861,7 +873,7 @@ public class CombatSession {
     private static EntityPlayer getFishHookThrower() {
         WorldClient theWorld = Minecraft.getMinecraft().theWorld;
         EntityPlayerSP thePlayer = Minecraft.getMinecraft().thePlayer;
-        double d0 = 1.0;
+        double d0 = 2.0;
         for (Entity entityFishHook : theWorld.getEntities(EntityFishHook.class, entityFishHook -> {
             assert entityFishHook != null;
             return entityFishHook.angler != null && entityFishHook.angler.getUniqueID() != thePlayer.getUniqueID();

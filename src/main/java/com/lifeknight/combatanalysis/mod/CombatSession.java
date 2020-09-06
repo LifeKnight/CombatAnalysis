@@ -33,7 +33,6 @@ public class CombatSession {
     private static final List<CombatSession> combatSessions = new ArrayList<>();
     private static int highestId = 0;
     private static boolean sessionIsRunning = false;
-    private static final JsonParser JSON_PARSER = new JsonParser();
 
     private static CombatSession currentCombatSession;
 
@@ -1303,7 +1302,7 @@ public class CombatSession {
     }
 
     public static CombatSession fromJson(String json) throws Exception {
-        JsonObject jsonObject = JSON_PARSER.parse(json).getAsJsonObject();
+        JsonObject jsonObject = new JsonParser().parse(json).getAsJsonObject();
 
         int id = jsonObject.get("id").getAsInt();
         String version = jsonObject.get("version").getAsString();

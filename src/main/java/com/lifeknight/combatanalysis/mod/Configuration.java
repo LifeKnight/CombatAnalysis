@@ -22,9 +22,7 @@ public class Configuration {
 	private JsonObject configurationAsJsonObject = new JsonObject();
 
 	public Configuration() {
-		if (this.configExists()) {
-			this.updateVariablesFromConfiguration();
-		}
+		if (this.configExists()) this.updateVariablesFromConfiguration();
 		this.updateConfigurationFromVariables();
 	}
 

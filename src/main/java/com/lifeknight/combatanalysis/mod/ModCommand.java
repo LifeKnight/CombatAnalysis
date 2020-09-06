@@ -4,25 +4,20 @@ import com.lifeknight.combatanalysis.gui.CombatSessionGui;
 import com.lifeknight.combatanalysis.gui.LifeKnightGui;
 import com.lifeknight.combatanalysis.gui.ManipulableGui;
 import com.lifeknight.combatanalysis.gui.components.LifeKnightButton;
-import com.lifeknight.combatanalysis.utilities.Chat;
-import com.lifeknight.combatanalysis.utilities.Text;
 import com.lifeknight.combatanalysis.variables.LifeKnightVariable;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommand;
 import net.minecraft.command.ICommandSender;
-import net.minecraft.util.BlockPos;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static com.lifeknight.combatanalysis.mod.Core.*;
-import static net.minecraft.util.EnumChatFormatting.DARK_GREEN;
 
 public class ModCommand extends CommandBase {
     private final List<String> aliases = Collections.singletonList("ca");
-    private final String[] mainCommands = {"end"};
 
     public String getCommandName() {
         return MOD_ID;
@@ -30,15 +25,6 @@ public class ModCommand extends CommandBase {
 
     public String getCommandUsage(ICommandSender iCommandSender) {
         return MOD_ID;
-    }
-
-    public List<String> addTabCompletionOptions(ICommandSender iCommandSender, String[] arguments, BlockPos blockPosition) {
-
-        if (arguments.length > 0) {
-            return Text.returnStartingEntries(mainCommands, arguments[0], true);
-        }
-
-        return Arrays.asList(mainCommands);
     }
 
     public boolean canCommandSenderUseCommand(ICommandSender arg0) {
@@ -59,7 +45,7 @@ public class ModCommand extends CommandBase {
 
     public void processCommand(ICommandSender iCommandSender, String[] arguments) throws CommandException {
         if (arguments.length == 0) {
-            openGui(new LifeKnightGui("[" + MOD_VERSION + "] " + MOD_NAME, LifeKnightVariable.getVariables(), Arrays.asList(
+            Core.openGui(new LifeKnightGui("[" + MOD_VERSION + "] " + MOD_NAME, LifeKnightVariable.getVariables(), Arrays.asList(
                     new LifeKnightButton("View Sessions") {
                         @Override
                         public void work() {
@@ -72,20 +58,6 @@ public class ModCommand extends CommandBase {
                             Core.openGui(new ManipulableGui());
                         }
                     })));
-            return;
         }
-        if (arguments[0].equalsIgnoreCase(mainCommands[0])) {
-            CombatSession.onWorldLoad();
-        }
-    }
-
-    public void addMainCommandMessage() {
-        StringBuilder result = new StringBuilder(DARK_GREEN + "/" + MOD_ID);
-
-        for (String command : mainCommands) {
-            result.append(" ").append(command).append(",");
-        }
-
-        Chat.addChatMessage(result.substring(0, result.length() - 1));
     }
 }

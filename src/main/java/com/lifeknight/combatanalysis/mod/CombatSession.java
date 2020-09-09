@@ -425,18 +425,6 @@ public class CombatSession {
         return sessionIsRunning ? getLatestAnalysis().arrowsTaken : 0;
     }
 
-    public static String canHitOpponent() {
-        if (!sessionIsRunning) return "N/A";
-
-        EntityPlayer entityPlayer = currentCombatSession.getClosestPlayer();
-
-        if (entityPlayer == null) return "N/A";
-        double d0 = 3.0;
-        boolean canHit = entityPlayer.getEntityBoundingBox().expand(d0, d0, d0).isVecInside(Minecraft.getMinecraft().thePlayer.getPositionEyes(1.0F));
-
-        return (canHit ? EnumChatFormatting.GREEN : EnumChatFormatting.RED) + entityPlayer.getName();
-    }
-
     private final int id;
     private String version = Core.MOD_VERSION;
     private String scoreboardDisplayName;
@@ -1399,9 +1387,7 @@ public class CombatSession {
         private final List<ComboTracker> comboTrackers;
 
         private int hitsTaken = 0;
-        private int criticalHitsTaken = 0;
         private int arrowsTaken = 0;
-        private int projectilesTaken = 0;
 
         private int arrowsHit = 0;
         private int projectilesHit = 0;
@@ -1417,7 +1403,7 @@ public class CombatSession {
             this.comboTrackers.add(new ComboTracker());
         }
 
-        public OpponentTracker(List<ItemStack> opponentStartingArmor, String name, int attacksSent, int attacksLanded, int criticalAttacksLanded, int opponentAttacksTaken, List<ComboTracker> combos, int hitsTaken, int criticalHitsTaken, int arrowsTaken, int projectilesTaken, int arrowsHit, int projectilesHit) {
+        public OpponentTracker(List<ItemStack> opponentStartingArmor, String name, int attacksSent, int attacksLanded, int criticalAttacksLanded, int opponentAttacksTaken, List<ComboTracker> combos, int hitsTaken, int arrowsTaken, int arrowsHit, int projectilesHit) {
             this.opponent = null;
             this.opponentStartingArmor = opponentStartingArmor;
             this.name = name;
@@ -1427,9 +1413,7 @@ public class CombatSession {
             this.opponentHitsTaken = opponentAttacksTaken;
             this.comboTrackers = combos;
             this.hitsTaken = hitsTaken;
-            this.criticalHitsTaken = criticalHitsTaken;
             this.arrowsTaken = arrowsTaken;
-            this.projectilesTaken = projectilesTaken;
             this.arrowsHit = arrowsHit;
             this.projectilesHit = projectilesHit;
         }
@@ -1488,8 +1472,6 @@ public class CombatSession {
 
         private void onUserDamage() {
             this.hitsTaken++;
-            if (this.opponent.fallDistance > 0.0F && !this.opponent.onGround && !this.opponent.isOnLadder() && !this.opponent.isInWater() && !this.opponent.isPotionActive(Potion.blindness) && this.opponent.ridingEntity == null)
-                this.criticalHitsTaken++;
             if (this.getLatestComboTracker().getComboCount() >= 3) {
                 this.getLatestComboTracker().end();
                 this.comboTrackers.add(new ComboTracker());
@@ -1500,8 +1482,8 @@ public class CombatSession {
 
         private boolean isEmpty() {
             return this.hitsTaken == 0 && this.opponentHitsTaken == 0 &&
-                    this.arrowsTaken == 0 && this.arrowsHit == 0 &&
-                    this.projectilesTaken == 0 && this.projectilesHit == 0;
+                    this.arrowsHit == 0 && this.arrowsTaken == 0 &&
+                    this.projectilesHit == 0;
         }
 
         private ComboTracker getLatestComboTracker() {
@@ -1518,14 +1500,6 @@ public class CombatSession {
 
         public int getHitsTaken() {
             return this.hitsTaken;
-        }
-
-        public int getProjectilesTaken() {
-            return this.projectilesTaken;
-        }
-
-        public int getArrowsTaken() {
-            return this.arrowsTaken;
         }
 
         public int getCriticalHitsLanded() {
@@ -1559,10 +1533,6 @@ public class CombatSession {
             return map;
         }
 
-        public int getCriticalHitsTaken() {
-            return this.criticalHitsTaken;
-        }
-
         @Override
         public String toString() {
             JsonObject asJsonObject = new JsonObject();
@@ -1575,9 +1545,6 @@ public class CombatSession {
             asJsonObject.addProperty("opponentAttacksTaken", this.opponentHitsTaken);
             asJsonObject.add("combos", Miscellaneous.toJsonArrayString(this.comboTrackers));
             asJsonObject.addProperty("hitsTaken", this.hitsTaken);
-            asJsonObject.addProperty("criticalHitsTaken", this.criticalHitsTaken);
-            asJsonObject.addProperty("arrowsTaken", this.arrowsTaken);
-            asJsonObject.addProperty("projectilesTaken", this.projectilesTaken);
             asJsonObject.addProperty("arrowsHit", this.arrowsHit);
             asJsonObject.addProperty("projectilesHit", this.projectilesHit);
 
@@ -1593,13 +1560,11 @@ public class CombatSession {
             int opponentAttacksTaken = jsonObject.get("opponentAttacksTaken").getAsInt();
             List<ComboTracker> combos = jsonArrayToComboList(jsonObject.get("combos").getAsJsonArray());
             int hitsTaken = jsonObject.get("hitsTaken").getAsInt();
-            int criticalHitsTaken = jsonObject.get("criticalHitsTaken").getAsInt();
             int arrowsTaken = jsonObject.get("arrowsTaken").getAsInt();
-            int projectilesTaken = jsonObject.get("projectilesTaken").getAsInt();
             int arrowsHit = jsonObject.get("arrowsHit").getAsInt();
             int projectilesHit = jsonObject.get("projectilesHit").getAsInt();
 
-            return new OpponentTracker(opponentStartingArmor, name, attacksSent, attacksLanded, criticalAttacksLanded, opponentAttacksTaken, combos, hitsTaken, criticalHitsTaken, arrowsTaken, projectilesTaken, arrowsHit, projectilesHit);
+            return new OpponentTracker(opponentStartingArmor, name, attacksSent, attacksLanded, criticalAttacksLanded, opponentAttacksTaken, combos, hitsTaken, arrowsTaken, arrowsHit, projectilesHit);
         }
 
         private static List<ComboTracker> jsonArrayToComboList(JsonArray jsonArray) {

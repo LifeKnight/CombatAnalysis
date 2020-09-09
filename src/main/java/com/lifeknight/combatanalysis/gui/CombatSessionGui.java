@@ -86,6 +86,7 @@ public class CombatSessionGui extends PanelGui {
             if (scoreboardDisplayName != null) basicData.add("Alternate Server: " + scoreboardDisplayName);
 
             basicData.add("");
+            basicData.add("Detected Type: " + this.combatSession.detectType());
             basicData.add("Version: " + this.combatSession.getVersion());
 
             super.createListPanel("Details", basicData).setColor(Color.RED);
@@ -164,9 +165,6 @@ public class CombatSessionGui extends PanelGui {
                 data.add("Melee Accuracy: " + opponentTracker.attackAccuracy());
                 data.add("");
                 data.add("Melee Hits Taken: " + opponentTracker.getHitsTaken());
-                data.add("Critical Hits Taken: " + opponentTracker.getCriticalHitsTaken());
-                data.add("Shots Taken: " + opponentTracker.getArrowsTaken());
-                data.add("Projectiles Taken: " + opponentTracker.getProjectilesTaken());
                 super.createListPanel(opponentTracker.getName(), data).setColor(Color.YELLOW);
 
                 InventoryPanel opponentStartingArmor = new InventoryPanel(opponentTracker.getName() + " - Armor", opponentTracker.getOpponentStartingArmor(), false);

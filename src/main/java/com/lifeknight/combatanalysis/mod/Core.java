@@ -207,18 +207,6 @@ public class Core {
                 return showStatus.getValue() && CombatSession.sessionIsRunning();
             }
         };
-
-        new EnhancedHudText("Can Hit", 0, 800, "Can Hit Opponent") {
-            @Override
-            public String getTextToDisplay() {
-                return CombatSession.canHitOpponent();
-            }
-
-            @Override
-            public boolean isVisible() {
-                return showStatus.getValue() && CombatSession.sessionIsRunning();
-            }
-        };
     }
 
     @SubscribeEvent

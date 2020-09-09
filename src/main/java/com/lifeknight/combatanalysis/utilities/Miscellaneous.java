@@ -94,7 +94,7 @@ public class Miscellaneous {
     }
 
     public static void createEnhancedHudTextDefaultPropertyVariables() {
-        new LifeKnightNumber.LifeKnightFloat("Default Text Scale", "HUD", 1.0F, 0.1F, 5.0F) {
+        new LifeKnightNumber.LifeKnightFloat("Default HUD Text Scale", "HUD", 1.0F, 0.1F, 5.0F) {
             @Override
             public void onSetValue() {
                 for (EnhancedHudText enhancedHudText : textToRender) {

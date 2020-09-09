@@ -64,11 +64,11 @@ public class Core {
     static {
         hudTextBoxOpacity.setiCustomDisplayString(objects -> {
             float value = (float) objects[0];
-            return "HUD Text Box Opacity: " + (int) value * 100 + "%";
+            return "HUD Text Box Opacity: " + (int) (value * 100) + "%";
         });
         chromaSpeed.setiCustomDisplayString(objects -> {
             float value = (float) objects[0];
-            return "Chroma Speed: " + (int) value * 100 + "%";
+            return "Chroma Speed: " + (int) (value * 100) + "%";
         }
         );
     }

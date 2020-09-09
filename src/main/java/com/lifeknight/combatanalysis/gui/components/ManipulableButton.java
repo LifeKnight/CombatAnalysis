@@ -38,7 +38,7 @@ public class ManipulableButton extends GuiButton {
         this.manipulable = manipulable;
         this.scale = manipulable.getScale();
         this.scaleButtons = new ScaleButton[]{
-                new ScaleButton(0, this.xPosition, this.yPosition, this) {
+                new ScaleButton(0, this.xPosition, this.yPosition) {
                     @Override
                     public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
                         int xDistance = originalXPosition - newXPosition;
@@ -51,7 +51,7 @@ public class ManipulableButton extends GuiButton {
                         ManipulableButton.this.yPosition = ManipulableButton.this.originalYPosition + ManipulableButton.this.originalHeight - ManipulableButton.this.height;
                     }
                 },
-                new ScaleButton(1, this.xPosition + this.width - SCALE_BUTTON_SIZE, this.yPosition, this) {
+                new ScaleButton(1, this.xPosition + this.width - SCALE_BUTTON_SIZE, this.yPosition) {
                     @Override
                     public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
                         int xDistance = newXPosition - originalXPosition;
@@ -64,7 +64,7 @@ public class ManipulableButton extends GuiButton {
                         ManipulableButton.this.yPosition = ManipulableButton.this.originalYPosition + ManipulableButton.this.originalHeight - ManipulableButton.this.height;
                     }
                 },
-                new ScaleButton(2, this.xPosition, this.yPosition + this.height - SCALE_BUTTON_SIZE, this) {
+                new ScaleButton(2, this.xPosition, this.yPosition + this.height - SCALE_BUTTON_SIZE) {
                     @Override
                     public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
                         int xDistance = originalXPosition - newXPosition;
@@ -77,7 +77,7 @@ public class ManipulableButton extends GuiButton {
                         ManipulableButton.this.yPosition = ManipulableButton.this.originalYPosition;
                     }
                 },
-                new ScaleButton(3, this.xPosition + this.width - SCALE_BUTTON_SIZE, this.yPosition + this.height - SCALE_BUTTON_SIZE, this) {
+                new ScaleButton(3, this.xPosition + this.width - SCALE_BUTTON_SIZE, this.yPosition + this.height - SCALE_BUTTON_SIZE) {
                     @Override
                     public void onDrag(int newXPosition, int newYPosition, int originalXPosition, int originalYPosition) {
                         int xDistance = newXPosition - originalXPosition;
@@ -201,19 +201,19 @@ public class ManipulableButton extends GuiButton {
                     if (manipulableButton != this) {
                         if (Logic.isWithinRange(newXPosition + this.width, manipulableButton.xPosition + manipulableButton.width, SCALE_BUTTON_SIZE)) {
                             replacementXPosition = manipulableButton.xPosition + manipulableButton.width - this.width;
-                            toDrawX = replacementXPosition + this.width - SCALE_BUTTON_SIZE;
+                            toDrawX = replacementXPosition + this.width - SCALE_BUTTON_SIZE + 1;
                         }
                         if (Logic.isWithinRange(newXPosition, manipulableButton.xPosition, SCALE_BUTTON_SIZE)) {
                             replacementXPosition = manipulableButton.xPosition;
-                            toDrawX = replacementXPosition + SCALE_BUTTON_SIZE;
+                            toDrawX = replacementXPosition + SCALE_BUTTON_SIZE - 1;
                         }
                         if (Logic.isWithinRange(newYPosition + this.height, manipulableButton.yPosition + manipulableButton.height, SCALE_BUTTON_SIZE)) {
                             replacementYPosition = manipulableButton.yPosition + manipulableButton.height - this.height;
-                            toDrawY = replacementYPosition + this.height - SCALE_BUTTON_SIZE;
+                            toDrawY = replacementYPosition + this.height - SCALE_BUTTON_SIZE + 1;
                         }
                         if (Logic.isWithinRange(newYPosition, manipulableButton.yPosition, SCALE_BUTTON_SIZE)) {
                             replacementYPosition = manipulableButton.yPosition;
-                            toDrawY = replacementYPosition + SCALE_BUTTON_SIZE;
+                            toDrawY = replacementYPosition + SCALE_BUTTON_SIZE - 1;
                         }
                     }
                     if (toDrawX != Integer.MIN_VALUE && toDrawX != 0 && toDrawX != Video.getGameWidth())
@@ -379,11 +379,9 @@ public class ManipulableButton extends GuiButton {
         private int originalYPosition;
         private int originalMouseXPosition;
         private int originalMouseYPosition;
-        private final ManipulableButton manipulableButton;
 
-        public ScaleButton(int buttonId, int x, int y, ManipulableButton manipulableButton) {
+        public ScaleButton(int buttonId, int x, int y) {
             super(buttonId, x, y, SCALE_BUTTON_SIZE, SCALE_BUTTON_SIZE, "");
-            this.manipulableButton = manipulableButton;
             this.updateOriginalPosition(0, 0);
         }
 

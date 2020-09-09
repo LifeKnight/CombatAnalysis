@@ -14,17 +14,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static com.lifeknight.combatanalysis.mod.Core.*;
-
 public class ModCommand extends CommandBase {
     private final List<String> aliases = Collections.singletonList("ca");
 
     public String getCommandName() {
-        return MOD_ID;
+        return Core.MOD_ID;
     }
 
     public String getCommandUsage(ICommandSender iCommandSender) {
-        return MOD_ID;
+        return Core.MOD_ID;
     }
 
     public boolean canCommandSenderUseCommand(ICommandSender arg0) {
@@ -32,7 +30,7 @@ public class ModCommand extends CommandBase {
     }
 
     public List<String> getCommandAliases() {
-        return aliases;
+        return this.aliases;
     }
 
     public boolean isUsernameIndex(String[] arguments, int argument1) {
@@ -45,7 +43,7 @@ public class ModCommand extends CommandBase {
 
     public void processCommand(ICommandSender iCommandSender, String[] arguments) throws CommandException {
         if (arguments.length == 0) {
-            Core.openGui(new LifeKnightGui("[" + MOD_VERSION + "] " + MOD_NAME, LifeKnightVariable.getVariables(), Arrays.asList(
+            Core.openGui(new LifeKnightGui("[" + Core.MOD_VERSION + "] " + Core.MOD_NAME, LifeKnightVariable.getVariables(), Arrays.asList(
                     new LifeKnightButton("View Sessions") {
                         @Override
                         public void work() {

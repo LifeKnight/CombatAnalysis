@@ -103,7 +103,7 @@ public class Miscellaneous {
             }
         }.setiCustomDisplayString(objects -> {
             float value = (float) objects[0];
-            return "Default HUD Text Scale: " + Text.shortenDouble(value * 100, 2) + "%";
+            return "Default HUD Text Scale: " + (int) value * 100 + "%";
         });
         new LifeKnightCycle("Default HUD Text Separator", "HUD", Arrays.asList(">", ":", "|", "-", "[]")) {
             @Override

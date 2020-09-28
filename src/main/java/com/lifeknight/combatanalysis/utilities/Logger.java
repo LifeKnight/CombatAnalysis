@@ -176,7 +176,7 @@ public class Logger {
         }
 
         if (originalContent.equals(newContent)) {
-            Miscellaneous.logWarn("Attempted to change content of log, new and original are the same: %s, %s, %s", this.logFolder, date, newContent);
+            Miscellaneous.logWarn("Attempted to change content of log, new and original are the same: %s, %s, %s", this.logFolder, date, Text.shortenText(newContent));
             return false;
         }
 
@@ -186,7 +186,7 @@ public class Logger {
     public boolean deleteLinesOfLogThat(String date, Predicate<String> condition) {
         String originalContent = this.getLogOfDate(date);
         if (originalContent == null) {
-            Miscellaneous.logError("Tried to delete line of logs that contain a certain string, no log found: %s, %s", date);
+            Miscellaneous.logError("Tried to delete line of logs that contain a certain string, no log found: %s", date);
             return false;
         }
 
@@ -202,7 +202,7 @@ public class Logger {
         }
 
         if (originalContent.equals(newContent.toString())) {
-            Miscellaneous.logWarn("Tried to delete log of line that contains text, new and original are the same: %s, %s, %s", date, originalContent, newContent);
+            Miscellaneous.logWarn("Tried to delete log of line that contains text, new and original are the same: %s, %s, %s", date, Text.shortenText(originalContent), Text.shortenText(newContent.toString()));
         }
 
         return this.writeToLog(date, newContent.toString());

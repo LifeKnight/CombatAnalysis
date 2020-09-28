@@ -151,7 +151,6 @@ public class Logger {
         String newContent = originalContent.replaceAll(textToReplace, replacement);
 
         if (originalContent.equals(newContent)) {
-            Miscellaneous.logWarn("Tried to replace log content, replaced and original are the same: %s, %s, %s", date, textToReplace, replacement);
             return false;
         }
 
@@ -176,7 +175,6 @@ public class Logger {
         }
 
         if (originalContent.equals(newContent)) {
-            Miscellaneous.logWarn("Attempted to change content of log, new and original are the same: %s, %s, %s", this.logFolder, date, Text.shortenText(newContent));
             return false;
         }
 
@@ -202,7 +200,7 @@ public class Logger {
         }
 
         if (originalContent.equals(newContent.toString())) {
-            Miscellaneous.logWarn("Tried to delete log of line that contains text, new and original are the same: %s, %s, %s", date, Text.shortenText(originalContent), Text.shortenText(newContent.toString()));
+            return false;
         }
 
         return this.writeToLog(date, newContent.toString());

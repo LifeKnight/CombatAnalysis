@@ -19,6 +19,7 @@ import org.lwjgl.opengl.GL11;
 import java.awt.*;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static net.minecraft.util.EnumChatFormatting.*;
 
@@ -91,6 +92,7 @@ public class CombatSessionGui extends PanelGui {
 
             super.createListPanel("Details", basicData).setColor(Color.RED);
 
+            AtomicBoolean alreadyClicked = new AtomicBoolean(false);
             super.createButtonPanel("Properties", Arrays.asList(
                     new LifeKnightButton.VersatileLifeKnightButton(this.combatSession.isWon() ? GREEN + "Won" : RED + "Lost", versatileLifeKnightButton -> {
                         try {
@@ -117,6 +119,22 @@ public class CombatSessionGui extends PanelGui {
                             versatileLifeKnightButton.displayString = CombatSessionGui.this.combatSession.isDeleted() ? RED + "Deleted" : GREEN + "Available";
                         } catch (Exception exception) {
                             Miscellaneous.logError("Tried to remove or add combat session from the deleted-id list: %s", exception.getMessage());
+                        }
+                    }),
+                    new LifeKnightButton.VersatileLifeKnightButton(YELLOW + "Delete Permanently", versatileLifeKnightButton -> {
+                        if (alreadyClicked.get()) {
+                            this.combatSession.deletePermanently();
+                            Core.openGui(new CombatSessionGui(CombatSession.getLatestAnalysisForGui()));
+                        } else {
+                            alreadyClicked.set(true);
+                            versatileLifeKnightButton.displayString = RED + "Confirm";
+                            new Timer().schedule(new TimerTask() {
+                                @Override
+                                public void run() {
+                                    alreadyClicked.set(false);
+                                    versatileLifeKnightButton.displayString = YELLOW + "Delete Permanently";
+                                }
+                            }, 2500L);
                         }
                     })));
 
@@ -153,7 +171,6 @@ public class CombatSessionGui extends PanelGui {
             InventoryComparisonPanel inventory = new InventoryComparisonPanel("Inventory", this.combatSession.getStartingInventory(), this.combatSession.getEndingInventory(), true);
             inventory.setColor(Color.GREEN);
             super.guiPanels.add(inventory);
-
 
             for (CombatSession.OpponentTracker opponentTracker : this.combatSession.getOpponentTrackerMap()) {
                 List<String> data = new ArrayList<>();

@@ -44,6 +44,7 @@ public class ManipulableButton extends GuiButton {
                         int xDistance = originalXPosition - newXPosition;
 
                         ManipulableButton.this.scale = ((float) (ManipulableButton.this.originalWidth + xDistance) / (float) ManipulableButton.this.originalWidth) * ManipulableButton.this.originalScale;
+                        ManipulableButton.this.scale = Math.max(ManipulableButton.this.scale, 0.1F);
 
                         ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * ManipulableButton.this.scale) + SCALE_BUTTON_SIZE * 2;
                         ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * ManipulableButton.this.scale) + SCALE_BUTTON_SIZE * 2;
@@ -57,6 +58,7 @@ public class ManipulableButton extends GuiButton {
                         int xDistance = newXPosition - originalXPosition;
 
                         ManipulableButton.this.scale = ((float) (ManipulableButton.this.originalWidth + xDistance) / (float) ManipulableButton.this.originalWidth) * ManipulableButton.this.originalScale;
+                        ManipulableButton.this.scale = Math.max(ManipulableButton.this.scale, 0.1F);
 
                         ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * ManipulableButton.this.scale) + SCALE_BUTTON_SIZE * 2;
                         ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * ManipulableButton.this.scale) + SCALE_BUTTON_SIZE * 2;
@@ -70,6 +72,7 @@ public class ManipulableButton extends GuiButton {
                         int xDistance = originalXPosition - newXPosition;
 
                         ManipulableButton.this.scale = ((float) (ManipulableButton.this.originalWidth + xDistance) / (float) ManipulableButton.this.originalWidth) * ManipulableButton.this.originalScale;
+                        ManipulableButton.this.scale = Math.max(ManipulableButton.this.scale, 0.1F);
 
                         ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * ManipulableButton.this.scale) + SCALE_BUTTON_SIZE * 2;
                         ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * ManipulableButton.this.scale) + SCALE_BUTTON_SIZE * 2;
@@ -83,6 +86,7 @@ public class ManipulableButton extends GuiButton {
                         int xDistance = newXPosition - originalXPosition;
 
                         ManipulableButton.this.scale = ((float) (ManipulableButton.this.originalWidth + xDistance) / (float) ManipulableButton.this.originalWidth) * ManipulableButton.this.originalScale;
+                        ManipulableButton.this.scale = Math.max(ManipulableButton.this.scale, 0.1F);
 
                         ManipulableButton.this.width = (int) (manipulable.getDefaultWidth() * ManipulableButton.this.scale) + SCALE_BUTTON_SIZE * 2;
                         ManipulableButton.this.height = (int) (manipulable.getDefaultHeight() * ManipulableButton.this.scale) + SCALE_BUTTON_SIZE * 2;

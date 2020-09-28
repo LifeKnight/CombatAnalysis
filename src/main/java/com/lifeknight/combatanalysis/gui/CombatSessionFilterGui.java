@@ -1,5 +1,6 @@
 package com.lifeknight.combatanalysis.gui;
 
+import com.lifeknight.combatanalysis.gui.components.ConfirmButton;
 import com.lifeknight.combatanalysis.gui.components.LifeKnightButton;
 import com.lifeknight.combatanalysis.gui.components.LifeKnightTextField;
 import com.lifeknight.combatanalysis.gui.components.ScrollBar;
@@ -27,8 +28,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-import static net.minecraft.util.EnumChatFormatting.GREEN;
-import static net.minecraft.util.EnumChatFormatting.RED;
+import static net.minecraft.util.EnumChatFormatting.*;
 
 public class CombatSessionFilterGui extends GuiScreen {
     private final GuiScreen lastGui;
@@ -36,6 +36,7 @@ public class CombatSessionFilterGui extends GuiScreen {
     private ScrollBar scrollBar;
 
     private int resultsFound = 0;
+    private boolean permanentlyDeletedSessions = false;
 
     private boolean deletedSessionsOnly = CombatSession.deletedSessionsOnly;
     private int wonFilterType = CombatSession.wonFilterType;
@@ -125,11 +126,30 @@ public class CombatSessionFilterGui extends GuiScreen {
         this.buttonList.clear();
         this.lifeKnightTextFields.clear();
 
+        this.buttonList.add(new ConfirmButton(this.buttonList.size(), this.width / 2 - 117, 18, 235, YELLOW + "Delete All Current Results Permanently", RED + "Confirm") {
+            @Override
+            public void onConfirm() {
+                CombatSession.deletedSessionsOnly = CombatSessionFilterGui.this.deletedSessionsOnly;
+                CombatSession.wonFilterType = CombatSessionFilterGui.this.wonFilterType;
+                CombatSession.dateFilterType = CombatSessionFilterGui.this.dateFilterType;
+                CombatSession.firstDate.setTime(firstDate.getTime());
+                CombatSession.secondDate.setTime(secondDate.getTime());
+                CombatSession.opponentFilter = CombatSessionFilterGui.this.opponentFilter;
+                CombatSession.serverFilter = CombatSessionFilterGui.this.serverFilter;
+                CombatSession.typeFilter = CombatSessionFilterGui.this.typeFilter;
+
+                for (CombatSession combatSession : CombatSession.getCombatSessionsForGui()) {
+                    combatSession.deletePermanently();
+                }
+                permanentlyDeletedSessions = true;
+                CombatSessionFilterGui.this.updateResultCount();
+            }
+        });
         if (this.lastGui != null) {
             this.buttonList.add(new LifeKnightButton("Back", this.buttonList.size(), this.width - 60, 5, 50) {
                 @Override
                 public void work() {
-                    Core.openGui(CombatSessionFilterGui.this.lastGui);
+                    Core.openGui(permanentlyDeletedSessions ? new CombatSessionGui(CombatSession.getLatestAnalysisForGui()) : CombatSessionFilterGui.this.lastGui);
                 }
             });
         }

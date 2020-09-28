@@ -30,6 +30,7 @@ import java.time.ZoneId;
 import java.util.*;
 
 public class CombatSession {
+    private static final JsonParser JSON_PARSER = new JsonParser();
     private static final List<CombatSession> combatSessions = new ArrayList<>();
     private static int highestId = 0;
     private static boolean sessionIsRunning = false;
@@ -735,7 +736,6 @@ public class CombatSession {
         hitByArrowTimer = 0;
         OpponentTracker opponentTracker = this.getOpponent(shooter, true);
         if (opponentTracker == null) return;
-        opponentTracker.arrowsTaken++;
         this.arrowsTaken++;
     }
 
@@ -983,11 +983,27 @@ public class CombatSession {
         }
     }
 
+    public void deletePermanently() {
+        try {
+            if (this.logged) {
+                if (Core.combatSessionLogger.deleteLinesOfLogsThat(string -> string.startsWith(String.format("{\"id\":%d,", this.id)))) {
+                    Core.loggedSessionIds.removeElement(this.id);
+                    combatSessions.remove(this);
+                } else throw new Exception("No changes made");
+            }
+            if (this.deleted) Core.deletedSessionIds.removeElement(this.id);
+            if (this.won) Core.wonSessionIds.removeElement(this.id);
+        } catch (Exception exception) {
+            Miscellaneous.logError("[%d] Tried to delete combatsession permanently, error occurred: %s", this.id, exception.getMessage());
+            Chat.addErrorMessage("Permanent combat session deletion failed.");
+        }
+    }
+
     private boolean mostHitsOnOpponent() {
         if (this.opponentTrackerMap.isEmpty()) return false;
         List<OpponentTracker> opponentTrackers = new ArrayList<>(this.opponentTrackerMap.values());
         OpponentTracker opponentTracker = opponentTrackers.get(opponentTrackers.size() - 1);
-        return opponentTracker.hitsTaken <= opponentTracker.opponentHitsTaken || opponentTracker.hitsTaken <= 3 && opponentTracker.arrowsTaken <= opponentTracker.arrowsHit;
+        return opponentTracker.hitsTaken <= opponentTracker.opponentHitsTaken || opponentTracker.hitsTaken <= 3;
     }
 
     public int getProjectilesTaken() {
@@ -1290,7 +1306,7 @@ public class CombatSession {
     }
 
     public static CombatSession fromJson(String json) throws Exception {
-        JsonObject jsonObject = new JsonParser().parse(json).getAsJsonObject();
+        JsonObject jsonObject = JSON_PARSER.parse(json).getAsJsonObject();
 
         int id = jsonObject.get("id").getAsInt();
         String version = jsonObject.get("version").getAsString();
@@ -1387,7 +1403,6 @@ public class CombatSession {
         private final List<ComboTracker> comboTrackers;
 
         private int hitsTaken = 0;
-        private int arrowsTaken = 0;
 
         private int arrowsHit = 0;
         private int projectilesHit = 0;
@@ -1403,7 +1418,7 @@ public class CombatSession {
             this.comboTrackers.add(new ComboTracker());
         }
 
-        public OpponentTracker(List<ItemStack> opponentStartingArmor, String name, int attacksSent, int attacksLanded, int criticalAttacksLanded, int opponentAttacksTaken, List<ComboTracker> combos, int hitsTaken, int arrowsTaken, int arrowsHit, int projectilesHit) {
+        public OpponentTracker(List<ItemStack> opponentStartingArmor, String name, int attacksSent, int attacksLanded, int criticalAttacksLanded, int opponentAttacksTaken, List<ComboTracker> combos, int hitsTaken, int arrowsHit, int projectilesHit) {
             this.opponent = null;
             this.opponentStartingArmor = opponentStartingArmor;
             this.name = name;
@@ -1413,7 +1428,6 @@ public class CombatSession {
             this.opponentHitsTaken = opponentAttacksTaken;
             this.comboTrackers = combos;
             this.hitsTaken = hitsTaken;
-            this.arrowsTaken = arrowsTaken;
             this.arrowsHit = arrowsHit;
             this.projectilesHit = projectilesHit;
         }
@@ -1482,7 +1496,7 @@ public class CombatSession {
 
         private boolean isEmpty() {
             return this.hitsTaken == 0 && this.opponentHitsTaken == 0 &&
-                    this.arrowsHit == 0 && this.arrowsTaken == 0 &&
+                    this.arrowsHit == 0 &&
                     this.projectilesHit == 0;
         }
 
@@ -1560,11 +1574,10 @@ public class CombatSession {
             int opponentAttacksTaken = jsonObject.get("opponentAttacksTaken").getAsInt();
             List<ComboTracker> combos = jsonArrayToComboList(jsonObject.get("combos").getAsJsonArray());
             int hitsTaken = jsonObject.get("hitsTaken").getAsInt();
-            int arrowsTaken = jsonObject.get("arrowsTaken").getAsInt();
             int arrowsHit = jsonObject.get("arrowsHit").getAsInt();
             int projectilesHit = jsonObject.get("projectilesHit").getAsInt();
 
-            return new OpponentTracker(opponentStartingArmor, name, attacksSent, attacksLanded, criticalAttacksLanded, opponentAttacksTaken, combos, hitsTaken, arrowsTaken, arrowsHit, projectilesHit);
+            return new OpponentTracker(opponentStartingArmor, name, attacksSent, attacksLanded, criticalAttacksLanded, opponentAttacksTaken, combos, hitsTaken, arrowsHit, projectilesHit);
         }
 
         private static List<ComboTracker> jsonArrayToComboList(JsonArray jsonArray) {

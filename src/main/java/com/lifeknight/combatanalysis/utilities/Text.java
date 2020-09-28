@@ -3,6 +3,7 @@ package com.lifeknight.combatanalysis.utilities;
 import net.minecraft.util.EnumChatFormatting;
 
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -150,5 +151,17 @@ public class Text {
             return "0" + milliseconds;
         }
         return asString;
+    }
+
+    public static String getCurrentDateString() {
+        return new SimpleDateFormat("MM/dd/yyyy").format(System.currentTimeMillis());
+    }
+
+    public static String getCurrentTimeString() {
+        return new SimpleDateFormat("hh:mm:ss a").format(System.currentTimeMillis());
+    }
+
+    public static String removeAll(String text, String toRemove) {
+        return text.replaceAll(toRemove, "");
     }
 }

@@ -46,7 +46,7 @@ public abstract class LifeKnightButton extends GuiButton {
     public abstract void work();
 
     public static class VersatileLifeKnightButton extends LifeKnightButton {
-        public IAction iAction = null;
+        public IAction iAction;
         public VersatileLifeKnightButton(String buttonText, IAction iAction) {
             super(0, 0, 0, Minecraft.getMinecraft().fontRendererObj.getStringWidth(buttonText) + 15, 20, buttonText);
             this.iAction = iAction;
@@ -59,6 +59,6 @@ public abstract class LifeKnightButton extends GuiButton {
     }
 
     public interface IAction {
-        public void work(VersatileLifeKnightButton versatileLifeKnightButton);
+        void work(VersatileLifeKnightButton versatileLifeKnightButton);
     }
 }

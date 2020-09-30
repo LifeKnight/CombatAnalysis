@@ -986,10 +986,11 @@ public class CombatSession {
     public void deletePermanently() {
         try {
             if (this.logged) {
-                if (Core.combatSessionLogger.deleteLinesOfLogsThat(string -> string.startsWith(String.format("{\"id\":%d,", this.id)))) {
-                    Core.loggedSessionIds.removeElement(this.id);
-                    combatSessions.remove(this);
-                } else throw new Exception("No changes made");
+                if (!Core.combatSessionLogger.deleteLinesOfLogsThat(string -> string.startsWith(String.format("{\"id\":%d,", this.id)))) {
+                    Miscellaneous.logWarn("[%d] No changes were made when trying to delete this combat session permanently.", this.id);
+                }
+                Core.loggedSessionIds.removeElement(this.id);
+                combatSessions.remove(this);
             }
             if (this.deleted) Core.deletedSessionIds.removeElement(this.id);
             if (this.won) Core.wonSessionIds.removeElement(this.id);

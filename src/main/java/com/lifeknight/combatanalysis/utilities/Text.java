@@ -164,12 +164,4 @@ public class Text {
     public static String removeAll(String text, String toRemove) {
         return text.replaceAll(toRemove, "");
     }
-
-    public static String shortenText(String text, int maximumLength) {
-        return text.substring(0, Math.min(text.length(), maximumLength) - 1);
-    }
-
-    public static String shortenText(String text) {
-        return shortenText(text, 100);
-    }
 }

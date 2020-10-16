@@ -95,31 +95,11 @@ public class CombatSessionGui extends PanelGui {
             AtomicBoolean alreadyClicked = new AtomicBoolean(false);
             super.createButtonPanel("Properties", Arrays.asList(
                     new LifeKnightButton.VersatileLifeKnightButton(this.combatSession.isWon() ? GREEN + "Won" : RED + "Lost", versatileLifeKnightButton -> {
-                        try {
-                            if (CombatSessionGui.this.combatSession.isWon()) {
-                                Core.wonSessionIds.removeElement(CombatSessionGui.this.combatSession.getId());
-                                CombatSessionGui.this.combatSession.setWon(false);
-                            } else {
-                                Core.wonSessionIds.addElement(CombatSessionGui.this.combatSession.getId());
-                                CombatSessionGui.this.combatSession.setWon(true);
-                            }
-                            versatileLifeKnightButton.displayString = CombatSessionGui.this.combatSession.isWon() ? GREEN + "Won" : RED + "Lost";
-                        } catch (Exception exception) {
-                            Miscellaneous.logError("Tried to remove or add combat session from the won-id list: %s", exception.getMessage());
-                        }
+                        CombatSessionGui.this.combatSession.setWon(!CombatSessionGui.this.combatSession.isWon());
+                        versatileLifeKnightButton.displayString = CombatSessionGui.this.combatSession.isWon() ? GREEN + "Won" : RED + "Lost";
                     }), new LifeKnightButton.VersatileLifeKnightButton(this.combatSession.isDeleted() ? RED + "Deleted" : GREEN + "Available", versatileLifeKnightButton -> {
-                        try {
-                            if (CombatSessionGui.this.combatSession.isDeleted()) {
-                                Core.deletedSessionIds.removeElement(CombatSessionGui.this.combatSession.getId());
-                                CombatSessionGui.this.combatSession.setDeleted(false);
-                            } else {
-                                Core.deletedSessionIds.addElement(CombatSessionGui.this.combatSession.getId());
-                                CombatSessionGui.this.combatSession.setDeleted(true);
-                            }
-                            versatileLifeKnightButton.displayString = CombatSessionGui.this.combatSession.isDeleted() ? RED + "Deleted" : GREEN + "Available";
-                        } catch (Exception exception) {
-                            Miscellaneous.logError("Tried to remove or add combat session from the deleted-id list: %s", exception.getMessage());
-                        }
+                        CombatSessionGui.this.combatSession.setDeleted(!CombatSessionGui.this.combatSession.isDeleted());
+                        versatileLifeKnightButton.displayString = CombatSessionGui.this.combatSession.isDeleted() ? RED + "Deleted" : GREEN + "Available";
                     }),
                     new LifeKnightButton.VersatileLifeKnightButton(YELLOW + "Delete Permanently", versatileLifeKnightButton -> {
                         if (alreadyClicked.get()) {

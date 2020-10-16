@@ -75,22 +75,26 @@ public class Logger {
     }
 
     public void log(String input) {
-        if (this.doLog) {
-            if (this.doLogTime) {
-                this.currentLog += String.format("[%s] %s" + System.getProperty("line.separator"), Text.getCurrentTimeString(), input);
+        try {
+            if (this.doLog) {
+                this.update();
+                if (this.doLogTime) {
+                    this.currentLog += String.format("[%s] %s" + System.getProperty("line.separator"), Text.getCurrentTimeString(), input);
+                }
+                this.writeLogToFile();
             }
-            this.writeLogToFile();
+        } catch (Exception exception) {
+            Miscellaneous.logError("An error occurred while attempting to log: %s", exception.getMessage());
         }
     }
 
     public void plainLog(String input) {
-        if (this.doLog) {
-            this.currentLog += input + System.getProperty("line.separator");
-            this.writeLogToFile();
-        }
+        this.update();
+        this.currentLog += input + System.getProperty("line.separator");
+        this.writeLogToFile();
     }
 
-    public void writeLogToFile() {
+    private void update() {
         try {
             this.logFile = new File(this.logFolder + "/" + Text.getCurrentDateString().replace("/", ".") + ".txt");
 
@@ -100,6 +104,14 @@ public class Logger {
                 this.previousLog = "";
                 this.currentLog = "";
             }
+        } catch (Exception exception) {
+            Miscellaneous.logError("An error occurred while attempting to check for log updates: %s", exception.getMessage());
+        }
+    }
+
+    public void writeLogToFile() {
+        try {
+            this.logFile = new File(this.logFolder + "/" + Text.getCurrentDateString().replace("/", ".") + ".txt");
 
             PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(this.logFile), StandardCharsets.UTF_8));
             writer.write(this.previousLog + this.currentLog);
@@ -154,6 +166,10 @@ public class Logger {
             return false;
         }
 
+        if (originalContent.equals(this.currentLog)) {
+            this.currentLog = newContent;
+        }
+
         return this.writeToLog(date, newContent);
     }
 
@@ -161,7 +177,8 @@ public class Logger {
         boolean changesMade = false;
 
         for (File file : this.logFiles) {
-            if (this.replaceLogContent(Text.removeAll(file.getName(), ".txt"), textToReplace, replacement)) changesMade = true;
+            if (this.replaceLogContent(Text.removeAll(file.getName(), ".txt"), textToReplace, replacement))
+                changesMade = true;
         }
 
         return changesMade;
@@ -176,6 +193,10 @@ public class Logger {
 
         if (originalContent.equals(newContent)) {
             return false;
+        }
+
+        if (originalContent.equals(this.currentLog)) {
+            this.currentLog = newContent;
         }
 
         return this.writeToLog(date, newContent);
@@ -203,6 +224,10 @@ public class Logger {
             return false;
         }
 
+        if (originalContent.equals(this.currentLog)) {
+            this.currentLog = newContent.toString();
+        }
+
         return this.writeToLog(date, newContent.toString());
     }
 
@@ -226,7 +251,8 @@ public class Logger {
         boolean changesMade = false;
 
         for (File file : this.logFiles) {
-            if (this.deleteLinesOfLogThatContain(Text.removeAll(file.getName(), ".txt"), containedText, ignoreCapitalization)) changesMade = true;
+            if (this.deleteLinesOfLogThatContain(Text.removeAll(file.getName(), ".txt"), containedText, ignoreCapitalization))
+                changesMade = true;
         }
 
         return changesMade;

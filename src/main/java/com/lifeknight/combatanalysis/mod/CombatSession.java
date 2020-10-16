@@ -32,7 +32,7 @@ import java.util.*;
 public class CombatSession {
     private static final JsonParser JSON_PARSER = new JsonParser();
     private static final List<CombatSession> combatSessions = new ArrayList<>();
-    private static int highestId = 0;
+    private static int nextId = 0;
     private static boolean sessionIsRunning = false;
 
     private static CombatSession currentCombatSession;
@@ -80,7 +80,7 @@ public class CombatSession {
                     if (line.startsWith("{")) {
                         try {
                             CombatSession combatSession = fromJson(line);
-                            highestId = Math.max(highestId, combatSession.id);
+                            nextId = Math.max(nextId, combatSession.id);
                             loggedCombatSessions.add(combatSession);
                         } catch (Exception exception) {
                             Miscellaneous.logError("[%d] An error occurred while trying to interpret a combat session from logs: %s, (%s)", logs.indexOf(log), exception.getMessage(), line);
@@ -90,7 +90,7 @@ public class CombatSession {
                 scanner.close();
             }
         }
-        if (highestId != 0) highestId++;
+        if (nextId != 0) nextId++;
 
         while (loggedCombatSessions.size() != 0) {
             CombatSession nextCombatSession = null;
@@ -102,6 +102,19 @@ public class CombatSession {
             loggedCombatSessions.remove(nextCombatSession);
             combatSessions.add(nextCombatSession);
         }
+    }
+
+    private static void calculateNextId() {
+        if (combatSessions.isEmpty()) {
+            nextId = 0;
+            return;
+        }
+
+        int theHighestId = 0;
+        for (CombatSession combatSession : combatSessions) {
+            theHighestId = Math.max(theHighestId, combatSession.id);
+        }
+        nextId = Math.min(nextId, theHighestId) + 1;
     }
 
     private static boolean canStartCombatSession() {
@@ -476,7 +489,7 @@ public class CombatSession {
     private String detectedType = null;
 
     public CombatSession() {
-        this.id = highestId;
+        this.id = nextId;
         this.serverIp = Minecraft.getMinecraft().isSingleplayer() ? "Singleplayer" : Minecraft.getMinecraft().getCurrentServerData().serverIP;
         this.opponentTrackerMap = new HashMap<>();
         this.potionEffects = new ArrayList<>();
@@ -957,14 +970,9 @@ public class CombatSession {
                 !(this.hitsTaken == 0 && this.getHitsDealt() == 0 &&
                         this.arrowsTaken == 0 && this.arrowsHit == 0 &&
                         this.projectilesTaken == 0 && this.projectilesHit == 0) && this.getTime() > 1000L) {
-            highestId++;
-            try {
-                this.won = this.mostHitsOnOpponent();
-                if (this.won) Core.wonSessionIds.addElement(this.id);
-            } catch (IOException ioException) {
-                Miscellaneous.logError("Tried to add combat session id to won-id list, action denied: %s", ioException.getMessage());
-            }
+            this.won = this.mostHitsOnOpponent();
             combatSessions.add(this);
+            nextId++;
             if (Core.automaticallyLogSessions.getValue()) this.log();
         }
     }
@@ -972,11 +980,15 @@ public class CombatSession {
     public void log() {
         if (!this.logged) {
             try {
-                Core.loggedSessionIds.addElement(this.id);
                 Core.combatSessionLogger.plainLog(this.toString());
                 this.logged = true;
+                if (!Core.loggedSessionIds.getValue().contains(this.id)) Core.loggedSessionIds.addElement(this.id);
+                if (this.won && !Core.wonSessionIds.getValue().contains(this.id))
+                    Core.wonSessionIds.addElement(this.id);
+                if (this.deleted && !Core.deletedSessionIds.getValue().contains(this.id))
+                    Core.deletedSessionIds.addElement(this.id);
             } catch (IOException ioException) {
-                Miscellaneous.logError("Combat Session id addition to logged-id list action denied: %s", ioException.getMessage());
+                Miscellaneous.logError("Combat Session ID add-to-list action denied: %s", ioException.getMessage());
             }
         } else {
             Miscellaneous.logWarn("Tried to log, even though already logged: %d", this.id);
@@ -984,27 +996,21 @@ public class CombatSession {
     }
 
     public void deletePermanently() {
-        if (this.logged) {
-            if (!Core.combatSessionLogger.deleteLinesOfLogsThat(string -> string.startsWith(String.format("{\"id\":%d,", this.id)))) {
-                Miscellaneous.logWarn("[%d] No changes were made when trying to delete this combat session permanently.", this.id);
-            }
-            try {
-                Core.loggedSessionIds.removeElement(this.id);
-            } catch (IOException ioException) {
-                Miscellaneous.logWarn("[%d] Tried to remove id from logged list for deletion, error occurred: %s", this.id);
-            }
-            combatSessions.remove(this);
+        if (!Core.combatSessionLogger.deleteLinesOfLogsThat(string -> string.startsWith(String.format("{\"id\":%d,", this.id)))) {
+            Miscellaneous.logWarn("[%d] No changes were made when trying to delete this combat session permanently. (Logged: %s)", this.id, this.logged);
         }
         try {
-            if (this.deleted) Core.deletedSessionIds.removeElement(this.id);
+            if (Core.loggedSessionIds.getValue().contains(this.id)) Core.loggedSessionIds.removeElement(this.id);
+            this.logged = false;
+            if (Core.deletedSessionIds.getValue().contains(this.id)) Core.deletedSessionIds.removeElement(this.id);
+            this.deleted = false;
+            if (Core.wonSessionIds.getValue().contains(this.id)) Core.wonSessionIds.removeElement(this.id);
+            this.won = false;
         } catch (IOException ioException) {
-            Miscellaneous.logWarn("[%d] Tried to remove id from deleted list for deletion, error occurred: %s", this.id);
+            Miscellaneous.logWarn("[%d] Tried to remove ID from ID-list for deletion, error occurred: %s", this.id, ioException.getMessage());
         }
-        try {
-            if (this.won) Core.wonSessionIds.removeElement(this.id);
-        } catch (IOException ioException) {
-            Miscellaneous.logWarn("[%d] Tried to remove id from won list for deletion, error occurred: %s", this.id);
-        }
+        combatSessions.remove(this);
+        calculateNextId();
     }
 
     private boolean mostHitsOnOpponent() {
@@ -1201,10 +1207,32 @@ public class CombatSession {
 
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
+        if (this.logged) {
+            try {
+                if (this.deleted) {
+                    Core.deletedSessionIds.addElement(this.id);
+                } else {
+                    Core.deletedSessionIds.removeElement(this.id);
+                }
+            } catch (IOException ioException) {
+                Miscellaneous.logError("Tried to add/remove ID from deleted-list, error occurred: %s", ioException.getMessage());
+            }
+        }
     }
 
     public void setWon(boolean won) {
         this.won = won;
+        if (this.logged) {
+            try {
+                if (this.won) {
+                    Core.wonSessionIds.addElement(this.id);
+                } else {
+                    Core.wonSessionIds.removeElement(this.id);
+                }
+            } catch (IOException ioException) {
+                Miscellaneous.logError("Tried to add/remove ID from won-list, error occurred: %s", ioException.getMessage());
+            }
+        }
     }
 
     public List<String> getOpponentNames() {

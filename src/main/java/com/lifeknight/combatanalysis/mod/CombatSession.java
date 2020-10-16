@@ -989,11 +989,23 @@ public class CombatSession {
                 if (!Core.combatSessionLogger.deleteLinesOfLogsThat(string -> string.startsWith(String.format("{\"id\":%d,", this.id)))) {
                     Miscellaneous.logWarn("[%d] No changes were made when trying to delete this combat session permanently.", this.id);
                 }
-                Core.loggedSessionIds.removeElement(this.id);
+                try {
+                    Core.loggedSessionIds.removeElement(this.id);
+                } catch (IOException ioException) {
+                    Miscellaneous.logWarn("[%d] Tried to remove id from logged list, error occurred: %s", this.id);
+                }
                 combatSessions.remove(this);
             }
-            if (this.deleted) Core.deletedSessionIds.removeElement(this.id);
-            if (this.won) Core.wonSessionIds.removeElement(this.id);
+            try {
+                if (this.deleted) Core.deletedSessionIds.removeElement(this.id);
+            } catch (IOException ioException) {
+                Miscellaneous.logWarn("[%d] Tried to remove id from deleted list, error occurred: %s", this.id);
+            }
+            try {
+                if (this.won) Core.wonSessionIds.removeElement(this.id);
+            } catch (IOException ioException) {
+                Miscellaneous.logWarn("[%d] Tried to remove id from won list, error occurred: %s", this.id);
+            }
         } catch (Exception exception) {
             Miscellaneous.logError("[%d] Tried to delete combatsession permanently, error occurred: %s", this.id, exception.getMessage());
             Chat.addErrorMessage("Permanent combat session deletion failed.");

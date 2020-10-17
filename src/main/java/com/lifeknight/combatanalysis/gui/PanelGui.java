@@ -11,6 +11,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.GlStateManager;
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 
@@ -51,29 +52,55 @@ public class PanelGui extends GuiScreen {
         if (this.visibleGuiPanels.size() != 0) {
             int j = Mouse.getDWheel() / 7;
             if (j != 0 && this.notHoveringOver(mouseX, mouseY, j)) {
-                if (((j > 0) && this.scrollBar.yPosition > 0) || ((j < 0) && this.scrollBar.yPosition + this.scrollBar.height < super.height)) {
+                if (Keyboard.isKeyDown(0x2A)) {
+                    if (((j > 0) && this.horizontalScrollBar.xPosition > 0) || ((j < 0) && this.horizontalScrollBar.xPosition + this.horizontalScrollBar.width < super.width)) {
+                        for (GuiPanel guiPanel : this.visibleGuiPanels) {
+                            guiPanel.updateOriginals();
+                        }
 
-                    for (GuiPanel guiPanel : this.visibleGuiPanels) {
-                        guiPanel.updateOriginals();
-                    }
+                        while (j > 0 && this.visibleGuiPanels.get(0).xPosition + j > 5) {
+                            j--;
+                        }
 
-                    while (j > 0 && this.visibleGuiPanels.get(0).yPosition + j > 65) {
-                        j--;
-                    }
+                        int lastPanelEndX = 0;
+                        for (GuiPanel guiPanel : this.visibleGuiPanels) {
+                            if (guiPanel.originalXPosition + guiPanel.width > lastPanelEndX) {
+                                lastPanelEndX = guiPanel.originalXPosition + guiPanel.width;
+                            }
+                        }
+                        while (j < 0 && lastPanelEndX + j < super.width - 5) {
+                            j++;
+                        }
 
-                    int lastPanelEndY = 0;
-                    for (GuiPanel guiPanel : this.visibleGuiPanels) {
-                        if (guiPanel.originalYPosition + guiPanel.height > lastPanelEndY) {
-                            lastPanelEndY = guiPanel.originalYPosition + guiPanel.height;
+                        for (GuiPanel guiPanel : this.visibleGuiPanels) {
+                            guiPanel.xPosition = guiPanel.originalXPosition + j;
+                            guiPanel.updateOriginals();
                         }
                     }
-                    while (j < 0 && lastPanelEndY + j < super.height - 10) {
-                        j++;
-                    }
+                } else {
+                    if (((j > 0) && this.scrollBar.yPosition > 0) || ((j < 0) && this.scrollBar.yPosition + this.scrollBar.height < super.height)) {
+                        for (GuiPanel guiPanel : this.visibleGuiPanels) {
+                            guiPanel.updateOriginals();
+                        }
 
-                    for (GuiPanel guiPanel : this.visibleGuiPanels) {
-                        guiPanel.yPosition = guiPanel.originalYPosition + j;
-                        guiPanel.updateOriginals();
+                        while (j > 0 && this.visibleGuiPanels.get(0).yPosition + j > 65) {
+                            j--;
+                        }
+
+                        int lastPanelEndY = 0;
+                        for (GuiPanel guiPanel : this.visibleGuiPanels) {
+                            if (guiPanel.originalYPosition + guiPanel.height > lastPanelEndY) {
+                                lastPanelEndY = guiPanel.originalYPosition + guiPanel.height;
+                            }
+                        }
+                        while (j < 0 && lastPanelEndY + j < super.height - 10) {
+                            j++;
+                        }
+
+                        for (GuiPanel guiPanel : this.visibleGuiPanels) {
+                            guiPanel.yPosition = guiPanel.originalYPosition + j;
+                            guiPanel.updateOriginals();
+                        }
                     }
                 }
             }
@@ -242,7 +269,7 @@ public class PanelGui extends GuiScreen {
                 while (scaledScroll > 0 && PanelGui.this.visibleGuiPanels.get(0).originalXPosition + scaledScroll > 5) {
                     scaledScroll--;
                 }
-                while (scaledScroll < 0 && getRightMostPanelEndX() + 5 + scaledScroll < PanelGui.this.width - 5) {
+                while (scaledScroll < 0 && this.getRightMostPanelEndX() + 5 + scaledScroll < PanelGui.this.width) {
                     scaledScroll++;
                 }
                 for (GuiPanel guiPanel : PanelGui.this.visibleGuiPanels) {
@@ -345,7 +372,7 @@ public class PanelGui extends GuiScreen {
                 this.height = 150;
                 int modifiedHeight = this.height - 14;
                 if ((int) (modifiedHeight * (modifiedHeight / (double) this.getPanelHeight())) < modifiedHeight - 5) {
-                    this.scrollBar = new ScrollBar(-1, this.xPosition + this.width - 5, this.yPosition, 4, getPanelHeight()) {
+                    this.scrollBar = new ScrollBar(-1, this.xPosition + this.width - 5, this.yPosition, 4, this.getPanelHeight()) {
                         @Override
                         protected void onMousePress() {
                             GuiPanel.this.originalYOffsetPosition = GuiPanel.this.yOffsetPosition;
@@ -419,13 +446,23 @@ public class PanelGui extends GuiScreen {
         }
 
         public void scroll(int distance) {
-            while (distance > 0 && this.originalYOffsetPosition + 2 + distance > 2) {
-                distance--;
+            if (Keyboard.isKeyDown(0x2A)) {
+                while (distance > 0 && this.originalXOffsetPosition + 2 + distance > 2) {
+                    distance--;
+                }
+                while (distance < 0 && this.getLongestElementEndX() + 2 + distance < GuiPanel.this.xPosition + GuiPanel.this.width - 2) {
+                    distance++;
+                }
+                this.xOffsetPosition = this.originalXOffsetPosition + distance;
+            } else {
+                while (distance > 0 && this.originalYOffsetPosition + 2 + distance > 2) {
+                    distance--;
+                }
+                while (distance < 0 && this.getLastElementEndY() + 2 + distance < GuiPanel.this.yPosition + GuiPanel.this.height - 2) {
+                    distance++;
+                }
+                this.yOffsetPosition = this.originalYOffsetPosition + distance;
             }
-            while (distance < 0 && this.getLastElementEndY() + 2 + distance < GuiPanel.this.yPosition + GuiPanel.this.height - 2) {
-                distance++;
-            }
-            this.yOffsetPosition = this.originalYOffsetPosition + distance;
         }
 
         protected int getPanelHeight() {

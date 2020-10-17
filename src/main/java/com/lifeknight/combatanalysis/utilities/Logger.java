@@ -61,7 +61,9 @@ public class Logger {
             StringBuilder logContent = new StringBuilder();
 
             while (reader.hasNextLine()) {
-                logContent.append(reader.nextLine()).append(System.getProperty("line.separator"));
+                if (logContent.length() == 0) {
+                    logContent.append(reader.nextLine());
+                } else logContent.append(System.getProperty("line.separator")).append(reader.nextLine());
             }
 
             reader.close();
@@ -79,7 +81,10 @@ public class Logger {
             if (this.doLog) {
                 this.update();
                 if (this.doLogTime) {
-                    this.currentLog += String.format("[%s] %s" + System.getProperty("line.separator"), Text.getCurrentTimeString(), input);
+                    if (this.currentLog.isEmpty()) {
+                        this.currentLog = String.format("[%s] %s", Text.getCurrentTimeString(), input);
+                    } else
+                        this.currentLog = String.format(System.getProperty("line.separator") + "[%s] %s", Text.getCurrentTimeString(), input);
                 }
                 this.writeLogToFile();
             }
@@ -90,7 +95,9 @@ public class Logger {
 
     public void plainLog(String input) {
         this.update();
-        this.currentLog += input + System.getProperty("line.separator");
+        if (this.currentLog.isEmpty() && this.previousLog.isEmpty()) {
+            this.currentLog = input;
+        } else this.currentLog += System.getProperty("line.separator") + input;
         this.writeLogToFile();
     }
 
@@ -114,7 +121,7 @@ public class Logger {
             this.logFile = new File(this.logFolder + "/" + Text.getCurrentDateString().replace("/", ".") + ".txt");
 
             PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(this.logFile), StandardCharsets.UTF_8));
-            writer.write(this.previousLog + this.currentLog);
+            writer.write(this.previousLog + System.getProperty("line.separator") + this.currentLog);
             writer.close();
         } catch (Exception exception) {
             Miscellaneous.logError("An error occurred while attempting to write to a log file: %s", exception.getMessage());
@@ -153,14 +160,14 @@ public class Logger {
         return null;
     }
 
-    public boolean replaceLogContent(String date, String textToReplace, String replacement) {
+    public boolean replaceLogContent(String date, String textToReplace, String replacement, boolean all) {
         String originalContent = this.getLogOfDate(date);
         if (originalContent == null) {
             Miscellaneous.logError("Tried to replace log content, no file found: [%s] %s", this.logFolder.getName(), date);
             return false;
         }
 
-        String newContent = originalContent.replaceAll(textToReplace, replacement);
+        String newContent = all ? originalContent.replaceAll(textToReplace, replacement) : originalContent.replace(textToReplace, replacement);
 
         if (originalContent.equals(newContent)) {
             return false;
@@ -173,11 +180,11 @@ public class Logger {
         return this.writeToLog(date, newContent);
     }
 
-    public boolean replaceLogsContent(String textToReplace, String replacement) {
+    public boolean replaceLogsContent(String textToReplace, String replacement, boolean all) {
         boolean changesMade = false;
 
         for (File file : this.logFiles) {
-            if (this.replaceLogContent(Text.removeAll(file.getName(), ".txt"), textToReplace, replacement))
+            if (this.replaceLogContent(Text.removeAll(file.getName(), ".txt"), textToReplace, replacement, all))
                 changesMade = true;
         }
 

@@ -33,6 +33,8 @@ public class CombatSession {
     private static final JsonParser JSON_PARSER = new JsonParser();
     private static final List<CombatSession> combatSessions = new ArrayList<>();
     private static int nextId = 0;
+    private static final List<Integer> usedIds = new ArrayList<>();
+    private static boolean changesMadeToLogs = false;
     private static boolean sessionIsRunning = false;
 
     private static CombatSession currentCombatSession;
@@ -81,6 +83,8 @@ public class CombatSession {
                         try {
                             CombatSession combatSession = fromJson(line);
                             nextId = Math.max(nextId, combatSession.id);
+                            combatSession.checkForUpdate();
+                            usedIds.add(combatSession.id);
                             loggedCombatSessions.add(combatSession);
                         } catch (Exception exception) {
                             Miscellaneous.logError("[%d] An error occurred while trying to interpret a combat session from logs: %s, (%s)", logs.indexOf(log), exception.getMessage(), line);
@@ -102,17 +106,22 @@ public class CombatSession {
             loggedCombatSessions.remove(nextCombatSession);
             combatSessions.add(nextCombatSession);
         }
+
+        if (changesMadeToLogs) {
+            Miscellaneous.info("Updated logs.");
+            Core.combatSessionLogger.log("Updated logs.");
+        }
     }
 
     private static void calculateNextId() {
-        if (combatSessions.isEmpty()) {
+        if (usedIds.isEmpty()) {
             nextId = 0;
             return;
         }
 
         int theHighestId = 0;
-        for (CombatSession combatSession : combatSessions) {
-            theHighestId = Math.max(theHighestId, combatSession.id);
+        for (int id : usedIds) {
+            theHighestId = Math.max(theHighestId, id);
         }
         nextId = Math.min(nextId, theHighestId) + 1;
     }
@@ -439,7 +448,7 @@ public class CombatSession {
         return sessionIsRunning ? getLatestAnalysis().arrowsTaken : 0;
     }
 
-    private final int id;
+    private int id;
     private String version = Core.MOD_VERSION;
     private String scoreboardDisplayName;
     private boolean logged = false;
@@ -530,7 +539,37 @@ public class CombatSession {
         this.clicksPerSecondTrackers = clicksPerSecondTrackers;
         this.deleted = Core.deletedSessionIds.getValue().contains(this.id);
         this.won = Core.wonSessionIds.getValue().contains(this.id);
-        this.logged = Core.loggedSessionIds.getValue().contains(this.id);
+        this.logged = true;
+    }
+
+    private void checkForUpdate() {
+        if (usedIds.contains(this.id)) {
+            int originalId = this.id;
+            JsonObject originalJson = this.toJson();
+            calculateNextId();
+            this.id = nextId;
+
+            try {
+                if (Core.wonSessionIds.getValue().contains(originalId)) {
+                    if (!Core.wonSessionIds.getValue().contains(this.id)) Core.wonSessionIds.addElement(this.id);
+                }
+                if (Core.deletedSessionIds.getValue().contains(originalId)) {
+                    if (!Core.deletedSessionIds.getValue().contains(this.id)) Core.deletedSessionIds.addElement(this.id);
+                }
+            } catch (IOException ioException) {
+                Miscellaneous.logError("Tried to add/remove ID from won/deleted list; error occurred; SHOULD NOT BE POSSIBLE: %s", ioException.getMessage());
+            }
+
+            JsonObject replacementJson = this.toJson();
+            if (Core.combatSessionLogger.replaceLogsContent(originalJson.toString(), replacementJson.toString(), false)) changesMadeToLogs = true;
+        }
+        if (!Core.loggedSessionIds.getValue().contains(this.id)) {
+            try {
+                Core.loggedSessionIds.addElement(this.id);
+            } catch (IOException ioException) {
+                Miscellaneous.logError("Checked before adding ID to logged-list; error occurred; SHOULD NOT BE POSSIBLE: %s", ioException.getMessage());
+            }
+        }
     }
 
     public void activate() {
@@ -966,12 +1005,15 @@ public class CombatSession {
             clicksPerSecondTracker.end();
         }
 
+        this.clicksPerSecondTrackers.removeIf(clicksPerSecondTracker1 -> clicksPerSecondTracker1.getLeftClicks() == 0);
+
         if (this.opponentTrackerMap.size() > 0 &&
                 !(this.hitsTaken == 0 && this.getHitsDealt() == 0 &&
                         this.arrowsTaken == 0 && this.arrowsHit == 0 &&
                         this.projectilesTaken == 0 && this.projectilesHit == 0) && this.getTime() > 1000L) {
             this.won = this.mostHitsOnOpponent();
             combatSessions.add(this);
+            usedIds.add(this.id);
             nextId++;
             if (Core.automaticallyLogSessions.getValue()) this.log();
         }
@@ -1010,6 +1052,7 @@ public class CombatSession {
             Miscellaneous.logWarn("[%d] Tried to remove ID from ID-list for deletion, error occurred: %s", this.id, ioException.getMessage());
         }
         combatSessions.remove(this);
+        usedIds.remove(this.id);
         calculateNextId();
     }
 
@@ -1295,8 +1338,7 @@ public class CombatSession {
         return this.logged;
     }
 
-    @Override
-    public String toString() {
+    private JsonObject toJson() {
         JsonObject asJsonObject = new JsonObject();
 
         asJsonObject.addProperty("id", this.id);
@@ -1327,7 +1369,12 @@ public class CombatSession {
         asJsonObject.add("hotKeys", Miscellaneous.toJsonArrayString(this.hotKeyTrackers));
         asJsonObject.add("clicksPerSecondTrackers", Miscellaneous.toJsonArrayString(this.clicksPerSecondTrackers));
 
-        return asJsonObject.toString();
+        return asJsonObject;
+    }
+
+    @Override
+    public String toString() {
+        return this.toJson().toString();
     }
 
     private static JsonArray itemStackListToJsonArray(List<ItemStack> itemStacks) {
@@ -1342,7 +1389,7 @@ public class CombatSession {
     }
 
     public static CombatSession fromJson(String json) throws Exception {
-        JsonObject jsonObject = JSON_PARSER.parse(json).getAsJsonObject();
+        JsonObject jsonObject = new JsonParser().parse(json).getAsJsonObject();
 
         int id = jsonObject.get("id").getAsInt();
         String version = jsonObject.get("version").getAsString();
@@ -1874,12 +1921,12 @@ public class CombatSession {
             asJsonObject.addProperty("startTime", this.startTime);
             asJsonObject.addProperty("endTime", this.endTime);
             asJsonObject.addProperty("leftClicks", this.leftClicks);
-            asJsonObject.addProperty("ended", this.ended);
 
             return asJsonObject.toString();
         }
 
         public static ClicksPerSecondTracker fromJson(JsonObject jsonObject) {
+
             long startTime = jsonObject.get("startTime").getAsLong();
             long endTime = jsonObject.get("endTime").getAsLong();
             int leftClicks = jsonObject.get("leftClicks").getAsInt();
